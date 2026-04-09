@@ -127,30 +127,30 @@ export class GraphService {
         gradeNames,
         classNames,
       );
-    }
+    //}
 
-    // 单独查询该场景下的知识点节点（知识点是全局数据，没有schoolId/gradeId/classId）
-    if (scenarioId) {
-      const knowledgeNodes = await this.prisma.graphNode.findMany({
-        where: {
-          scenarioId,
-          nodeType: 'Knowledge',
-          schoolId: null, // 知识点没有班级归属
-        },
-        include: {
-          knowledgeProfile: true,
-        },
-      });
+    // // 单独查询该场景下的知识点节点（知识点是全局数据，没有schoolId/gradeId/classId）
+    // if (scenarioId) {
+    //   const knowledgeNodes = await this.prisma.graphNode.findMany({
+    //     where: {
+    //       scenarioId,
+    //       nodeType: 'Knowledge',
+    //       schoolId: null, // 知识点没有班级归属
+    //     },
+    //     include: {
+    //       knowledgeProfile: true,
+    //     },
+    //   });
 
-      for (const node of knowledgeNodes) {
-        this.putNode(
-          nodeMap,
-          node,
-          schoolNames,
-          gradeNames,
-          classNames,
-        );
-      }
+    //   for (const node of knowledgeNodes) {
+    //     this.putNode(
+    //       nodeMap,
+    //       node,
+    //       schoolNames,
+    //       gradeNames,
+    //       classNames,
+    //     );
+    //   }
     }
 
     const mapInteractionType = (type: string): "PHYSICAL" | "PLATFORM" => {

@@ -47,17 +47,6 @@
 
 ---
 
-## API 响应格式
-
-```typescript
-// 成功
-{ data: T, meta: object | null, error: null }
-
-// 失败
-{ data: null, meta: null, error: string }
-```
-
----
 
 ## 关键文件位置
 
@@ -74,3 +63,6 @@
 - `graph_nodes` 表通过 `nodeType` 区分实体类型，用扩展表存储详情
 - `interactions` 表的复合唯一索引防止重复交互
 - `CognitiveDimensionDef` 是枚举表，关联 `StudentCognitiveDimensionScore`
+
+## DON'T DO
+don't make markdown document unless the change is too much and complex
