@@ -73,3 +73,4 @@
 - 不要sql文件，使用prisma。
 - don't create any new tables in the database. If you have to, ask me first.
 - when you create script without I asking, please DELETE it after finishing the task.
+- don't modify prisma schema unless I told you so.
