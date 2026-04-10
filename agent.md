@@ -65,4 +65,4 @@
 - `CognitiveDimensionDef` 是枚举表，关联 `StudentCognitiveDimensionScore`
 
 ## DON'T DO
-don't make markdown document unless the change is too much and complex
+don't make docs unless I told you so
