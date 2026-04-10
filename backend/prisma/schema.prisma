@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "sqlserver"
-  url      = env("DATABASE_URL")
 }
 
 /// 学习场景
@@ -19,7 +18,7 @@ model LearningScenario {
   sessions  InteractionSession[]
   nodes     GraphNode[]
 
-  @@map("learning_scenarios")
+  @@map("learning_scenarios_test")
 }
 
 /// 学校/校区节点，顶级组织单位
@@ -29,7 +28,7 @@ model School {
   createdAt DateTime @default(now())
   grades    Grade[]
 
-  @@map("schools")
+  @@map("schools_test")
 }
 
 /// 年级节点，属某一学校
@@ -43,7 +42,7 @@ model Grade {
 
   @@unique([schoolId, gradeName])
   @@index([schoolId])
-  @@map("grades")
+  @@map("grades_test")
 }
 
 /// 班级节点，属某一年级
@@ -56,7 +55,7 @@ model SchoolClass {
 
   @@unique([gradeId, className])
   @@index([gradeId])
-  @@map("classes")
+  @@map("classes_test")
 }
 
 /// 三元交互网络的核心节点表
@@ -83,7 +82,7 @@ model GraphNode {
   @@index([nodeType])
   @@index([scenarioId])
   @@index([schoolId, gradeId, classId])
-  @@map("graph_nodes")
+  @@map("graph_nodes_test")
 }
 
 /// 学生节点扩展属性，1:1 关联 GraphNode (nodeType = Student)
@@ -96,7 +95,7 @@ model StudentProfile {
   updatedAt               DateTime  @updatedAt
   node                    GraphNode @relation(fields: [nodeId], references: [id])
 
-  @@map("student_profiles")
+  @@map("student_profiles_test")
 }
 
 /// 教师节点扩展属性，1:1 关联 GraphNode (nodeType = Teacher)
@@ -109,7 +108,7 @@ model TeacherProfile {
   updatedAt     DateTime  @updatedAt
   node          GraphNode @relation(fields: [nodeId], references: [id])
 
-  @@map("teacher_profiles")
+  @@map("teacher_profiles_test")
 }
 
 /// 知识点节点扩展属性，1:1 关联 GraphNode (nodeType = Knowledge)
@@ -125,7 +124,7 @@ model KnowledgeProfile {
   node          GraphNode @relation(fields: [nodeId], references: [id])
 
   @@index([parentNodeId])
-  @@map("knowledge_profiles")
+  @@map("knowledge_profiles_test")
 }
 
 /// 一次交互会话，记录某学习场景在某班级/时间下的完整交互记录
@@ -143,7 +142,7 @@ model InteractionSession {
 
   @@index([scenarioId, occurredAt])
   @@index([schoolId, gradeId, classId, occurredAt])
-  @@map("interaction_sessions")
+  @@map("interaction_sessions_test")
 }
 
 /// 三元交互网络的有向边
@@ -169,7 +168,7 @@ model Interaction {
   @@index([sessionId])
   @@index([sourceNodeId, targetNodeId])
   @@index([interactionType, createdAt])
-  @@map("interactions")
+  @@map("interactions_test")
 }
 
 /// 认知维度定义表，枚举所有可测量的认知能力维度
@@ -185,7 +184,7 @@ model CognitiveDimensionDef {
   isActive        Boolean                          @default(true)
   dimensionScores StudentCognitiveDimensionScore[]
 
-  @@map("cognitive_dimension_defs")
+  @@map("cognitive_dimension_defs_test")
 }
 
 /// 学生认知能力画像，按时间版本生成
@@ -202,7 +201,7 @@ model StudentCognitiveProfile {
   studentNode     GraphNode                        @relation(fields: [studentNodeId], references: [id])
 
   @@index([studentNodeId, generatedAt(sort: Desc)])
-  @@map("student_cognitive_profiles")
+  @@map("student_cognitive_profiles_test")
 }
 
 /// 学生认知维度得分，关联至 CognitiveDimensionDef
@@ -219,5 +218,5 @@ model StudentCognitiveDimensionScore {
 
   @@unique([profileId, dimensionCode])
   @@index([profileId])
-  @@map("student_cognitive_dimension_scores")
+  @@map("student_cognitive_dimension_scores_test")
 }

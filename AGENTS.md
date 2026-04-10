@@ -64,5 +64,12 @@
 - `interactions` 表的复合唯一索引防止重复交互
 - `CognitiveDimensionDef` 是枚举表，关联 `StudentCognitiveDimensionScore`
 
-## DON'T DO
-don't make docs unless I told you so
+## MUST
+- don't make docs unless I told you so
+- 不要尝试npx prisma studio，因为MSSQL不支持Studio，只要知道能正常获取数据即可，通过scripts/db-explorer.ts查询数据库表。
+- 全程使用test后缀的数据库表来开发。
+- 生成的data文件放在`backend/datas/scripts_filterd`目录下。
+- script文件统一放在`backend/scripts`目录下。
+- 不要sql文件，使用prisma。
+- don't create any new tables in the database. If you have to, ask me first.
+- when you create script without I asking, please DELETE it after finishing the task.

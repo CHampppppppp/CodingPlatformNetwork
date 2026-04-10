@@ -1,0 +1,6 @@
+{
+	"dependencies": {
+		"csv-parse": "^6.2.1",
+		"mssql": "^12.2.1"
+	}
+}
