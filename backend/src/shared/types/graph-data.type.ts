@@ -2,6 +2,7 @@ export interface StudentProfile {
   school: string | null;
   grade: string | null;
   classId: string | null;
+  externalUserId?: string | null;
   learningStylePreference?: string | null;
   personality?: string | null;
   groupBehavior?: string | null;

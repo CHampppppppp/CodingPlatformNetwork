@@ -71,7 +71,7 @@ function parseKnowledgeCsv(filePath: string): KnowledgePoint[] {
 }
 
 async function main() {
-  console.log('🚀 开始导入知识点和资源...\n');
+  console.log('🚀 开始同步知识点和资源...\n');
 
   const scenario = await prisma.learningScenario.findFirst({
     where: { code: 'COLLABORATIVE_LEARNING' },
@@ -83,8 +83,10 @@ async function main() {
     return;
   }
 
-  let totalKnowledge = 0;
-  let totalResources = 0;
+  let createdKnowledge = 0;
+  let updatedKnowledge = 0;
+  let createdResources = 0;
+  let updatedResources = 0;
 
   for (const { file, type } of csvFiles) {
     const filePath = path.resolve(__dirname, `../datas/script_filterd/${file}`);
@@ -99,11 +101,28 @@ async function main() {
           displayName: kp.name,
           scenarioId: scenario.id,
         },
+        include: {
+          knowledgeProfile: true,
+        },
       });
 
-      const knowledgeNode =
-        existingKnowledge ||
-        (await prisma.graphNode.create({
+      let knowledgeNode;
+      if (existingKnowledge) {
+        knowledgeNode = await prisma.graphNode.update({
+          where: { id: existingKnowledge.id },
+          data: {
+            knowledgeProfile: {
+              update: {
+                category: kp.category,
+                knowledgeType: type,
+                content: kp.steps.join('\n'),
+              },
+            },
+          },
+        });
+        updatedKnowledge++;
+      } else {
+        knowledgeNode = await prisma.graphNode.create({
           data: {
             nodeType: 'Knowledge',
             displayName: kp.name,
@@ -116,10 +135,8 @@ async function main() {
               },
             },
           },
-        }));
-
-      if (!existingKnowledge) {
-        totalKnowledge++;
+        });
+        createdKnowledge++;
       }
 
       if (kp.resourceUrl) {
@@ -133,19 +150,27 @@ async function main() {
           where: { url: kp.resourceUrl },
         });
 
-        const resource =
-          existingResource ||
-          (await prisma.resource.create({
+        let resource;
+        if (existingResource) {
+          resource = await prisma.resource.update({
+            where: { id: existingResource.id },
+            data: {
+              title: `${kp.name} - 教学资源`,
+              resourceType,
+              description: `教材参考: ${kp.textbookRef || '无'}`,
+            },
+          });
+          updatedResources++;
+        } else {
+          resource = await prisma.resource.create({
             data: {
               title: `${kp.name} - 教学资源`,
               url: kp.resourceUrl,
               resourceType,
               description: `教材参考: ${kp.textbookRef || '无'}`,
             },
-          }));
-
-        if (!existingResource) {
-          totalResources++;
+          });
+          createdResources++;
         }
 
         const existingRelation = await prisma.resourceKnowledgeRelation.findFirst({
@@ -167,14 +192,16 @@ async function main() {
     }
   }
 
-  console.log(`\n✅ 导入完成`);
-  console.log(`   新增知识点: ${totalKnowledge}`);
-  console.log(`   新增资源: ${totalResources}`);
+  console.log(`\n✅ 同步完成`);
+  console.log(`   新增知识点: ${createdKnowledge}`);
+  console.log(`   更新知识点: ${updatedKnowledge}`);
+  console.log(`   新增资源: ${createdResources}`);
+  console.log(`   更新资源: ${updatedResources}`);
 
   await prisma.$disconnect();
 }
 
 main().catch((err) => {
-  console.error('❌ 导入失败:', err);
+  console.error('❌ 同步失败:', err);
   process.exit(1);
 });

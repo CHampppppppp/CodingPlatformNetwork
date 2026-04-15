@@ -48,13 +48,55 @@ export class ResourceService {
       this.prisma.resource.count({ where }),
     ]);
 
+    const resourceIds = items.map((item) => item.id);
+
+    const rateGroups = await this.prisma.studentResourceRate.groupBy({
+      by: ["resourceId"],
+      where: { resourceId: { in: resourceIds } },
+      _avg: { rate: true },
+    });
+
+    const rateMap = new Map(
+      rateGroups.map((g) => [
+        g.resourceId,
+        g._avg.rate != null ? Number(g._avg.rate) : null,
+      ]),
+    );
+
+    const enrichedItems = items.map((item) => {
+      const avgRate = rateMap.get(item.id) ?? null;
+      return {
+        ...item,
+        acceptanceRate:
+          avgRate != null ? (avgRate / 5) * 100 : item.acceptanceRate,
+      };
+    });
+
     return {
-      data: items,
+      data: enrichedItems,
       meta: {
         page,
         pageSize,
         total,
       },
+      error: null,
+    };
+  }
+
+  async getResourceStudentRates(resourceId: string) {
+    const rates = await this.prisma.studentResourceRate.findMany({
+      where: { resourceId },
+      select: { studentId: true, rate: true },
+    });
+
+    const matchedRates: Record<string, number> = {};
+    for (const r of rates) {
+      matchedRates[r.studentId] = Number(r.rate);
+    }
+
+    return {
+      data: matchedRates,
+      meta: null,
       error: null,
     };
   }

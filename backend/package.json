@@ -12,6 +12,7 @@
     "db:generate": "prisma generate",
     "start": "nest start",
     "start:dev": "nest start --watch",
+    "restart:dev": "lsof -ti:3334 | xargs kill -9 2>/dev/null; nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "oxlint \"{src,apps,libs,test}/**/*.ts\" --fix",

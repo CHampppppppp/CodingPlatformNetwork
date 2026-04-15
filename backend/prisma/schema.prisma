@@ -275,6 +275,7 @@ model Resource {
   updatedAt   DateTime @updatedAt
 
   knowledgeRelations ResourceKnowledgeRelation[]
+  studentRates       StudentResourceRate[]
 
   @@index([resourceType])
   @@map("resources_test")
@@ -291,4 +292,18 @@ model ResourceKnowledgeRelation {
   @@unique([resourceId, knowledgeNodeId])
   @@index([knowledgeNodeId])
   @@map("resource_knowledge_relations_test")
+}
+
+/// 学生对资源的评分表
+model StudentResourceRate {
+  id         String   @id @default(cuid())
+  studentId  String
+  resourceId String
+  rate       Decimal  @db.Decimal(3, 2)
+  createdAt  DateTime @default(now())
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, resourceId])
+  @@index([resourceId])
+  @@map("student_resource_rates_test")
 }

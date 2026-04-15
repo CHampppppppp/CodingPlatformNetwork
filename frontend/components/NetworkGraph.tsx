@@ -5,11 +5,11 @@ import { GraphData, GraphNode, NodeType, InteractionType } from '../types';
 interface NetworkGraphProps {
   data: GraphData;
   highlightedNodeIds: string[];
-  studentAcceptance?: Record<string, 'accept' | 'reject'>;
+  studentRates?: Record<string, number>;
   onNodeClick: (node: GraphNode) => void;
 }
 
-const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, studentAcceptance, onNodeClick }) => {
+const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, studentRates, onNodeClick }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -160,8 +160,9 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
     const svg = d3.select(svgRef.current);
     
     const getColor = (d: any) => {
-        if (d.type === NodeType.STUDENT && studentAcceptance?.[d.id]) {
-            return studentAcceptance[d.id] === 'accept' ? '#22c55e' : '#ef4444';
+        if (d.type === NodeType.STUDENT && studentRates?.[d.id] !== undefined) {
+            const rate = studentRates[d.id];
+            return rate >= 4 ? '#22c55e' : '#ef4444';
         }
         switch (d.type) {
             case NodeType.TEACHER: return "#7c3aed";
@@ -208,7 +209,7 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
            .attr("opacity", 0.6);
     }
     
-  }, [highlightedNodeIds, data, studentAcceptance]);
+  }, [highlightedNodeIds, data, studentRates]);
 
   return (
     <div ref={containerRef} className="w-full h-full rounded-lg overflow-hidden relative">
@@ -252,17 +253,17 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
                 </div>
             </div>
 
-            {studentAcceptance && Object.keys(studentAcceptance).length > 0 && (
+            {studentRates && Object.keys(studentRates).length > 0 && (
                 <div className="pt-2 border-t border-slate-200/60 animate-in fade-in">
                     <div className="font-bold text-slate-500 mb-2 uppercase tracking-wider text-[10px]">资源反馈</div>
                     <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] ring-2 ring-green-100"></span> 
-                            <span className="text-slate-700 font-bold">高接受度</span>
+                            <span className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] ring-2 ring-green-100"></span>
+                            <span className="text-slate-700 font-bold">高接受度 (rate ≥ 4)</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] ring-2 ring-red-100"></span> 
-                            <span className="text-slate-700 font-bold">低接受度</span>
+                            <span className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] ring-2 ring-red-100"></span>
+                            <span className="text-slate-700 font-bold">低接受度 (rate ≤ 3)</span>
                         </div>
                     </div>
                 </div>

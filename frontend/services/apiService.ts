@@ -626,6 +626,36 @@ export const fetchClassesBySchoolAndGrade = async (
   }
 };
 
+export const fetchResourceStudentRates = async (
+  resourceId: string,
+): Promise<Record<string, number>> => {
+  try {
+    const url = `${API_BASE_URL}/resources/${encodeURIComponent(
+      resourceId,
+    )}/student-rates`;
+    console.log("请求资源学生评分:", url);
+
+    const response = await fetchWithRetry(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API请求失败: ${response.status}`);
+    }
+
+    const payload = await response.json();
+    const data = payload?.data ?? payload;
+    console.log("获取资源学生评分成功:", Object.keys(data || {}).length);
+    return data || {};
+  } catch (error) {
+    console.error("获取资源学生评分失败:", error);
+    throw error;
+  }
+};
+
 export const fetchStudentCognitiveTemplate = async (
   studentNodeId: string,
 ): Promise<StudentCognitiveTemplateApiResponse> => {

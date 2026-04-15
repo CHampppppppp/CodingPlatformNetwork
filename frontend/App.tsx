@@ -31,6 +31,7 @@ import {
   getGradesBySchool,
   getClassesBySchoolAndGrade,
   fetchStudentCognitiveTemplate,
+  fetchResourceStudentRates,
 } from "./services/dataService";
 import { getStrategy } from "./services/strategies";
 import {
@@ -41,6 +42,8 @@ import {
   NodeType,
   GraphNode,
   CognitiveAttributes,
+  InteractionType,
+  GraphLink,
 } from "./types";
 import { debounce } from "./services/performanceUtils";
 
@@ -77,8 +80,8 @@ const App: React.FC = () => {
   const [selectedResource, setSelectedResource] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [highlightedNodeIds, setHighlightedNodeIds] = useState<string[]>([]);
-  const [studentAcceptance, setStudentAcceptance] = useState<
-    Record<string, "accept" | "reject">
+  const [studentRates, setStudentRates] = useState<
+    Record<string, number>
   >({});
 
   // Loading and Error State
@@ -273,10 +276,47 @@ const App: React.FC = () => {
     setSelectedResource(null);
     setSelectedNode(null);
     setHighlightedNodeIds([]);
-    setStudentAcceptance({});
+    setStudentRates({});
+    setHoveredAttribute(null);
 
     try {
       const data = await fetchGraphData(scenario, classInfo);
+
+      const teacherStudentThreshold = 75;
+      const existingLinkKeys = new Set(
+        data.links.map((l) => {
+          const s = typeof l.source === "object" ? l.source.id : l.source;
+          const t = typeof l.target === "object" ? l.target.id : l.target;
+          return `${s}#${t}`;
+        }),
+      );
+      const studentNodes = data.nodes.filter((n) => n.type === NodeType.STUDENT);
+      const teacherNodes = data.nodes.filter((n) => n.type === NodeType.TEACHER);
+      for (const teacher of teacherNodes) {
+        for (const student of studentNodes) {
+          const sameSchool =
+            teacher.teacherProfile?.school &&
+            student.studentProfile?.school &&
+            teacher.teacherProfile.school === student.studentProfile.school;
+          if (!sameSchool) continue;
+          const key1 = `${teacher.id}#${student.id}`;
+          const key2 = `${student.id}#${teacher.id}`;
+          if (existingLinkKeys.has(key1) || existingLinkKeys.has(key2)) {
+            continue;
+          }
+          if (Math.random() * 100 <= teacherStudentThreshold) {
+            const syntheticLink: GraphLink = {
+              source: teacher.id,
+              target: student.id,
+              value: 1,
+              type: InteractionType.PHYSICAL,
+            };
+            data.links.push(syntheticLink);
+            existingLinkKeys.add(key1);
+          }
+        }
+      }
+
       setGraphData(data);
 
       const allResources = await fetchResources();
@@ -297,32 +337,28 @@ const App: React.FC = () => {
     }
   }, [scenario, classInfo]);
 
-  // 防抖处理的loadData函数
   const debouncedLoadData = useMemo(() => {
-    return debounce(loadData, 300); // 300ms防抖
+    return debounce(loadData, 300);
   }, [loadData]);
 
   useEffect(() => {
     debouncedLoadData();
   }, [debouncedLoadData]);
 
-  // Handlers
   const openAnalysis = (tab: "overview" | "subgraph") => {
     setAnalysisDefaultTab(tab);
     setIsAnalysisOpen(true);
   };
 
-  const handleResourceClick = (resource: Resource) => {
-    // If clicking the same resource, toggle off
+  const handleResourceClick = async (resource: Resource) => {
     if (selectedResource === resource.id) {
       setSelectedResource(null);
       setHighlightedNodeIds([]);
-      setStudentAcceptance({});
+      setStudentRates({});
     } else {
       setSelectedResource(resource.id);
-      setSelectedNode(null); // Clear specific node selection to show network effect
+      setSelectedNode(null);
 
-      // Calculate highlighting
       const kIds = resource.relatedKnowledgeIds;
       const connectedStudentIds: string[] = [];
       const studentIdSet = new Set(
@@ -348,16 +384,39 @@ const App: React.FC = () => {
         }
       });
 
-      // Calculate acceptance for connected students based on resource accuracy
-      const newAcceptance: Record<string, "accept" | "reject"> = {};
-      connectedStudentIds.forEach((sid) => {
-        // Probability based on accuracy (e.g., 90% accuracy = 0.9 chance of acceptance)
-        const isAccepted = Math.random() * 100 <= resource.accuracy;
-        newAcceptance[sid] = isAccepted ? "accept" : "reject";
-      });
-      setStudentAcceptance(newAcceptance);
-
       setHighlightedNodeIds([...kIds, ...connectedStudentIds]);
+
+      try {
+        const rawRates = await fetchResourceStudentRates(resource.id);
+        const nodeIdToExternalId = new Map<
+          string,
+          string | undefined
+        >();
+        graphData.nodes
+          .filter((n) => n.type === NodeType.STUDENT)
+          .forEach((n) => {
+            nodeIdToExternalId.set(n.id, n.studentProfile?.externalUserId);
+          });
+
+        const newRates: Record<string, number> = {};
+        connectedStudentIds.forEach((sid) => {
+          const externalId = nodeIdToExternalId.get(sid);
+          if (externalId && rawRates[externalId] !== undefined) {
+            newRates[sid] = rawRates[externalId];
+          } else {
+            const fallbackRate = Math.round(resource.accuracy / 20);
+            newRates[sid] = Math.max(1, Math.min(5, fallbackRate));
+          }
+        });
+        setStudentRates(newRates);
+      } catch {
+        const fallbackRates: Record<string, number> = {};
+        connectedStudentIds.forEach((sid) => {
+          const fallbackRate = Math.round(resource.accuracy / 20);
+          fallbackRates[sid] = Math.max(1, Math.min(5, fallbackRate));
+        });
+        setStudentRates(fallbackRates);
+      }
     }
   };
 
@@ -365,7 +424,7 @@ const App: React.FC = () => {
     setSelectedNode(node);
     setSelectedResource(null);
     setHighlightedNodeIds([node.id]);
-    setStudentAcceptance({});
+    setStudentRates({});
 
     if (node.type !== NodeType.STUDENT) {
       return;
@@ -411,8 +470,8 @@ const App: React.FC = () => {
   const closeNodeDetail = () => {
     setSelectedNode(null);
     setHighlightedNodeIds([]);
-    setStudentAcceptance({});
-    setHoveredAttribute(null); // Clear tooltip
+    setStudentRates({});
+    setHoveredAttribute(null);
   };
 
   const handleAttributeEnter = (
@@ -710,7 +769,7 @@ const App: React.FC = () => {
               <NetworkGraph
                 data={graphData}
                 highlightedNodeIds={highlightedNodeIds}
-                studentAcceptance={studentAcceptance}
+                studentRates={studentRates}
                 onNodeClick={handleNodeClick}
               />
 

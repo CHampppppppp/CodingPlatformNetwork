@@ -13,6 +13,7 @@ import {
   fetchClassesBySchoolAndGrade,
   fetchStudentCognitiveTemplate as fetchStudentCognitiveTemplateFromApi,
   fetchResources as fetchResourcesFromApi,
+  fetchResourceStudentRates,
 } from "./apiService";
 import {
   transformGraphData,
@@ -197,7 +198,7 @@ export const fetchResources = async (): Promise<Resource[]> => {
       type: r.resourceType,
       relatedKnowledgeIds:
         r.knowledgeRelations?.map((rel: any) => rel.knowledgeNode?.id).filter(Boolean) || [],
-      accuracy: r.acceptanceRate != null ? Math.round(r.acceptanceRate * 100) : 85,
+      accuracy: r.acceptanceRate != null ? Math.round(r.acceptanceRate) : 85,
       description: r.description || "",
       url: r.url || undefined,
     }));
@@ -209,6 +210,8 @@ export const fetchResources = async (): Promise<Resource[]> => {
     return [];
   }
 };
+
+export { fetchResourceStudentRates };
 
 const dimensionCodeToKey: Record<string, keyof StudentProfile> = {
   knowledgeReserve: "knowledgeReserve",

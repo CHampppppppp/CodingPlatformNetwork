@@ -436,6 +436,7 @@ export class GraphService {
           classId: node.classId
             ? classNames.get(node.classId) ?? node.classId
             : null,
+          externalUserId: node.studentProfile?.externalUserId ?? null,
           learningStylePreference:
             node.studentProfile?.learningStylePreference ?? null,
           personality: node.studentProfile?.personality ?? null,

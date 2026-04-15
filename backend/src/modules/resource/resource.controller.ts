@@ -4,6 +4,7 @@ import {
   Get,
   HttpException,
   HttpStatus,
+  Param,
   Post,
   Query,
 } from "@nestjs/common";
@@ -35,6 +36,11 @@ export class ResourceController {
         HttpStatus.BAD_REQUEST,
       );
     }
+  }
+
+  @Get(":id/student-rates")
+  async getResourceStudentRates(@Param("id") id: string) {
+    return this.resourceService.getResourceStudentRates(id);
   }
 
   @Post()

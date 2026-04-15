@@ -1,5 +1,5 @@
-import { GraphService } from './src/modules/graph/graph.service';
-import { PrismaService } from './src/shared/utils/prisma.service';
+import { GraphService } from '../src/modules/graph/graph.service';
+import { PrismaService } from '../src/shared/utils/prisma.service';
 
 const prisma = new PrismaService();
 const service = new GraphService(prisma);

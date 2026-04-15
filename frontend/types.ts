@@ -95,6 +95,7 @@ export interface StudentProfile extends CognitiveAttributes {
   school: string;
   grade: string;
   classId: string;
+  externalUserId?: string;
 
   // 认知模板文档中的非核心字段
   learningStylePreference?: LearningStyleProfile["preference"];

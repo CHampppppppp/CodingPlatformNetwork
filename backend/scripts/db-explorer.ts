@@ -15,9 +15,6 @@ const adapter = new PrismaMssql(databaseUrl);
 const prisma = new PrismaClient({ adapter });
 
 async function listAllTables() {
-  console.log('╔══════════════════════════════════════════════════════════════════════════════════╗');
-  console.log('║                        📊 数据库表结构及数据清单                                  ║');
-  console.log('╚══════════════════════════════════════════════════════════════════════════════════╝\n');
 
   await showTable('LearningScenario', async () => {
     const data = await prisma.learningScenario.findMany({
@@ -120,6 +117,20 @@ async function listAllTables() {
     }));
   });
 
+  await showTable('StudentProfile (学生扩展属性)', async () => {
+    const data = await prisma.studentProfile.findMany({
+      take: 10,
+      include: { node: { select: { displayName: true } } }
+    });
+    return data.map(sp => ({
+      nodeId: truncateId(sp.nodeId),
+      name: sp.node.displayName,
+      externalUserId: sp.externalUserId || '-',
+      learningStyle: sp.learningStylePreference || '-',
+      personality: sp.personality || '-'
+    }));
+  });
+
   await showTable('GraphNode - Teacher (教师节点)', async () => {
     const data = await prisma.graphNode.findMany({
       where: { nodeType: 'Teacher' },
@@ -135,6 +146,20 @@ async function listAllTables() {
       scenario: n.scenario.nameZh,
       subject: n.teacherProfile?.subject || '-',
       teachingClass: n.teacherProfile?.teachingClass || '-'
+    }));
+  });
+
+  await showTable('TeacherProfile (教师扩展属性)', async () => {
+    const data = await prisma.teacherProfile.findMany({
+      take: 10,
+      include: { node: { select: { displayName: true } } }
+    });
+    return data.map(tp => ({
+      nodeId: truncateId(tp.nodeId),
+      name: tp.node.displayName,
+      subject: tp.subject || '-',
+      teachingGrade: tp.teachingGrade?.toString() || '-',
+      teachingClass: tp.teachingClass || '-'
     }));
   });
 
@@ -154,6 +179,48 @@ async function listAllTables() {
       category: n.knowledgeProfile?.category || '-',
       type: n.knowledgeProfile?.knowledgeType || '-',
       content: truncateString(n.knowledgeProfile?.content || '-', 30)
+    }));
+  });
+
+  await showTable('KnowledgeProfile (知识点扩展属性)', async () => {
+    const data = await prisma.knowledgeProfile.findMany({
+      take: 10,
+      include: { node: { select: { displayName: true } } }
+    });
+    return data.map(kp => ({
+      nodeId: truncateId(kp.nodeId),
+      name: kp.node.displayName,
+      category: kp.category || '-',
+      knowledgeType: kp.knowledgeType || '-',
+      content: truncateString(kp.content || '-', 30)
+    }));
+  });
+
+  await showTable('Resource (资源)', async () => {
+    const data = await prisma.resource.findMany({
+      take: 10,
+      orderBy: { createdAt: 'desc' }
+    });
+    return data.map(r => ({
+      id: truncateId(r.id),
+      title: truncateString(r.title, 20),
+      resourceType: r.resourceType,
+      url: truncateString(r.url || '-', 25)
+    }));
+  });
+
+  await showTable('ResourceKnowledgeRelation (资源-知识点关联)', async () => {
+    const data = await prisma.resourceKnowledgeRelation.findMany({
+      take: 10,
+      include: {
+        resource: { select: { title: true } },
+        knowledgeNode: { select: { displayName: true } }
+      }
+    });
+    return data.map(rk => ({
+      id: truncateId(rk.id),
+      resource: truncateString(rk.resource.title, 20),
+      knowledge: truncateString(rk.knowledgeNode.displayName, 20)
     }));
   });
 
@@ -227,6 +294,38 @@ async function listAllTables() {
     }));
   });
 
+  await showTable('StudentCognitiveDimensionScore (认知维度得分)', async () => {
+    const data = await prisma.studentCognitiveDimensionScore.findMany({
+      take: 10,
+      include: {
+        dimensionDef: { select: { dimensionNameZh: true } },
+        profile: { include: { studentNode: { select: { displayName: true } } } }
+      }
+    });
+    return data.map(ds => ({
+      id: truncateId(ds.id),
+      student: ds.profile.studentNode.displayName,
+      dimension: ds.dimensionDef.dimensionNameZh,
+      score: ds.scoreValue.toString(),
+      level: ds.scoreLevel
+    }));
+  });
+
+  await showTable('StudentSurveyResponse (学生问卷响应)', async () => {
+    const data = await prisma.studentSurveyResponse.findMany({
+      take: 10,
+      orderBy: { createdAt: 'desc' }
+    });
+    return data.map(sr => ({
+      id: truncateId(sr.id),
+      studentNodeId: truncateId(sr.studentNodeId),
+      scenarioId: truncateId(sr.scenarioId),
+      totalScore: sr.totalScore?.toString() || '-',
+      motivation: sr.motivationScore?.toString() || '-',
+      attitude: sr.attitudeScore?.toString() || '-'
+    }));
+  });
+
   await listAllDbTables();
 
   await showSummary();
@@ -291,6 +390,7 @@ async function showTable(tableName: string, fetchData: () => Promise<any[]>) {
   }
 }
 
+
 async function showSummary() {
   console.log(`\n${'═'.repeat(84)}`);
   console.log('║                              📊 数据统计汇总                                     ║');
@@ -305,14 +405,21 @@ async function showSummary() {
     { name: '  ├─ 学生节点', count: await prisma.graphNode.count({ where: { nodeType: 'Student' } }) },
     { name: '  ├─ 教师节点', count: await prisma.graphNode.count({ where: { nodeType: 'Teacher' } }) },
     { name: '  └─ 知识点节点', count: await prisma.graphNode.count({ where: { nodeType: 'Knowledge' } }) },
+    { name: '学生扩展属性', count: await prisma.studentProfile.count() },
+    { name: '教师扩展属性', count: await prisma.teacherProfile.count() },
+    { name: '知识点扩展属性', count: await prisma.knowledgeProfile.count() },
     { name: '交互会话', count: await prisma.interactionSession.count() },
     { name: '交互关系', count: await prisma.interaction.count() },
     { name: '认知维度定义', count: await prisma.cognitiveDimensionDef.count() },
     { name: '学生认知画像', count: await prisma.studentCognitiveProfile.count() },
+    { name: '认知维度得分', count: await prisma.studentCognitiveDimensionScore.count() },
+    { name: '学生问卷响应', count: await prisma.studentSurveyResponse.count() },
+    { name: '资源', count: await prisma.resource.count() },
+    { name: '资源-知识点关联', count: await prisma.resourceKnowledgeRelation.count() },
   ];
 
   const maxNameLength = Math.max(...stats.map(s => s.name.length));
-  
+
   stats.forEach(stat => {
     const indent = stat.name.startsWith('  ') ? '  ' : '';
     const name = stat.name.replace(/^  /, '');
