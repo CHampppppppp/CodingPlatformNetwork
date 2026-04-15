@@ -135,45 +135,52 @@ export async function parseStudentNodes(classInfo: ClassInfo): Promise<GraphNode
             classId === classInfo.classId;
     });
 
-    // 生成学生节点
     filteredData.forEach((row, index) => {
-        const name = String(row[SURVEY_COLUMN_INDEX.姓名] || `学生${index + 1}`);
+        const name = `student${index}`;
         const school = String(row[SURVEY_COLUMN_INDEX.学校] || '');
         const grade = String(row[SURVEY_COLUMN_INDEX.年级] || '');
         const classId = String(row[SURVEY_COLUMN_INDEX.班级] || '');
 
-        // 计算认知属性
-        const knowledgeReserve = calculateCognitiveDimension(
+        // 计算认知属性（基于《250906通用认知模板》的10个维度映射）
+        const learningMotivation = calculateCognitiveDimension(
             row,
-            COGNITIVE_DIMENSION_MAPPING.knowledgeReserve
+            COGNITIVE_DIMENSION_MAPPING.learningMotivation
+        );
+        const learningAttitude = calculateCognitiveDimension(
+            row,
+            COGNITIVE_DIMENSION_MAPPING.learningAttitude
         );
         const learningEngagement = calculateCognitiveDimension(
             row,
             COGNITIVE_DIMENSION_MAPPING.learningEngagement
         );
-        const cognitiveLoad = calculateCognitiveDimension(
+        const selfRegulatedLearning = calculateCognitiveDimension(
             row,
-            COGNITIVE_DIMENSION_MAPPING.cognitiveLoad
-        );
-        const learningMotivation = calculateCognitiveDimension(
-            row,
-            COGNITIVE_DIMENSION_MAPPING.learningMotivation
+            COGNITIVE_DIMENSION_MAPPING.selfRegulatedLearning
         );
         const computationalThinking = calculateCognitiveDimension(
             row,
             COGNITIVE_DIMENSION_MAPPING.computationalThinking
         );
-        const humanAiTrust = calculateCognitiveDimension(
-            row,
-            COGNITIVE_DIMENSION_MAPPING.humanAiTrust
-        );
         const learningMethod = calculateCognitiveDimension(
             row,
             COGNITIVE_DIMENSION_MAPPING.learningMethod
         );
-        const learningAttitude = calculateCognitiveDimension(
+        const cognitiveLoad = calculateCognitiveDimension(
             row,
-            COGNITIVE_DIMENSION_MAPPING.learningAttitude
+            COGNITIVE_DIMENSION_MAPPING.cognitiveLoad
+        );
+        const humanAiTrust = calculateCognitiveDimension(
+            row,
+            COGNITIVE_DIMENSION_MAPPING.humanAiTrust
+        );
+        const aiLiteracy = calculateCognitiveDimension(
+            row,
+            COGNITIVE_DIMENSION_MAPPING.aiLiteracy
+        );
+        const knowledgeReserve = calculateCognitiveDimension(
+            row,
+            COGNITIVE_DIMENSION_MAPPING.knowledgeReserve
         );
 
         // 也考虑基础属性的映射
@@ -208,6 +215,8 @@ export async function parseStudentNodes(classInfo: ClassInfo): Promise<GraphNode
                 humanAiTrust,
                 learningMethod: finalLearningMethod,
                 learningAttitude: finalLearningAttitude,
+                selfRegulatedLearning,
+                aiLiteracy,
             },
         });
     });
@@ -221,16 +230,18 @@ export async function parseStudentNodes(classInfo: ClassInfo): Promise<GraphNode
  * @param studentNodes 已生成的学生节点
  * @returns 学生-学生交互边数组
  */
-export async function parseStudentInteractions(studentNodes: GraphNode[]): Promise<GraphLink[]> {
+export async function parseStudentInteractions(studentNodes: GraphNode[], nameToIdMap?: Map<string, string>): Promise<GraphLink[]> {
     const links: GraphLink[] = [];
 
     // 创建学生姓名到节点ID的映射
-    const nameToId = new Map<string, string>();
-    studentNodes.forEach(node => {
-        if (node.studentProfile) {
-            nameToId.set(node.name, node.id);
-        }
-    });
+    const nameToId = nameToIdMap ?? new Map<string, string>();
+    if (!nameToIdMap) {
+        studentNodes.forEach(node => {
+            if (node.studentProfile) {
+                nameToId.set(node.name, node.id);
+            }
+        });
+    }
 
     // 从点赞数据生成交互边
     const likesData = await loadLikesData();

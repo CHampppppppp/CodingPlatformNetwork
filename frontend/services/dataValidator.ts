@@ -118,7 +118,6 @@ export const transformGraphData = (data: any): GraphData => {
   try {
     validateGraphData(data);
 
-    // 确保数据结构正确
     return {
       nodes: data.nodes.map((node: any) => ({
         id: node.id,
@@ -135,7 +134,8 @@ export const transformGraphData = (data: any): GraphData => {
         target: link.target,
         value: link.value,
         type: link.type
-      }))
+      })),
+      meta: data.meta
     };
   } catch (error) {
     console.error('转换数据失败:', error);
@@ -175,13 +175,15 @@ export const validateScenario: ScenarioAssertion = (scenario) => {
 
 /**
  * 清理和规范化数据
+ * 同时对学生节点名称进行匿名化处理以保护隐私
  */
 export const sanitizeGraphData = (data: GraphData): GraphData => {
+  let studentIndex = 0;
   return {
     nodes: data.nodes.map(node => ({
       ...node,
       id: node.id.trim(),
-      name: node.name.trim(),
+      name: node.type === NodeType.STUDENT ? `student${studentIndex++}` : node.name.trim(),
       type: node.type
     })),
     links: data.links.map(link => ({
@@ -189,6 +191,7 @@ export const sanitizeGraphData = (data: GraphData): GraphData => {
       source: typeof link.source === 'object' ? link.source : link.source.trim(),
       target: typeof link.target === 'object' ? link.target : link.target.trim(),
       type: link.type
-    }))
+    })),
+    meta: data.meta
   };
 };

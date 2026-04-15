@@ -81,17 +81,29 @@ const BarRow: React.FC<BarRowProps> = ({ label, value, max, color }) => (
     </div>
 );
 
-// Simulated Line Chart
-const TrendChart = () => {
-  const points = [20, 35, 30, 45, 60, 55, 75, 80, 70, 85];
-  const max = Math.max(...points);
-  const min = Math.min(...points);
+interface TrendPoint {
+  label: string;
+  value: number;
+}
+
+const TrendChart: React.FC<{ points: TrendPoint[] }> = ({ points }) => {
+  if (points.length === 0) {
+    return (
+      <div className="w-full h-24 relative mt-2 flex items-center justify-center text-xs text-gray-400">
+        暂无时间序列数据
+      </div>
+    );
+  }
+
+  const values = points.map(p => p.value);
+  const max = Math.max(...values);
+  const min = Math.min(...values);
   const width = 100;
   const height = 40;
-  
+
   const pathData = points.map((p, i) => {
-    const x = (i / (points.length - 1)) * width;
-    const y = height - ((p - min) / (max - min)) * height;
+    const x = points.length === 1 ? width / 2 : (i / (points.length - 1)) * width;
+    const y = height - ((p.value - min) / (max - min || 1)) * height;
     return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
   }).join(' ');
 
@@ -102,13 +114,13 @@ const TrendChart = () => {
          <line x1="0" y1="0" x2="100" y2="0" stroke="#f3f4f6" strokeWidth="0.5" />
          <line x1="0" y1="20" x2="100" y2="20" stroke="#f3f4f6" strokeWidth="0.5" />
          <line x1="0" y1="40" x2="100" y2="40" stroke="#f3f4f6" strokeWidth="0.5" />
-         
+
          {/* Area fill */}
          <path d={`${pathData} L ${width} ${height} L 0 ${height} Z`} fill="url(#gradient)" opacity="0.2" />
-         
+
          {/* Line */}
          <path d={pathData} fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-         
+
          <defs>
             <linearGradient id="gradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#6366f1" />
@@ -117,9 +129,9 @@ const TrendChart = () => {
          </defs>
       </svg>
       <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-          <span>课前 (0min)</span>
-          <span>课中 (20min)</span>
-          <span>当前 (40min)</span>
+          <span>{points[0]?.label}</span>
+          <span>{points[Math.floor(points.length / 2)]?.label}</span>
+          <span>{points[points.length - 1]?.label}</span>
       </div>
     </div>
   );
@@ -145,18 +157,16 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
     return { total: data.nodes.length, studentCount: students.length, teacherCount: teachers.length, knowledgeCount: knowledge.length, students };
   }, [data]);
 
-  // 2. Cognitive Stats
   const cognitiveAverages = useMemo(() => {
-    if (stats.studentCount === 0) return null;
-    const keys: (keyof CognitiveAttributes)[] = ['knowledgeReserve', 'learningEngagement', 'cognitiveLoad', 'learningMotivation', 'computationalThinking', 'humanAiTrust', 'learningMethod', 'learningAttitude'];
-    const sums = keys.reduce((acc, key) => ({ ...acc, [key]: 0 }), {} as Record<keyof CognitiveAttributes, number>);
-    stats.students.forEach((s: GraphNode) => { if (s.studentProfile) keys.forEach(key => sums[key] += s.studentProfile![key]); });
+    const survey = data.meta?.surveyStats;
+    if (!survey) return null;
+    const keys: (keyof CognitiveAttributes)[] = ['knowledgeReserve', 'learningEngagement', 'cognitiveLoad', 'learningMotivation', 'computationalThinking', 'humanAiTrust', 'learningMethod', 'learningAttitude', 'selfRegulatedLearning', 'aiLiteracy'];
     return keys.map(key => ({
       key,
-      label: { knowledgeReserve: '知识储备', learningEngagement: '学习投入', cognitiveLoad: '认知负荷', learningMotivation: '学习动机', computationalThinking: '计算思维', humanAiTrust: '人机信任度', learningMethod: '学习方法', learningAttitude: '学习态度' }[key],
-      value: (sums[key] / stats.studentCount).toFixed(1)
+      label: { knowledgeReserve: '知识储备', learningEngagement: '学习投入', cognitiveLoad: '认知负荷', learningMotivation: '学习动机', computationalThinking: '计算思维', humanAiTrust: '人机信任度', learningMethod: '学习方法', learningAttitude: '学习态度', selfRegulatedLearning: '自我调节学习', aiLiteracy: '人工智能素养' }[key],
+      value: Number((survey[key] || 0)).toFixed(1)
     }));
-  }, [stats]);
+  }, [data.meta?.surveyStats]);
 
   // 3. Resource Stats
   const resourceStats = useMemo(() => ({
@@ -166,11 +176,18 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
 
   // 4. Satisfaction Stats
   const satisfactionStats = useMemo(() => {
+    const survey = data.meta?.surveyStats;
+    if (survey) {
+      return {
+        pushed: survey.pushed,
+        filled: survey.filled,
+        score: survey.score.toFixed(1),
+        percentage: survey.percentage.toString(),
+      };
+    }
     const pushed = stats.studentCount;
-    const filled = Math.floor(pushed * (0.85 + Math.random() * 0.1)); 
-    const score = (4.2 + Math.random() * 0.6).toFixed(1); 
-    return { pushed, filled, score, percentage: ((parseFloat(score) / 5) * 100).toFixed(0) };
-  }, [stats.studentCount]);
+    return { pushed, filled: pushed, score: '0.0', percentage: '0' };
+  }, [stats.studentCount, data.meta]);
 
   // --- Subgraph Analysis Data ---
 
@@ -180,11 +197,11 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
       const degreeMap = new Map<string, number>();
       
       data.links.forEach(l => {
-          const targetId = typeof l.target === 'object' ? l.target.id : l.target as string;
-          const sourceId = typeof l.source === 'object' ? l.source.id : l.source as string;
+          const target = typeof l.target === 'object' ? l.target : data.nodes.find(n => n.id === l.target);
+          const source = typeof l.source === 'object' ? l.source : data.nodes.find(n => n.id === l.source);
           
-          if (targetId.startsWith('K')) degreeMap.set(targetId, (degreeMap.get(targetId) || 0) + 1);
-          if (sourceId.startsWith('K')) degreeMap.set(sourceId, (degreeMap.get(sourceId) || 0) + 1);
+          if (target?.type === NodeType.KNOWLEDGE) degreeMap.set(target.id, (degreeMap.get(target.id) || 0) + 1);
+          if (source?.type === NodeType.KNOWLEDGE) degreeMap.set(source.id, (degreeMap.get(source.id) || 0) + 1);
       });
 
       return kNodes
@@ -197,8 +214,10 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
   const interactionTypes = useMemo(() => {
       let ts = 0, ss = 0, sk = 0;
       data.links.forEach(l => {
-          const sType = typeof l.source === 'object' ? l.source.type : (l.source as string).startsWith('T') ? NodeType.TEACHER : (l.source as string).startsWith('S') ? NodeType.STUDENT : NodeType.KNOWLEDGE;
-          const tType = typeof l.target === 'object' ? l.target.type : (l.target as string).startsWith('T') ? NodeType.TEACHER : (l.target as string).startsWith('S') ? NodeType.STUDENT : NodeType.KNOWLEDGE;
+          const sNode = typeof l.source === 'object' ? l.source : data.nodes.find(n => n.id === l.source);
+          const tNode = typeof l.target === 'object' ? l.target : data.nodes.find(n => n.id === l.target);
+          const sType = sNode?.type;
+          const tType = tNode?.type;
 
           if ((sType === NodeType.TEACHER && tType === NodeType.STUDENT) || (sType === NodeType.STUDENT && tType === NodeType.TEACHER)) ts++;
           else if (sType === NodeType.STUDENT && tType === NodeType.STUDENT) ss++;
@@ -218,9 +237,9 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
       
       const degreeMap = new Map<string, number>();
       data.links.forEach(l => {
-        const ids = [typeof l.source === 'object' ? l.source.id : l.source, typeof l.target === 'object' ? l.target.id : l.target];
-        ids.forEach((id: any) => {
-            if (typeof id === 'string' && id.startsWith('S')) degreeMap.set(id, (degreeMap.get(id) || 0) + 1);
+        const ids = [typeof l.source === 'object' ? l.source : data.nodes.find(n => n.id === l.source), typeof l.target === 'object' ? l.target : data.nodes.find(n => n.id === l.target)];
+        ids.forEach((node) => {
+            if (node?.type === NodeType.STUDENT) degreeMap.set(node.id, (degreeMap.get(node.id) || 0) + 1);
         });
       });
 
@@ -247,9 +266,43 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
         else platform++;
     });
     return [
-        { label: '物理空间采集', value: physical, color: '#475569' }, // Matches Slate-600
-        { label: '平台数据采集', value: platform, color: '#3b82f6' }  // Matches Blue-500
+        { label: '物理空间采集', value: physical, color: '#475569' },
+        { label: '平台数据采集', value: platform, color: '#3b82f6' }
     ];
+  }, [data]);
+
+  const timelineData = useMemo(() => {
+    const timeLinks = data.links.filter(l => l.createdAt);
+    if (timeLinks.length === 0) return [] as TrendPoint[];
+
+    const timestamps = timeLinks.map(l => new Date(l.createdAt!).getTime()).sort((a, b) => a - b);
+    const min = timestamps[0];
+    const max = timestamps[timestamps.length - 1];
+
+    if (min === max) {
+      return [{
+        label: new Date(min).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+        value: timeLinks.reduce((sum, l) => sum + l.value, 0)
+      }] as TrendPoint[];
+    }
+
+    const bucketCount = Math.min(10, timeLinks.length);
+    const interval = (max - min) / bucketCount;
+    const buckets = new Array(bucketCount).fill(0).map((_, i) => ({
+      start: min + i * interval,
+      value: 0,
+    }));
+
+    timeLinks.forEach(l => {
+      const t = new Date(l.createdAt!).getTime();
+      const idx = Math.min(Math.floor((t - min) / interval), bucketCount - 1);
+      buckets[idx].value += l.value;
+    });
+
+    return buckets.map((b) => ({
+      label: new Date(b.start).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+      value: b.value
+    })) as TrendPoint[];
   }, [data]);
 
   if (!isOpen) return null;
@@ -475,13 +528,15 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
                         <h3 className="text-sm font-bold text-gray-500 uppercase mb-2 flex items-center gap-2">
                              <TrendingUp className="w-4 h-4 text-indigo-500" /> 学习模式演化趋势
                         </h3>
-                        <TrendChart />
+                        <TrendChart points={timelineData} />
                         <div className="mt-3 flex gap-4 text-xs">
                             <div className="flex items-center gap-1.5">
                                 <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
                                 <span className="text-gray-600">交互密度</span>
                             </div>
-                            <p className="text-gray-400 flex-1 text-right">模拟最近40分钟数据</p>
+                            <p className="text-gray-400 flex-1 text-right">
+                                {timelineData.length > 0 ? '基于交互时间分布' : '暂无时间序列数据'}
+                            </p>
                         </div>
                     </div>
                 </div>

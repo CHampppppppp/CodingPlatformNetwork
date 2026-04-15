@@ -2,8 +2,9 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaMssql } from '@prisma/adapter-mssql';
 import * as dotenv from 'dotenv';
+import * as path from 'path';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -20,6 +21,7 @@ async function listAllTables() {
 
   await showTable('LearningScenario', async () => {
     const data = await prisma.learningScenario.findMany({
+      take: 10,
       orderBy: { sortOrder: 'asc' }
     });
     return data.map(s => ({
@@ -33,6 +35,7 @@ async function listAllTables() {
 
   await showTable('School', async () => {
     const data = await prisma.school.findMany({
+      take: 10,
       include: {
         _count: {
           select: { grades: true }
@@ -48,6 +51,7 @@ async function listAllTables() {
 
   await showTable('Grade', async () => {
     const data = await prisma.grade.findMany({
+      take: 10,
       include: {
         school: { select: { name: true } },
         _count: { select: { classes: true } }
@@ -63,6 +67,7 @@ async function listAllTables() {
 
   await showTable('SchoolClass', async () => {
     const data = await prisma.schoolClass.findMany({
+      take: 10,
       include: {
         grade: {
           include: {
@@ -81,7 +86,7 @@ async function listAllTables() {
 
   await showTable('GraphNode (所有节点)', async () => {
     const data = await prisma.graphNode.findMany({
-      take: 20,
+      take: 10,
       orderBy: { createdAt: 'desc' },
       include: {
         scenario: { select: { nameZh: true } }
@@ -118,6 +123,7 @@ async function listAllTables() {
   await showTable('GraphNode - Teacher (教师节点)', async () => {
     const data = await prisma.graphNode.findMany({
       where: { nodeType: 'Teacher' },
+      take: 10,
       include: {
         scenario: { select: { nameZh: true } },
         teacherProfile: true
@@ -135,6 +141,7 @@ async function listAllTables() {
   await showTable('GraphNode - Knowledge (知识点节点)', async () => {
     const data = await prisma.graphNode.findMany({
       where: { nodeType: 'Knowledge' },
+      take: 10,
       include: {
         scenario: { select: { nameZh: true } },
         knowledgeProfile: true
@@ -189,6 +196,7 @@ async function listAllTables() {
   await showTable('CognitiveDimensionDef (认知维度定义)', async () => {
     const data = await prisma.cognitiveDimensionDef.findMany({
       where: { isActive: true },
+      take: 10,
       orderBy: { sortOrder: 'asc' }
     });
     return data.map(d => ({
@@ -218,6 +226,8 @@ async function listAllTables() {
       dimensions: p._count.dimensionScores
     }));
   });
+
+  await listAllDbTables();
 
   await showSummary();
 
@@ -312,6 +322,35 @@ async function showSummary() {
   });
 
   console.log(`${'═'.repeat(84)}\n`);
+}
+
+async function listAllDbTables() {
+  console.log(`\n${'─'.repeat(84)}`);
+  console.log('📋 数据库中的所有表');
+  console.log(`${'─'.repeat(84)}`);
+
+  const tables = await prisma.$queryRaw<{ TABLE_NAME: string }[]>`
+    SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME
+  `;
+
+  const tableInfos: { name: string; count: number | string }[] = [];
+  for (const { TABLE_NAME } of tables) {
+    try {
+      const countResult = await prisma.$queryRawUnsafe<{ count: number }[]>(
+        `SELECT COUNT(*) as count FROM [${TABLE_NAME}]`
+      );
+      const count = Number(countResult[0]?.count || 0);
+      tableInfos.push({ name: TABLE_NAME, count });
+    } catch (error) {
+      tableInfos.push({ name: TABLE_NAME, count: 'N/A' });
+    }
+  }
+
+  const maxNameLength = Math.max(...tableInfos.map(t => t.name.length));
+  tableInfos.forEach(t => {
+    const padding = ' '.repeat(maxNameLength - t.name.length + 2);
+    console.log(`  ${t.name}${padding}${t.count} 条记录`);
+  });
 }
 
 function truncateId(id: string): string {

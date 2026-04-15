@@ -12,6 +12,7 @@ import {
   fetchGradesBySchool,
   fetchClassesBySchoolAndGrade,
   fetchStudentCognitiveTemplate as fetchStudentCognitiveTemplateFromApi,
+  fetchResources as fetchResourcesFromApi,
 } from "./apiService";
 import {
   transformGraphData,
@@ -136,7 +137,7 @@ export const fetchGraphData = async (
 };
 
 /**
- * 生成学习资源（暂时保留，后续可从API获取）
+ * 生成学习资源（基于知识点节点的本地fallback逻辑）
  */
 export const generateResources = (knowledgeNodes: any[]): Resource[] => {
   const resources: Resource[] = [];
@@ -181,6 +182,32 @@ export const generateResources = (knowledgeNodes: any[]): Resource[] => {
 
   console.log("生成学习资源成功:", resources.length);
   return resources;
+};
+
+/**
+ * 从API获取学习资源
+ */
+export const fetchResources = async (): Promise<Resource[]> => {
+  try {
+    const rawResources = await fetchResourcesFromApi();
+
+    const resources: Resource[] = rawResources.map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      type: r.resourceType,
+      relatedKnowledgeIds:
+        r.knowledgeRelations?.map((rel: any) => rel.knowledgeNode?.id).filter(Boolean) || [],
+      accuracy: r.acceptanceRate != null ? Math.round(r.acceptanceRate * 100) : 85,
+      description: r.description || "",
+      url: r.url || undefined,
+    }));
+
+    console.log("从API获取学习资源成功:", resources.length);
+    return resources;
+  } catch (error) {
+    console.error("获取学习资源失败:", error);
+    return [];
+  }
 };
 
 const dimensionCodeToKey: Record<string, keyof StudentProfile> = {

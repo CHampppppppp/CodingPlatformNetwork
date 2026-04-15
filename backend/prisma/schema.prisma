@@ -78,6 +78,7 @@ model GraphNode {
   studentProfile    StudentProfile?
   teacherProfile    TeacherProfile?
   scenario          LearningScenario          @relation(fields: [scenarioId], references: [id])
+  resourceRelations ResourceKnowledgeRelation[]
 
   @@index([nodeType])
   @@index([scenarioId])
@@ -88,6 +89,7 @@ model GraphNode {
 /// 学生节点扩展属性，1:1 关联 GraphNode (nodeType = Student)
 model StudentProfile {
   nodeId                  String    @id
+  externalUserId          String?
   learningStylePreference String?
   personality             String?
   groupBehavior           String?
@@ -95,6 +97,7 @@ model StudentProfile {
   updatedAt               DateTime  @updatedAt
   node                    GraphNode @relation(fields: [nodeId], references: [id])
 
+  @@index([externalUserId])
   @@map("student_profiles_test")
 }
 
@@ -219,4 +222,73 @@ model StudentCognitiveDimensionScore {
   @@unique([profileId, dimensionCode])
   @@index([profileId])
   @@map("student_cognitive_dimension_scores_test")
+}
+
+/// 学生问卷响应表，存储从CSV导入的认知维度问卷数据
+model StudentSurveyResponse {
+  id                         String    @id @default(cuid())
+  studentNodeId              String
+  scenarioId                 String
+  submittedAt                DateTime?
+
+  gender                     String?
+  learningStyle              String?
+  personality                String?
+  groupBehavior              String?
+
+  motivationScore            Decimal? @db.Decimal(5, 2)
+  attitudeScore              Decimal? @db.Decimal(5, 2)
+  engagementScore            Decimal? @db.Decimal(5, 2)
+  selfRegulationScore        Decimal? @db.Decimal(5, 2)
+  computationalThinkingScore Decimal? @db.Decimal(5, 2)
+  learningMethodScore        Decimal? @db.Decimal(5, 2)
+  cognitiveLoadScore         Decimal? @db.Decimal(5, 2)
+  humanAiTrustScore          Decimal? @db.Decimal(5, 2)
+  aiLiteracyScore            Decimal? @db.Decimal(5, 2)
+  priorKnowledgeScore        Decimal? @db.Decimal(5, 2)
+
+  totalScore                 Decimal? @db.Decimal(5, 2)
+
+  aiContentSatisfaction      String?
+  resourceHelpfulness        String?
+  posterSatisfaction         String?
+  teachingPreference         String?
+  helpSource                 String?
+
+  createdAt                  DateTime @default(now())
+
+  @@index([studentNodeId])
+  @@index([scenarioId])
+  @@map("student_survey_responses_test")
+}
+
+/// 资源表，存储资源中心展示的学习资源
+/// resourceType 取值: VIDEO | ARTICLE | PRACTICE | GAME | DOCUMENT
+model Resource {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  url         String?
+  resourceType String
+  acceptanceRate Decimal? @db.Decimal(5, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  knowledgeRelations ResourceKnowledgeRelation[]
+
+  @@index([resourceType])
+  @@map("resources_test")
+}
+
+/// 资源与知识点的关联表，支持一个资源关联多个知识点
+model ResourceKnowledgeRelation {
+  id              String    @id @default(cuid())
+  resourceId      String
+  knowledgeNodeId String
+  resource        Resource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  knowledgeNode   GraphNode @relation(fields: [knowledgeNodeId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, knowledgeNodeId])
+  @@index([knowledgeNodeId])
+  @@map("resource_knowledge_relations_test")
 }

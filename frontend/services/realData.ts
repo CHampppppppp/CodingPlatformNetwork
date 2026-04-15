@@ -33,6 +33,8 @@ export const realStudentData: Array<{
                 humanAiTrust: 3,
                 learningMethod: 5,
                 learningAttitude: 5,
+                selfRegulatedLearning: 5,
+                aiLiteracy: 5,
             }
         },
         {
@@ -52,6 +54,8 @@ export const realStudentData: Array<{
                 humanAiTrust: 5,
                 learningMethod: 5,
                 learningAttitude: 5,
+                selfRegulatedLearning: 5,
+                aiLiteracy: 5,
             }
         },
         {
@@ -71,6 +75,8 @@ export const realStudentData: Array<{
                 humanAiTrust: 3,
                 learningMethod: 4,
                 learningAttitude: 4,
+                selfRegulatedLearning: 4,
+                aiLiteracy: 4,
             }
         },
         {
@@ -90,6 +96,8 @@ export const realStudentData: Array<{
                 humanAiTrust: 4,
                 learningMethod: 5,
                 learningAttitude: 4,
+                selfRegulatedLearning: 4,
+                aiLiteracy: 4,
             }
         },
         // 添加更多学生以满足30-40人的需求
@@ -110,6 +118,8 @@ export const realStudentData: Array<{
                 humanAiTrust: 4,
                 learningMethod: 3,
                 learningAttitude: 4,
+                selfRegulatedLearning: 4,
+                aiLiteracy: 4,
             }
         },
         {
@@ -129,6 +139,8 @@ export const realStudentData: Array<{
                 humanAiTrust: 5,
                 learningMethod: 4,
                 learningAttitude: 5,
+                selfRegulatedLearning: 5,
+                aiLiteracy: 5,
             }
         },
         {
@@ -148,6 +160,8 @@ export const realStudentData: Array<{
                 humanAiTrust: 3,
                 learningMethod: 3,
                 learningAttitude: 3,
+                selfRegulatedLearning: 3,
+                aiLiteracy: 3,
             }
         },
         {
@@ -167,6 +181,8 @@ export const realStudentData: Array<{
                 humanAiTrust: 4,
                 learningMethod: 5,
                 learningAttitude: 4,
+                selfRegulatedLearning: 4,
+                aiLiteracy: 4,
             }
         },
         {
@@ -186,6 +202,8 @@ export const realStudentData: Array<{
                 humanAiTrust: 4,
                 learningMethod: 4,
                 learningAttitude: 4,
+                selfRegulatedLearning: 4,
+                aiLiteracy: 4,
             }
         },
         {
@@ -205,6 +223,8 @@ export const realStudentData: Array<{
                 humanAiTrust: 4,
                 learningMethod: 4,
                 learningAttitude: 5,
+                selfRegulatedLearning: 5,
+                aiLiteracy: 5,
             }
         },
         // 继续添加学生以达到30人左右...
@@ -225,6 +245,8 @@ export const realStudentData: Array<{
                 humanAiTrust: 4,
                 learningMethod: 3,
                 learningAttitude: 4,
+                selfRegulatedLearning: 4,
+                aiLiteracy: 4,
             }
         },
         {
@@ -244,6 +266,8 @@ export const realStudentData: Array<{
                 humanAiTrust: 4,
                 learningMethod: 4,
                 learningAttitude: 4,
+                selfRegulatedLearning: 4,
+                aiLiteracy: 4,
             }
         },
         {
@@ -263,6 +287,8 @@ export const realStudentData: Array<{
                 humanAiTrust: 3,
                 learningMethod: 3,
                 learningAttitude: 3,
+                selfRegulatedLearning: 3,
+                aiLiteracy: 3,
             }
         },
         {
@@ -282,6 +308,8 @@ export const realStudentData: Array<{
                 humanAiTrust: 5,
                 learningMethod: 4,
                 learningAttitude: 5,
+                selfRegulatedLearning: 5,
+                aiLiteracy: 5,
             }
         },
         {
@@ -301,6 +329,8 @@ export const realStudentData: Array<{
                 humanAiTrust: 4,
                 learningMethod: 4,
                 learningAttitude: 4,
+                selfRegulatedLearning: 4,
+                aiLiteracy: 4,
             }
         },
     ];

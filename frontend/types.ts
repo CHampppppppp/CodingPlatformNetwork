@@ -29,6 +29,8 @@ export interface CognitiveAttributes {
   humanAiTrust: number; // 人机信任度
   learningMethod: number; // 学习方法倾向
   learningAttitude: number; // 学习态度
+  selfRegulatedLearning: number; // 自我调节学习
+  aiLiteracy: number; // 人工智能素养
 }
 
 export interface LearningStyleProfile {
@@ -94,12 +96,10 @@ export interface StudentProfile extends CognitiveAttributes {
   grade: string;
   classId: string;
 
-  // 认知模板文档中的非8维核心字段
+  // 认知模板文档中的非核心字段
   learningStylePreference?: LearningStyleProfile["preference"];
   personality?: LearningStyleProfile["personality"];
   groupBehavior?: LearningStyleProfile["groupBehavior"];
-  selfRegulatedLearning?: number;
-  aiLiteracy?: number;
 
   // 文档命名兼容别名
   humanMachineTrust?: number; // = humanAiTrust
@@ -142,11 +142,35 @@ export interface GraphLink extends SimulationLinkDatum<GraphNode> {
   target: string | GraphNode;
   value: number; // For stroke width
   type: InteractionType; // Interaction classification
+  createdAt?: string;
+}
+
+export interface GraphMeta {
+  nodeCount: number;
+  linkCount: number;
+  scenarioCode: string;
+  surveyStats?: {
+    pushed: number;
+    filled: number;
+    score: number;
+    percentage: number;
+    knowledgeReserve: number;
+    learningEngagement: number;
+    cognitiveLoad: number;
+    learningMotivation: number;
+    computationalThinking: number;
+    humanAiTrust: number;
+    learningMethod: number;
+    learningAttitude: number;
+    selfRegulatedLearning: number;
+    aiLiteracy: number;
+  } | null;
 }
 
 export interface GraphData {
   nodes: GraphNode[];
   links: GraphLink[];
+  meta?: GraphMeta;
 }
 
 export interface Resource {

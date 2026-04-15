@@ -39,14 +39,35 @@ export class StudentService {
       },
     });
 
+    const [school, grade, schoolClass] = await Promise.all([
+      studentNode.schoolId
+        ? this.prisma.school.findUnique({
+            where: { id: studentNode.schoolId },
+            select: { name: true },
+          })
+        : Promise.resolve(null),
+      studentNode.gradeId
+        ? this.prisma.grade.findUnique({
+            where: { id: studentNode.gradeId },
+            select: { gradeName: true },
+          })
+        : Promise.resolve(null),
+      studentNode.classId
+        ? this.prisma.schoolClass.findUnique({
+            where: { id: studentNode.classId },
+            select: { className: true },
+          })
+        : Promise.resolve(null),
+    ]);
+
     return {
       data: {
         student: {
           id: studentNode.id,
           name: studentNode.displayName,
-          school: studentNode.schoolId ?? null,
-          grade: studentNode.gradeId ?? null,
-          classId: studentNode.classId ?? null,
+          school: school?.name ?? studentNode.schoolId ?? null,
+          grade: grade?.gradeName != null ? `${grade.gradeName}年级` : studentNode.gradeId ?? null,
+          classId: schoolClass?.className ?? studentNode.classId ?? null,
           learningStylePreference:
             studentNode.studentProfile?.learningStylePreference ?? null,
           personality: studentNode.studentProfile?.personality ?? null,

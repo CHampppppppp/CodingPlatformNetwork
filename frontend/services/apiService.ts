@@ -29,7 +29,7 @@ export interface StudentCognitiveTemplateApiResponse {
 const API_BASE_URL =
   process.env.NODE_ENV === "production"
     ? "http://interaction-network.mgsai.cn/api/v1"
-    : "http://localhost:3333/api/v1";
+    : "http://localhost:3334/api/v1";
 
 const scenarioCodeMap: Record<string, string> = {
   展示场景: "SHOW_CASE",
@@ -73,9 +73,9 @@ const normalizeOrgOption = (
   let rawLabel = typeof labelRaw === "string" ? labelRaw.trim() : String(labelRaw);
   
   let label = rawLabel;
-  if (item.gradeName !== undefined) {
+  if (item.gradeName !== undefined && !rawLabel.endsWith('年级')) {
     label = `${rawLabel}年级`;
-  } else if (item.className !== undefined) {
+  } else if (item.className !== undefined && !rawLabel.endsWith('班')) {
     label = `${rawLabel}班`;
   }
   
@@ -407,6 +407,32 @@ export const fetchKnowledgePoints = async (params: {
     return data;
   } catch (error) {
     console.error("获取知识点数据失败:", error);
+    throw error;
+  }
+};
+
+export const fetchResources = async (): Promise<any[]> => {
+  try {
+    const url = `${API_BASE_URL}/resources`;
+    console.log("请求资源数据:", url);
+
+    const response = await fetchWithRetry(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API请求失败: ${response.status}`);
+    }
+
+    const payload = await response.json();
+    const data = payload?.data ?? payload;
+    console.log("获取资源数据成功:", data.length);
+    return data || [];
+  } catch (error) {
+    console.error("获取资源数据失败:", error);
     throw error;
   }
 };

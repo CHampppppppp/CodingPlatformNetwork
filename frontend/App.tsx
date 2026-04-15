@@ -26,7 +26,7 @@ import NetworkGraph from "./components/NetworkGraph";
 import AnalysisPanel from "./components/AnalysisPanel";
 import {
   fetchGraphData,
-  generateResources,
+  fetchResources,
   getSchools,
   getGradesBySchool,
   getClassesBySchoolAndGrade,
@@ -56,6 +56,8 @@ const dimensionCodeToStrategyKey: Record<string, keyof CognitiveAttributes> = {
   learningMethod: "learningMethod",
   learningApproach: "learningMethod",
   learningAttitude: "learningAttitude",
+  selfRegulatedLearning: "selfRegulatedLearning",
+  aiLiteracy: "aiLiteracy",
 };
 
 const App: React.FC = () => {
@@ -133,7 +135,23 @@ const App: React.FC = () => {
     computationalThinking: "计算思维",
     humanAiTrust: "人机信任度",
     learningMethod: "学习方法倾向",
-    learningAttitude: "学习态度",
+  learningAttitude: "学习态度",
+  selfRegulatedLearning: "自我调节学习",
+  aiLiteracy: "人工智能素养",
+};
+
+  const likertScaleMap: Record<string, number> = {
+    '非常同意': 5,
+    '同意': 4,
+    '一般': 3,
+    '不同意': 2,
+    '非常不同意': 1,
+  };
+
+  const formatProfileValue = (val?: string | null): string => {
+    if (!val) return "未知";
+    const score = likertScaleMap[val];
+    return score !== undefined ? `${val} (${score}/5)` : val;
   };
 
   // Reset filters function - clears all selection states
@@ -258,14 +276,17 @@ const App: React.FC = () => {
     setStudentAcceptance({});
 
     try {
-      // 从API获取数据
       const data = await fetchGraphData(scenario, classInfo);
       setGraphData(data);
 
-      // 生成资源基于新的知识点
-      const kNodes = data.nodes.filter((n) => n.type === NodeType.KNOWLEDGE);
-      const newResources = generateResources(kNodes);
-      setResources(newResources);
+      const allResources = await fetchResources();
+      const knowledgeNodeIds = new Set(
+        data.nodes.filter((n) => n.type === NodeType.KNOWLEDGE).map((n) => n.id),
+      );
+      const connectedResources = allResources.filter((r) =>
+        r.relatedKnowledgeIds.some((id) => knowledgeNodeIds.has(id)),
+      );
+      setResources(connectedResources);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "加载数据失败，请重试";
@@ -304,6 +325,11 @@ const App: React.FC = () => {
       // Calculate highlighting
       const kIds = resource.relatedKnowledgeIds;
       const connectedStudentIds: string[] = [];
+      const studentIdSet = new Set(
+        graphData.nodes
+          .filter((n) => n.type === NodeType.STUDENT)
+          .map((n) => n.id),
+      );
 
       graphData.links.forEach((link) => {
         const sourceId =
@@ -316,9 +342,9 @@ const App: React.FC = () => {
             : link.target;
 
         if (kIds.includes(sourceId)) {
-          if (targetId.startsWith("S")) connectedStudentIds.push(targetId);
+          if (studentIdSet.has(targetId)) connectedStudentIds.push(targetId);
         } else if (kIds.includes(targetId)) {
-          if (sourceId.startsWith("S")) connectedStudentIds.push(sourceId);
+          if (studentIdSet.has(sourceId)) connectedStudentIds.push(sourceId);
         }
       });
 
@@ -368,6 +394,8 @@ const App: React.FC = () => {
               humanAiTrust: 0,
               learningMethod: 0,
               learningAttitude: 0,
+              selfRegulatedLearning: 0,
+              aiLiteracy: 0,
             }),
             ...templateProfile,
           },
@@ -608,8 +636,7 @@ const App: React.FC = () => {
             {/* Canvas Header overlay */}
             <div className="absolute top-5 left-5 z-10 pointer-events-none">
               <h3 className="text-xl font-bold text-slate-800 tracking-tight">
-                {classInfo.school} {classInfo.grade}
-                {classInfo.classId}
+                {classInfo.school} {classInfo.classId}
               </h3>
               <div className="flex items-center gap-2 mt-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
@@ -724,7 +751,17 @@ const App: React.FC = () => {
                       </h4>
                       <p className="text-white/80 text-xs mt-1 font-medium">
                         {selectedNode.type === NodeType.STUDENT &&
-                          `${selectedNode.studentProfile?.school} ${selectedNode.studentProfile?.grade}${selectedNode.studentProfile?.classId}`}
+                          (() => {
+                            const profile = selectedNode.studentProfile;
+                            if (!profile) return "学生";
+                            const isIdLike = (val?: string) =>
+                              !val || val.length > 15 || /[a-z0-9]{10,}/i.test(val);
+                            const parts: string[] = [];
+                            if (!isIdLike(profile.school)) parts.push(profile.school);
+                            if (!isIdLike(profile.grade)) parts.push(profile.grade);
+                            if (!isIdLike(profile.classId)) parts.push(profile.classId);
+                            return parts.join(" · ") || "学生";
+                          })()}
                         {selectedNode.type === NodeType.KNOWLEDGE &&
                           selectedNode.knowledgeProfile?.category}
                         {selectedNode.type === NodeType.TEACHER && "授课教师"}
@@ -755,61 +792,6 @@ const App: React.FC = () => {
                               正在加载认知模板...
                             </div>
                           )}
-                          {!!selectedNode.studentProfile.template
-                            ?.profileMeta && (
-                            <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50/60 p-3 text-xs text-slate-700">
-                              <div className="font-semibold text-indigo-700 mb-2">
-                                模板概览
-                              </div>
-                              <div className="space-y-1">
-                                <div>
-                                  版本:{" "}
-                                  {selectedNode.studentProfile.template
-                                    .profileMeta.version || "未知"}
-                                </div>
-                                <div>
-                                  总分:{" "}
-                                  {typeof selectedNode.studentProfile.template
-                                    .profileMeta.totalScore === "number"
-                                    ? selectedNode.studentProfile.template.profileMeta.totalScore.toFixed(
-                                        2,
-                                      )
-                                    : "未知"}
-                                </div>
-                                <div>
-                                  生成时间:{" "}
-                                  {selectedNode.studentProfile.template
-                                    .profileMeta.generatedAt
-                                    ? new Date(
-                                        selectedNode.studentProfile.template.profileMeta.generatedAt,
-                                      ).toLocaleString()
-                                    : "未知"}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
-                            <div className="font-semibold text-slate-600 mb-2">
-                              1. 基本信息
-                            </div>
-                            <div className="space-y-1">
-                              <div>
-                                学习方式:{" "}
-                                {selectedNode.studentProfile
-                                  .learningStylePreference || "未知"}
-                              </div>
-                              <div>
-                                性格倾向:{" "}
-                                {selectedNode.studentProfile.personality ||
-                                  "未知"}
-                              </div>
-                              <div>
-                                小组行为:{" "}
-                                {selectedNode.studentProfile.groupBehavior ||
-                                  "未知"}
-                              </div>
-                            </div>
-                          </div>
                           <div className="space-y-4">
                             {(selectedNode.studentProfile.template
                               ?.dimensions &&
@@ -940,7 +922,11 @@ const App: React.FC = () => {
                                     key={res.id}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleResourceClick(res);
+                                      if (res.url) {
+                                        window.open(res.url, '_blank', 'noopener,noreferrer');
+                                      } else {
+                                        handleResourceClick(res);
+                                      }
                                     }}
                                     className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/50 cursor-pointer transition-all group shadow-sm hover:shadow-md bg-white"
                                   >

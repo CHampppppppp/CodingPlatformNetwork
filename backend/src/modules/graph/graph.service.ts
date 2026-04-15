@@ -101,14 +101,14 @@ export class GraphService {
     // 直接查询符合条件的所有节点（包括没有参与交互的教师节点）
     // 构建节点查询条件，确保使用正确的场景ID
     const nodeWhere: any = {
-      ...(scenarioId ? { scenarioId } : {})
+      ...(scenarioId ? { scenarioId } : {}),
     };
-    
+
     // 只有当params中存在对应的ID时才添加到查询条件中
     if (params.schoolId) nodeWhere.schoolId = params.schoolId;
     if (params.gradeId) nodeWhere.gradeId = params.gradeId;
     if (params.classId) nodeWhere.classId = params.classId;
-    
+
     const directNodes = await this.prisma.graphNode.findMany({
       where: nodeWhere,
       include: {
@@ -120,52 +120,39 @@ export class GraphService {
 
     // 添加直接查询到的节点
     for (const node of directNodes) {
-      this.putNode(
-        nodeMap,
-        node,
-        schoolNames,
-        gradeNames,
-        classNames,
-      );
-    //}
-
-    // // 单独查询该场景下的知识点节点（知识点是全局数据，没有schoolId/gradeId/classId）
-    // if (scenarioId) {
-    //   const knowledgeNodes = await this.prisma.graphNode.findMany({
-    //     where: {
-    //       scenarioId,
-    //       nodeType: 'Knowledge',
-    //       schoolId: null, // 知识点没有班级归属
-    //     },
-    //     include: {
-    //       knowledgeProfile: true,
-    //     },
-    //   });
-
-    //   for (const node of knowledgeNodes) {
-    //     this.putNode(
-    //       nodeMap,
-    //       node,
-    //       schoolNames,
-    //       gradeNames,
-    //       classNames,
-    //     );
-    //   }
+      this.putNode(nodeMap, node, schoolNames, gradeNames, classNames);
     }
 
     const mapInteractionType = (type: string): "PHYSICAL" | "PLATFORM" => {
       return type === "PLATFORM" ? "PLATFORM" : "PHYSICAL";
     };
 
-    const links: Link[] = interactions.map((interaction) => ({
+    const TEACHER_STUDENT_ACTIONS = ["TEACHER_EVALUATION", "HELP_SEEKING"];
+    const filteredInteractions = interactions.filter((interaction) => {
+      const isTeacherStudent =
+        (interaction.sourceNode.nodeType === "Teacher" &&
+          interaction.targetNode.nodeType === "Student") ||
+        (interaction.sourceNode.nodeType === "Student" &&
+          interaction.targetNode.nodeType === "Teacher");
+      return !(
+        isTeacherStudent &&
+        interaction.actionType &&
+        TEACHER_STUDENT_ACTIONS.includes(interaction.actionType)
+      );
+    });
+
+    const links: Link[] = filteredInteractions.map((interaction) => ({
       source: interaction.sourceNodeId,
       target: interaction.targetNodeId,
       value: Number(interaction.strength),
       type: mapInteractionType(interaction.interactionType),
       actionType: interaction.actionType,
+      createdAt: interaction.createdAt.toISOString(),
     }));
 
     const nodes = Array.from(nodeMap.values());
+
+    const surveyStats = await this.computeSurveyStats(params);
 
     return {
       data: {
@@ -175,11 +162,104 @@ export class GraphService {
           nodeCount: nodes.length,
           linkCount: links.length,
           scenarioCode: params.scenarioCode ?? "ALL",
+          surveyStats,
         },
       } as GraphData,
       meta: null,
       error: null,
     };
+  }
+
+  private async computeSurveyStats(params: GraphQuery) {
+    try {
+      let scenarioId: string | undefined;
+      if (params.scenarioCode) {
+        const scenario = await this.prisma.learningScenario.findUnique({
+          where: { code: params.scenarioCode },
+          select: { id: true },
+        });
+        if (scenario) scenarioId = scenario.id;
+      }
+
+      const where: any = {};
+      if (scenarioId) where.scenarioId = scenarioId;
+
+      const responses = await this.prisma.studentSurveyResponse.findMany({
+        where,
+        select: {
+          aiContentSatisfaction: true,
+          resourceHelpfulness: true,
+          posterSatisfaction: true,
+          motivationScore: true,
+          attitudeScore: true,
+          engagementScore: true,
+          selfRegulationScore: true,
+          computationalThinkingScore: true,
+          learningMethodScore: true,
+          cognitiveLoadScore: true,
+          humanAiTrustScore: true,
+          aiLiteracyScore: true,
+          priorKnowledgeScore: true,
+        },
+      });
+
+      if (responses.length === 0) {
+        return null;
+      }
+
+      const validSatisfactionResponses = responses.filter(
+        (r) =>
+          r.aiContentSatisfaction !== null &&
+          r.resourceHelpfulness !== null &&
+          r.posterSatisfaction !== null,
+      );
+      const personalSatisfactionScores = validSatisfactionResponses.map((r) => {
+        const q4 = Number(r.aiContentSatisfaction);
+        const q5 = Number(r.resourceHelpfulness);
+        const q6 = Number(r.posterSatisfaction);
+        return (q4 + q5 + q6) / 3;
+      });
+      const overallSatisfactionAvg =
+        personalSatisfactionScores.length > 0
+          ? Number(
+              (
+                personalSatisfactionScores.reduce((a, b) => a + b, 0) /
+                personalSatisfactionScores.length
+              ).toFixed(2),
+            )
+          : 0;
+
+      const sum = (key: keyof (typeof responses)[0]) =>
+        responses.reduce(
+          (acc, r) => acc + (r[key] !== null ? Number(r[key]) : 0),
+          0,
+        );
+      const count = (key: keyof (typeof responses)[0]) =>
+        responses.filter((r) => r[key] !== null).length;
+      const avg = (key: keyof (typeof responses)[0]) => {
+        const c = count(key);
+        return c > 0 ? Number((sum(key) / c).toFixed(2)) : 0;
+      };
+
+      return {
+        pushed: responses.length,
+        filled: validSatisfactionResponses.length,
+        score: Number(overallSatisfactionAvg.toFixed(1)),
+        percentage: Math.round((overallSatisfactionAvg / 5) * 100),
+        knowledgeReserve: avg("priorKnowledgeScore"),
+        learningEngagement: avg("engagementScore"),
+        cognitiveLoad: avg("cognitiveLoadScore"),
+        learningMotivation: avg("motivationScore"),
+        computationalThinking: avg("computationalThinkingScore"),
+        humanAiTrust: avg("humanAiTrustScore"),
+        learningMethod: avg("learningMethodScore"),
+        learningAttitude: avg("attitudeScore"),
+        selfRegulatedLearning: avg("selfRegulationScore"),
+        aiLiteracy: avg("aiLiteracyScore"),
+      };
+    } catch {
+      return null;
+    }
   }
 
   async getScenarioStats(params: Omit<GraphQuery, "scenarioCode">) {
