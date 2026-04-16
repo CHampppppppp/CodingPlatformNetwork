@@ -1,5 +1,26 @@
 # Agent 约束文件
 
+## 0. 元原则（行动前必读）
+
+每次响应用户之前，强制过一遍以下检查：
+
+### 0.1 目标清晰度检查
+
+- 用户的要求是否具体、可执行？
+- 如果含糊、有多重解释、或缺少关键信息，**必须停下来询问**，不要猜测。
+
+### 0.2 简洁度检查
+
+- 是否有更简单的方法实现相同效果？
+- 是否能用更少的代码完成？
+- **禁止**为了炫技而使用过度复杂的方案。
+
+### 0.3 根因检查（第一性原理）
+
+- 用户说的问题是真正的根因，还是表象？
+- 我的方案是在解决根因，还是只在 symptoms 上打补丁？
+- 如果指向清晰但有更优路径，**主动向用户提出建议**。
+
 ## 项目背景
 
 教育交互网络可视化系统，基于三元交互模型（学生-教师-知识点）。技术栈：NestJS + SQL Server + React + D3.js。
@@ -18,13 +39,13 @@
 
 ## 命名规范
 
-| 类型 | 规范 | 示例 |
-|-----|------|-----|
-| 后端文件 | kebab-case | `student-controller.ts` |
-| 后端类/方法 | PascalCase / camelCase | `StudentService.findAll()` |
-| 数据库表 | snake_case 复数 | `interaction_sessions` |
-| API 路径 | snake_case | `/api/v1/student-cognitive-template` |
-| 请求参数 | camelCase | `scenarioCode` |
+| 类型        | 规范                   | 示例                                 |
+| ----------- | ---------------------- | ------------------------------------ |
+| 后端文件    | kebab-case             | `student-controller.ts`              |
+| 后端类/方法 | PascalCase / camelCase | `StudentService.findAll()`           |
+| 数据库表    | snake_case 复数        | `interaction_sessions`               |
+| API 路径    | snake_case             | `/api/v1/student-cognitive-template` |
+| 请求参数    | camelCase              | `scenarioCode`                       |
 
 ---
 
@@ -47,7 +68,6 @@
 
 ---
 
-
 ## 关键文件位置
 
 - 数据模型: `backend/prisma/schema.prisma`
@@ -67,6 +87,7 @@
 ---
 
 ## MUST
+
 - don't make docs unless I told you so
 - 不要尝试npx prisma studio，因为MSSQL不支持Studio，只要知道能正常获取数据即可，通过scripts/db-explorer.ts查询数据库表。
 - 全程使用test后缀的数据库表来作为测试开发，不要修改生产环境的数据库表。
@@ -74,5 +95,5 @@
 - script文件统一放在`backend/scripts`目录下。
 - 不要sql文件，使用prisma。
 - don't create any new tables in the database. If you have to, ask me first.
-- when you create script without I asking, please DELETE it after finishing the task.
+- when you create a script without I asking, DELETE it after finishing the task.
 - don't modify prisma schema unless I told you so.

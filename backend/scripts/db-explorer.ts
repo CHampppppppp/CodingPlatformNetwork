@@ -428,48 +428,6 @@ async function showTable(tableName: string, fetchData: () => Promise<any[]>) {
   }
 }
 
-
-async function showSummary() {
-  console.log(`\n${'═'.repeat(84)}`);
-  console.log('║                              📊 数据统计汇总                                     ║');
-  console.log(`${'═'.repeat(84)}`);
-
-  const stats = [
-    { name: '学习场景', count: await prisma.learningScenario.count() },
-    { name: '学校', count: await prisma.school.count() },
-    { name: '年级', count: await prisma.grade.count() },
-    { name: '班级', count: await prisma.schoolClass.count() },
-    { name: '图谱节点-总计', count: await prisma.graphNode.count() },
-    { name: '  ├─ 学生节点', count: await prisma.graphNode.count({ where: { nodeType: 'Student' } }) },
-    { name: '  ├─ 教师节点', count: await prisma.graphNode.count({ where: { nodeType: 'Teacher' } }) },
-    { name: '  └─ 知识点节点', count: await prisma.graphNode.count({ where: { nodeType: 'Knowledge' } }) },
-    { name: '学生扩展属性', count: await prisma.studentProfile.count() },
-    { name: '教师扩展属性', count: await prisma.teacherProfile.count() },
-    { name: '知识点扩展属性', count: await prisma.knowledgeProfile.count() },
-    { name: '交互会话', count: await prisma.interactionSession.count() },
-    { name: '交互关系', count: await prisma.interaction.count() },
-    { name: '认知维度定义', count: await prisma.cognitiveDimensionDef.count() },
-    { name: '学生认知画像', count: await prisma.studentCognitiveProfile.count() },
-    { name: '认知维度得分', count: await prisma.studentCognitiveDimensionScore.count() },
-    { name: '学生问卷响应', count: await prisma.studentSurveyResponse.count() },
-    { name: '资源', count: await prisma.resource.count() },
-    { name: '资源-知识点关联', count: await prisma.resourceKnowledgeRelation.count() },
-    { name: '学生资源评分', count: await prisma.studentResourceRate.count() },
-  ];
-
-  const maxNameLength = Math.max(...stats.map(s => s.name.length));
-
-  stats.forEach(stat => {
-    const indent = stat.name.startsWith('  ') ? '  ' : '';
-    const name = stat.name.replace(/^  /, '');
-    const padding = ' '.repeat(maxNameLength - name.length + 2);
-    const bar = '█'.repeat(Math.min(stat.count / 2, 50));
-    console.log(`${indent}${name}${padding}${stat.count.toString().padStart(4)} ${bar}`);
-  });
-
-  console.log(`${'═'.repeat(84)}\n`);
-}
-
 async function listAllDbTables() {
   console.log(`\n${'─'.repeat(84)}`);
   console.log('📋 数据库中的所有表');

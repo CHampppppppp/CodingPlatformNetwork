@@ -89,9 +89,22 @@ export class ResourceService {
       select: { studentId: true, rate: true },
     });
 
+    const externalIds = rates.map((r) => r.studentId);
+    const profiles = await this.prisma.studentProfile.findMany({
+      where: { externalUserId: { in: externalIds } },
+      select: { nodeId: true, externalUserId: true },
+    });
+
+    const profileMap = new Map(
+      profiles.map((p) => [p.externalUserId, p.nodeId]),
+    );
+
     const matchedRates: Record<string, number> = {};
     for (const r of rates) {
-      matchedRates[r.studentId] = Number(r.rate);
+      const nodeId = profileMap.get(r.studentId);
+      if (nodeId) {
+        matchedRates[nodeId] = Number(r.rate);
+      }
     }
 
     return {

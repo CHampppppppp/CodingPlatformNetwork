@@ -6,10 +6,11 @@ interface NetworkGraphProps {
   data: GraphData;
   highlightedNodeIds: string[];
   studentRates?: Record<string, number>;
+  selectedNode?: GraphNode | null;
   onNodeClick: (node: GraphNode) => void;
 }
 
-const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, studentRates, onNodeClick }) => {
+const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, studentRates, selectedNode, onNodeClick }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -28,6 +29,9 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
     const rootG = svg.append("g");
 
     const color = (d: GraphNode) => {
+      if (selectedNode && d.id === selectedNode.id && d.type === NodeType.STUDENT) {
+        return "#475569";
+      }
       switch (d.type) {
         case NodeType.TEACHER: return "#7c3aed";
         case NodeType.KNOWLEDGE: return "#059669";
@@ -160,6 +164,9 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
     const svg = d3.select(svgRef.current);
     
     const getColor = (d: any) => {
+        if (selectedNode && d.id === selectedNode.id && d.type === NodeType.STUDENT) {
+            return "#475569";
+        }
         if (d.type === NodeType.STUDENT && studentRates?.[d.id] !== undefined) {
             const rate = studentRates[d.id];
             return rate >= 4 ? '#22c55e' : '#ef4444';
@@ -184,10 +191,8 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
            .attr("opacity", 0.05);
 
         const shouldHighlightNode = (d: any) => {
+            if (selectedNode && d.id === selectedNode.id) return true;
             if (!highlightedNodeIds.includes(d.id)) return false;
-            if (d.type === NodeType.STUDENT) {
-                return studentRates?.[d.id] !== undefined;
-            }
             return true;
         };
 
@@ -217,7 +222,7 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
            .attr("opacity", 0.6);
     }
     
-  }, [highlightedNodeIds, data, studentRates]);
+  }, [highlightedNodeIds, data, studentRates, selectedNode]);
 
   return (
     <div ref={containerRef} className="w-full h-full rounded-lg overflow-hidden relative">

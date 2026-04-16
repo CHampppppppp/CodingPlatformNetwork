@@ -401,8 +401,8 @@ const App: React.FC = () => {
         const newRates: Record<string, number> = {};
         connectedStudentIds.forEach((sid) => {
           const externalId = nodeIdToExternalId.get(sid);
-          if (externalId && rawRates[externalId] !== undefined) {
-            newRates[sid] = rawRates[externalId];
+          if (externalId && rawRates[sid] !== undefined) {
+            newRates[sid] = rawRates[sid];
           }
         });
         setStudentRates(newRates);
@@ -415,8 +415,36 @@ const App: React.FC = () => {
   const handleNodeClick = async (node: GraphNode) => {
     setSelectedNode(node);
     setSelectedResource(null);
-    setHighlightedNodeIds([node.id]);
     setStudentRates({});
+
+    if (node.type === NodeType.KNOWLEDGE) {
+      const connectedStudentIds: string[] = [];
+      const studentIdSet = new Set(
+        graphData.nodes.filter((n) => n.type === NodeType.STUDENT).map((n) => n.id),
+      );
+
+      graphData.links.forEach((link) => {
+        const sourceId =
+          typeof link.source === "object"
+            ? (link.source as any).id
+            : link.source;
+        const targetId =
+          typeof link.target === "object"
+            ? (link.target as any).id
+            : link.target;
+
+        if (sourceId === node.id && studentIdSet.has(targetId)) {
+          connectedStudentIds.push(targetId);
+        } else if (targetId === node.id && studentIdSet.has(sourceId)) {
+          connectedStudentIds.push(sourceId);
+        }
+      });
+
+      setHighlightedNodeIds([node.id, ...connectedStudentIds]);
+      return;
+    }
+
+    setHighlightedNodeIds([node.id]);
 
     if (node.type !== NodeType.STUDENT) {
       return;
@@ -762,6 +790,7 @@ const App: React.FC = () => {
                 data={graphData}
                 highlightedNodeIds={highlightedNodeIds}
                 studentRates={studentRates}
+                selectedNode={selectedNode}
                 onNodeClick={handleNodeClick}
               />
 
