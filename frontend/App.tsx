@@ -403,19 +403,11 @@ const App: React.FC = () => {
           const externalId = nodeIdToExternalId.get(sid);
           if (externalId && rawRates[externalId] !== undefined) {
             newRates[sid] = rawRates[externalId];
-          } else {
-            const fallbackRate = Math.round(resource.accuracy / 20);
-            newRates[sid] = Math.max(1, Math.min(5, fallbackRate));
           }
         });
         setStudentRates(newRates);
       } catch {
-        const fallbackRates: Record<string, number> = {};
-        connectedStudentIds.forEach((sid) => {
-          const fallbackRate = Math.round(resource.accuracy / 20);
-          fallbackRates[sid] = Math.max(1, Math.min(5, fallbackRate));
-        });
-        setStudentRates(fallbackRates);
+        setStudentRates({});
       }
     }
   };

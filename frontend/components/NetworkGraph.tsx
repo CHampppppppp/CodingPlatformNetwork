@@ -183,9 +183,17 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
            .transition().duration(300)
            .attr("opacity", 0.05);
 
+        const shouldHighlightNode = (d: any) => {
+            if (!highlightedNodeIds.includes(d.id)) return false;
+            if (d.type === NodeType.STUDENT) {
+                return studentRates?.[d.id] !== undefined;
+            }
+            return true;
+        };
+
         // Highlight specific nodes
         svg.selectAll("circle")
-           .filter((d: any) => highlightedNodeIds.includes(d.id))
+           .filter((d: any) => shouldHighlightNode(d))
            .transition().duration(300)
            .attr("opacity", 1)
            .attr("r", (d: any) => d.val * 1.3) // Pulse effect

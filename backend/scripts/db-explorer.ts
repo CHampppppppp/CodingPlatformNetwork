@@ -224,6 +224,22 @@ async function listAllTables() {
     }));
   });
 
+  await showTable('StudentResourceRate (学生资源评分)', async () => {
+    const data = await prisma.studentResourceRate.findMany({
+      take: 20,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        resource: { select: { title: true } }
+      }
+    });
+    return data.map(sr => ({
+      id: truncateId(sr.id),
+      studentId: truncateString(sr.studentId, 12),
+      resource: truncateString(sr.resource.title, 20),
+      rate: sr.rate.toString()
+    }));
+  });
+
   await showTable('InteractionSession (交互会话)', async () => {
     const data = await prisma.interactionSession.findMany({
       take: 10,
@@ -257,6 +273,30 @@ async function listAllTables() {
       target: `${truncateString(i.targetNode.displayName, 10)}(${i.targetNode.nodeType[0]})`,
       type: i.interactionType,
       strength: i.strength.toString()
+    }));
+  });
+
+  await showTable('Student-Knowledge Interaction (学生-知识点交互)', async () => {
+    const data = await prisma.interaction.findMany({
+      where: {
+        sourceNode: { nodeType: 'Student' },
+        targetNode: { nodeType: 'Knowledge' }
+      },
+      take: 30,
+      include: {
+        sourceNode: { select: { displayName: true, nodeType: true } },
+        targetNode: { select: { displayName: true, nodeType: true } },
+        session: { include: { scenario: { select: { nameZh: true } } } }
+      }
+    });
+    return data.map(i => ({
+      student: truncateString(i.sourceNode.displayName, 10),
+      arrow: '→',
+      knowledge: truncateString(i.targetNode.displayName, 12),
+      actionType: i.actionType || '-',
+      interactionType: i.interactionType,
+      strength: i.strength.toString(),
+      scenario: i.session.scenario.nameZh
     }));
   });
 
@@ -414,6 +454,7 @@ async function showSummary() {
     { name: '学生问卷响应', count: await prisma.studentSurveyResponse.count() },
     { name: '资源', count: await prisma.resource.count() },
     { name: '资源-知识点关联', count: await prisma.resourceKnowledgeRelation.count() },
+    { name: '学生资源评分', count: await prisma.studentResourceRate.count() },
   ];
 
   const maxNameLength = Math.max(...stats.map(s => s.name.length));
