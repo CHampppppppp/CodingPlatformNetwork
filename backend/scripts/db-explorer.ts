@@ -328,8 +328,6 @@ async function listAllTables() {
 
   await listAllDbTables();
 
-  await showSummary();
-
   await prisma.$disconnect();
 }
 
