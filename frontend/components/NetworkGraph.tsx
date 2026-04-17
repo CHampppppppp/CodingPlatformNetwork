@@ -7,10 +7,11 @@ interface NetworkGraphProps {
   highlightedNodeIds: string[];
   studentRates?: Record<string, number>;
   selectedNode?: GraphNode | null;
+  selectedResource?: string | null;
   onNodeClick: (node: GraphNode) => void;
 }
 
-const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, studentRates, selectedNode, onNodeClick }) => {
+const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, studentRates, selectedNode, selectedResource, onNodeClick }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -192,6 +193,9 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
 
         const shouldHighlightNode = (d: any) => {
             if (selectedNode && d.id === selectedNode.id) return true;
+            if (selectedResource && d.type === NodeType.STUDENT) {
+                if (studentRates?.[d.id] !== undefined) return true;
+            }
             if (!highlightedNodeIds.includes(d.id)) return false;
             return true;
         };
@@ -222,7 +226,7 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
            .attr("opacity", 0.6);
     }
     
-  }, [highlightedNodeIds, data, studentRates, selectedNode]);
+  }, [highlightedNodeIds, data, studentRates, selectedNode, selectedResource]);
 
   return (
     <div ref={containerRef} className="w-full h-full rounded-lg overflow-hidden relative">

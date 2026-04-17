@@ -28,7 +28,7 @@ async function listAllTables() {
       isActive: s.isActive,
       sortOrder: s.sortOrder
     }));
-  });
+  }, await prisma.learningScenario.count());
 
   await showTable('School', async () => {
     const data = await prisma.school.findMany({
@@ -44,7 +44,7 @@ async function listAllTables() {
       name: s.name,
       gradesCount: s._count.grades
     }));
-  });
+  }, await prisma.school.count());
 
   await showTable('Grade', async () => {
     const data = await prisma.grade.findMany({
@@ -60,7 +60,7 @@ async function listAllTables() {
       gradeName: g.gradeName,
       classesCount: g._count.classes
     }));
-  });
+  }, await prisma.grade.count());
 
   await showTable('SchoolClass', async () => {
     const data = await prisma.schoolClass.findMany({
@@ -79,7 +79,7 @@ async function listAllTables() {
       grade: c.grade.gradeName,
       className: c.className
     }));
-  });
+  }, await prisma.schoolClass.count());
 
   await showTable('GraphNode (所有节点)', async () => {
     const data = await prisma.graphNode.findMany({
@@ -97,7 +97,7 @@ async function listAllTables() {
       schoolId: n.schoolId ? truncateId(n.schoolId) : 'null',
       createdAt: formatDate(n.createdAt)
     }));
-  });
+  }, await prisma.graphNode.count());
 
   await showTable('GraphNode - Student (学生节点)', async () => {
     const data = await prisma.graphNode.findMany({
@@ -115,7 +115,7 @@ async function listAllTables() {
       learningStyle: n.studentProfile?.learningStylePreference || '-',
       personality: n.studentProfile?.personality || '-'
     }));
-  });
+  }, await prisma.graphNode.count({ where: { nodeType: 'Student' } }));
 
   await showTable('StudentProfile (学生扩展属性)', async () => {
     const data = await prisma.studentProfile.findMany({
@@ -129,7 +129,7 @@ async function listAllTables() {
       learningStyle: sp.learningStylePreference || '-',
       personality: sp.personality || '-'
     }));
-  });
+  }, await prisma.studentProfile.count());
 
   await showTable('GraphNode - Teacher (教师节点)', async () => {
     const data = await prisma.graphNode.findMany({
@@ -147,7 +147,7 @@ async function listAllTables() {
       subject: n.teacherProfile?.subject || '-',
       teachingClass: n.teacherProfile?.teachingClass || '-'
     }));
-  });
+  }, await prisma.graphNode.count({ where: { nodeType: 'Teacher' } }));
 
   await showTable('TeacherProfile (教师扩展属性)', async () => {
     const data = await prisma.teacherProfile.findMany({
@@ -161,7 +161,7 @@ async function listAllTables() {
       teachingGrade: tp.teachingGrade?.toString() || '-',
       teachingClass: tp.teachingClass || '-'
     }));
-  });
+  }, await prisma.teacherProfile.count());
 
   await showTable('GraphNode - Knowledge (知识点节点)', async () => {
     const data = await prisma.graphNode.findMany({
@@ -180,7 +180,7 @@ async function listAllTables() {
       type: n.knowledgeProfile?.knowledgeType || '-',
       content: truncateString(n.knowledgeProfile?.content || '-', 30)
     }));
-  });
+  }, await prisma.graphNode.count({ where: { nodeType: 'Knowledge' } }));
 
   await showTable('KnowledgeProfile (知识点扩展属性)', async () => {
     const data = await prisma.knowledgeProfile.findMany({
@@ -194,7 +194,7 @@ async function listAllTables() {
       knowledgeType: kp.knowledgeType || '-',
       content: truncateString(kp.content || '-', 30)
     }));
-  });
+  }, await prisma.knowledgeProfile.count());
 
   await showTable('Resource (资源)', async () => {
     const data = await prisma.resource.findMany({
@@ -207,7 +207,7 @@ async function listAllTables() {
       resourceType: r.resourceType,
       url: truncateString(r.url || '-', 25)
     }));
-  });
+  }, await prisma.resource.count());
 
   await showTable('ResourceKnowledgeRelation (资源-知识点关联)', async () => {
     const data = await prisma.resourceKnowledgeRelation.findMany({
@@ -222,7 +222,7 @@ async function listAllTables() {
       resource: truncateString(rk.resource.title, 20),
       knowledge: truncateString(rk.knowledgeNode.displayName, 20)
     }));
-  });
+  }, await prisma.resourceKnowledgeRelation.count());
 
   await showTable('StudentResourceRate (学生资源评分)', async () => {
     const data = await prisma.studentResourceRate.findMany({
@@ -238,7 +238,7 @@ async function listAllTables() {
       resource: truncateString(sr.resource.title, 20),
       rate: sr.rate.toString()
     }));
-  });
+  }, await prisma.studentResourceRate.count());
 
   await showTable('InteractionSession (交互会话)', async () => {
     const data = await prisma.interactionSession.findMany({
@@ -256,7 +256,7 @@ async function listAllTables() {
       occurredAt: formatDate(s.occurredAt),
       interactions: s._count.interactions
     }));
-  });
+  }, await prisma.interactionSession.count());
 
   await showTable('Interaction (交互关系)', async () => {
     const data = await prisma.interaction.findMany({
@@ -274,7 +274,7 @@ async function listAllTables() {
       type: i.interactionType,
       strength: i.strength.toString()
     }));
-  });
+  }, await prisma.interaction.count());
 
   await showTable('Student-Knowledge Interaction (学生-知识点交互)', async () => {
     const data = await prisma.interaction.findMany({
@@ -298,7 +298,12 @@ async function listAllTables() {
       strength: i.strength.toString(),
       scenario: i.session.scenario.nameZh
     }));
-  });
+  }, await prisma.interaction.count({
+    where: {
+      sourceNode: { nodeType: 'Student' },
+      targetNode: { nodeType: 'Knowledge' }
+    }
+  }));
 
   await showTable('CognitiveDimensionDef (认知维度定义)', async () => {
     const data = await prisma.cognitiveDimensionDef.findMany({
@@ -313,7 +318,7 @@ async function listAllTables() {
       scoreRange: `${d.minScore}-${d.maxScore}`,
       order: d.sortOrder
     }));
-  });
+  }, await prisma.cognitiveDimensionDef.count({ where: { isActive: true } }));
 
   await showTable('StudentCognitiveProfile (学生认知画像)', async () => {
     const data = await prisma.studentCognitiveProfile.findMany({
@@ -332,7 +337,7 @@ async function listAllTables() {
       generatedAt: formatDate(p.generatedAt),
       dimensions: p._count.dimensionScores
     }));
-  });
+  }, await prisma.studentCognitiveProfile.count());
 
   await showTable('StudentCognitiveDimensionScore (认知维度得分)', async () => {
     const data = await prisma.studentCognitiveDimensionScore.findMany({
@@ -349,7 +354,7 @@ async function listAllTables() {
       score: ds.scoreValue.toString(),
       level: ds.scoreLevel
     }));
-  });
+  }, await prisma.studentCognitiveDimensionScore.count());
 
   await showTable('StudentSurveyResponse (学生问卷响应)', async () => {
     const data = await prisma.studentSurveyResponse.findMany({
@@ -364,14 +369,14 @@ async function listAllTables() {
       motivation: sr.motivationScore?.toString() || '-',
       attitude: sr.attitudeScore?.toString() || '-'
     }));
-  });
+  }, await prisma.studentSurveyResponse.count());
 
   await listAllDbTables();
 
   await prisma.$disconnect();
 }
 
-async function showTable(tableName: string, fetchData: () => Promise<any[]>) {
+async function showTable(tableName: string, fetchData: () => Promise<any[]>, totalCount?: number) {
   console.log(`\n${'─'.repeat(84)}`);
   console.log(`📋 表名: ${tableName}`);
   console.log(`${'─'.repeat(84)}`);
@@ -421,7 +426,8 @@ async function showTable(tableName: string, fetchData: () => Promise<any[]>) {
     bottomBorder = bottomBorder.slice(0, -2) + '┘';
     console.log(bottomBorder);
 
-    console.log(`   共 ${data.length} 条记录${data.length >= 10 ? ' (显示前10条)' : ''}`);
+    const displayTotal = totalCount ?? data.length;
+    console.log(`   共 ${displayTotal} 条记录`);
     
   } catch (error) {
     console.log(`   ❌ 查询失败: ${error}`);

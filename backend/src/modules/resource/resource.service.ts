@@ -67,8 +67,7 @@ export class ResourceService {
       const avgRate = rateMap.get(item.id) ?? null;
       return {
         ...item,
-        acceptanceRate:
-          avgRate != null ? (avgRate / 5) * 100 : item.acceptanceRate,
+        acceptanceRate: avgRate != null ? (avgRate / 5) * 100 : null,
       };
     });
 
@@ -89,21 +88,18 @@ export class ResourceService {
       select: { studentId: true, rate: true },
     });
 
-    const externalIds = rates.map((r) => r.studentId);
+    const studentIds = rates.map((r) => r.studentId);
     const profiles = await this.prisma.studentProfile.findMany({
-      where: { externalUserId: { in: externalIds } },
-      select: { nodeId: true, externalUserId: true },
+      where: { nodeId: { in: studentIds } },
+      select: { nodeId: true },
     });
 
-    const profileMap = new Map(
-      profiles.map((p) => [p.externalUserId, p.nodeId]),
-    );
+    const validNodeIds = new Set(profiles.map((p) => p.nodeId));
 
     const matchedRates: Record<string, number> = {};
     for (const r of rates) {
-      const nodeId = profileMap.get(r.studentId);
-      if (nodeId) {
-        matchedRates[nodeId] = Number(r.rate);
+      if (validNodeIds.has(r.studentId)) {
+        matchedRates[r.studentId] = Number(r.rate);
       }
     }
 

@@ -171,7 +171,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
   // 3. Resource Stats
   const resourceStats = useMemo(() => ({
     total: resources.length,
-    avgAccuracy: resources.length > 0 ? (resources.reduce((acc, r) => acc + r.accuracy, 0) / resources.length).toFixed(1) : '0'
+    avgAccuracy: resources.length > 0 ? (resources.reduce((acc, r) => acc + (r.accuracy ?? 0), 0) / resources.length).toFixed(1) : '0'
   }), [resources]);
 
   // 4. Satisfaction Stats

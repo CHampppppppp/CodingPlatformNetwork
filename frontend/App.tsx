@@ -384,29 +384,16 @@ const App: React.FC = () => {
         }
       });
 
-      setHighlightedNodeIds([...kIds, ...connectedStudentIds]);
-
       try {
         const rawRates = await fetchResourceStudentRates(resource.id);
-        const nodeIdToExternalId = new Map<
-          string,
-          string | undefined
-        >();
-        graphData.nodes
-          .filter((n) => n.type === NodeType.STUDENT)
-          .forEach((n) => {
-            nodeIdToExternalId.set(n.id, n.studentProfile?.externalUserId);
-          });
-
-        const newRates: Record<string, number> = {};
-        connectedStudentIds.forEach((sid) => {
-          const externalId = nodeIdToExternalId.get(sid);
-          if (externalId && rawRates[sid] !== undefined) {
-            newRates[sid] = rawRates[sid];
-          }
-        });
-        setStudentRates(newRates);
+        const ratedStudentIds = Object.keys(rawRates).filter((id) =>
+          studentIdSet.has(id),
+        );
+        const highlightSet = new Set([...kIds, ...connectedStudentIds, ...ratedStudentIds]);
+        setHighlightedNodeIds(Array.from(highlightSet));
+        setStudentRates(rawRates);
       } catch {
+        setHighlightedNodeIds([...kIds, ...connectedStudentIds]);
         setStudentRates({});
       }
     }
@@ -791,6 +778,7 @@ const App: React.FC = () => {
                 highlightedNodeIds={highlightedNodeIds}
                 studentRates={studentRates}
                 selectedNode={selectedNode}
+                selectedResource={selectedResource}
                 onNodeClick={handleNodeClick}
               />
 
@@ -1153,15 +1141,19 @@ const App: React.FC = () => {
                   </span>
                   <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
                     <BarChart3 className="w-3 h-3" />
-                    <span
-                      className={
-                        res.accuracy > 90
-                          ? "text-emerald-600"
-                          : "text-amber-600"
-                      }
-                    >
-                      接受度 {res.accuracy}%
-                    </span>
+                    {res.accuracy != null ? (
+                      <span
+                        className={
+                          res.accuracy > 90
+                            ? "text-emerald-600"
+                            : "text-amber-600"
+                        }
+                      >
+                        接受度 {res.accuracy}%
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">暂无数据</span>
+                    )}
                   </div>
                 </div>
                 <h3 className="text-sm font-bold text-slate-800 group-hover:text-indigo-600 mb-1.5 leading-tight transition-colors">

@@ -179,7 +179,7 @@ export interface Resource {
   title: string;
   type: string;
   relatedKnowledgeIds: string[]; // IDs of K-nodes this resource covers
-  accuracy: number; // 0-100%
+  accuracy: number | null; // 0-100%, null 表示暂无数据
   description: string;
   url?: string; // Optional URL for display
 }

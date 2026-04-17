@@ -110,7 +110,10 @@ export class GraphService {
     if (params.classId) nodeWhere.classId = params.classId;
 
     const directNodes = await this.prisma.graphNode.findMany({
-      where: nodeWhere,
+      where: {
+        ...nodeWhere,
+        nodeType: { not: "Knowledge" },
+      },
       include: {
         studentProfile: true,
         teacherProfile: true,
