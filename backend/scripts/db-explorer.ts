@@ -1,6 +1,7 @@
 #!/usr/bin/env ts-node
 import { PrismaClient } from '@prisma/client';
 import { PrismaMssql } from '@prisma/adapter-mssql';
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
@@ -11,8 +12,14 @@ if (!databaseUrl) {
   throw new Error('DATABASE_URL is not set');
 }
 
-const adapter = new PrismaMssql(databaseUrl);
-const prisma = new PrismaClient({ adapter });
+let prisma: PrismaClient;
+if (databaseUrl.startsWith('sqlserver://')) {
+  const adapter = new PrismaMssql(databaseUrl);
+  prisma = new PrismaClient({ adapter });
+} else {
+  const adapter = new PrismaMariaDb(databaseUrl);
+  prisma = new PrismaClient({ adapter });
+}
 
 async function listAllTables() {
 
@@ -439,16 +446,27 @@ async function listAllDbTables() {
   console.log('📋 数据库中的所有表');
   console.log(`${'─'.repeat(84)}`);
 
-  const tables = await prisma.$queryRaw<{ TABLE_NAME: string }[]>`
-    SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME
-  `;
+  const databaseUrl = process.env.DATABASE_URL || '';
+  const isMySQL = !databaseUrl.startsWith('sqlserver://');
+
+  let tables: { TABLE_NAME: string }[];
+  if (isMySQL) {
+    tables = await prisma.$queryRaw<{ TABLE_NAME: string }[]>`
+      SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME
+    `;
+  } else {
+    tables = await prisma.$queryRaw<{ TABLE_NAME: string }[]>`
+      SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME
+    `;
+  }
 
   const tableInfos: { name: string; count: number | string }[] = [];
   for (const { TABLE_NAME } of tables) {
     try {
-      const countResult = await prisma.$queryRawUnsafe<{ count: number }[]>(
-        `SELECT COUNT(*) as count FROM [${TABLE_NAME}]`
-      );
+      const countQuery = isMySQL
+        ? `SELECT COUNT(*) as count FROM \`${TABLE_NAME}\``
+        : `SELECT COUNT(*) as count FROM [${TABLE_NAME}]`;
+      const countResult = await prisma.$queryRawUnsafe<{ count: number }[]>(countQuery);
       const count = Number(countResult[0]?.count || 0);
       tableInfos.push({ name: TABLE_NAME, count });
     } catch (error) {

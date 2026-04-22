@@ -6,9 +6,6 @@ type GraphLinkAssertion = (link: any, index: number) => asserts link is GraphLin
 type ClassInfoAssertion = (classInfo: any) => asserts classInfo is { school: string; grade: string; classId: string };
 type ScenarioAssertion = (scenario: any) => asserts scenario is string;
 
-/**
- * 验证GraphData数据结构
- */
 export const validateGraphData: GraphDataAssertion = (data) => {
   if (!data) {
     throw new Error('数据为空');
@@ -57,9 +54,6 @@ export const validateGraphData: GraphDataAssertion = (data) => {
   });
 };
 
-/**
- * 验证GraphNode数据结构
- */
 export const validateGraphNode: GraphNodeAssertion = (node, index) => {
   if (!node) {
     throw new Error(`节点 ${index} 为空`);
@@ -86,9 +80,6 @@ export const validateGraphNode: GraphNodeAssertion = (node, index) => {
   }
 };
 
-/**
- * 验证GraphLink数据结构
- */
 export const validateGraphLink: GraphLinkAssertion = (link, index) => {
   if (!link) {
     throw new Error(`链接 ${index} 为空`);
@@ -111,9 +102,6 @@ export const validateGraphLink: GraphLinkAssertion = (link, index) => {
   }
 };
 
-/**
- * 转换API返回的数据为前端格式
- */
 export const transformGraphData = (data: any): GraphData => {
   try {
     validateGraphData(data);
@@ -143,9 +131,6 @@ export const transformGraphData = (data: any): GraphData => {
   }
 };
 
-/**
- * 验证ClassInfo数据结构
- */
 export const validateClassInfo: ClassInfoAssertion = (classInfo) => {
   if (!classInfo) {
     throw new Error('班级信息为空');
@@ -164,26 +149,18 @@ export const validateClassInfo: ClassInfoAssertion = (classInfo) => {
   }
 };
 
-/**
- * 验证Scenario数据
- */
 export const validateScenario: ScenarioAssertion = (scenario) => {
   if (!scenario || typeof scenario !== 'string') {
     throw new Error('场景类型必须是字符串');
   }
 };
 
-/**
- * 清理和规范化数据
- * 同时对学生节点名称进行匿名化处理以保护隐私
- */
 export const sanitizeGraphData = (data: GraphData): GraphData => {
-  let studentIndex = 0;
   return {
     nodes: data.nodes.map(node => ({
       ...node,
       id: node.id.trim(),
-      name: node.type === NodeType.STUDENT ? `student${studentIndex++}` : node.name.trim(),
+      name: node.name.trim(),
       type: node.type
     })),
     links: data.links.map(link => ({

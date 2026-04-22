@@ -187,6 +187,26 @@ export class GraphService {
       const where: any = {};
       if (scenarioId) where.scenarioId = scenarioId;
 
+      let studentNodeIds: string[] | undefined;
+      if (params.classId || params.gradeId || params.schoolId) {
+        const nodeWhere: any = { nodeType: 'Student' };
+        if (params.schoolId) nodeWhere.schoolId = params.schoolId;
+        if (params.gradeId) nodeWhere.gradeId = params.gradeId;
+        if (params.classId) nodeWhere.classId = params.classId;
+        if (scenarioId) nodeWhere.scenarioId = scenarioId;
+
+        const studentNodes = await this.prisma.graphNode.findMany({
+          where: nodeWhere,
+          select: { id: true },
+        });
+        studentNodeIds = studentNodes.map((n) => n.id);
+        if (studentNodeIds.length > 0) {
+          where.studentNodeId = { in: studentNodeIds };
+        } else {
+          return null;
+        }
+      }
+
       const responses = await this.prisma.studentSurveyResponse.findMany({
         where,
         select: {

@@ -1,8 +1,7 @@
 import { PrismaClient } from '@prisma/client';
-import { PrismaMssql } from '@prisma/adapter-mssql';
 import * as dotenv from 'dotenv';
 dotenv.config();
-const prisma = new PrismaClient({ adapter: new PrismaMssql(process.env.DATABASE_URL!) });
+const prisma = new PrismaClient();
 
 async function main() {
   const school = await prisma.school.findUnique({

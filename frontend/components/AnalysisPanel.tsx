@@ -316,7 +316,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
             <div className="flex justify-between items-center p-4 pb-0 bg-indigo-600 text-white rounded-t-xl">
                 <div className="flex items-center gap-2 mb-4">
                     <PieChart className="w-6 h-6" />
-                    <h2 className="text-xl font-bold">全域数据统计分析 Dashboard</h2>
+                    <h2 className="text-xl font-bold">全班数据统计分析 Dashboard</h2>
                 </div>
                 <button onClick={onClose} className="text-white/80 hover:text-white transition-colors mb-4">
                     <X className="w-6 h-6" />

@@ -3,6 +3,9 @@
 import "dotenv/config";
 import { defineConfig, env } from "prisma/config";
 
+const databaseUrl = env("DATABASE_URL") || "";
+const isMySQL = databaseUrl.startsWith("mysql://");
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {

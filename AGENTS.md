@@ -27,13 +27,16 @@
 
 ## 项目背景
 
-教育交互网络可视化系统，基于三元交互模型（学生-教师-知识点）。技术栈：NestJS + SQL Server + React + D3.js。
+教育交互网络可视化系统，基于三元交互模型（学生-教师-知识点）。技术栈：NestJS + Prisma ORM + React + D3.js。
 
 ---
 
 ## 技术约束
 
-- **数据库**: SQL Server + Prisma ORM，连接通过 `@prisma/adapter-mssql`
+- **数据库**: 双数据库支持
+  - **生产环境**: SQL Server (Aliyun RDS) + `@prisma/adapter-mssql`
+  - **开发环境**: MySQL (本地) + `@prisma/adapter-mariadb`
+  - **自动切换**: `PrismaService` 根据 `DATABASE_URL` 前缀自动选择 adapter
 - **后端框架**: NestJS，使用模块化架构（每个实体一个 module）
 - **前端框架**: React + TypeScript + Vite
 - **验证**: 统一使用 `zod` 进行请求校验（DTO schema）
@@ -90,14 +93,37 @@
 
 ---
 
+## 环境配置
+
+- **开发环境**: 本地 MySQL
+  - 配置文件: `backend/.env`
+  - 连接字符串: `mysql://root@localhost:3306/interaction_network_test`
+  - 使用 `npx prisma db push --accept-data-loss` 推送 schema
+- **生产环境**: Aliyun SQL Server
+  - 配置文件: `backend/.env.production`
+  - 连接字符串: `sqlserver://rm-bp10v29fkj305q3smfo.sqlserver.rds.aliyuncs.com:3433;...`
+  - 使用 `npx prisma generate` 生成 SQL Server 客户端
+- **切换命令**:
+  ```bash
+  # 切换到本地 MySQL
+  cp backend/.env backend/.env.production
+  cp backend/.env.local backend/.env
+  npx prisma generate
+  
+  # 切换到 Aliyun SQL Server
+  cp backend/.env backend/.env.local
+  cp backend/.env.production backend/.env
+  npx prisma generate
+  ```
+
+---
+
 ## MUST
 
 - don't make docs unless I told you so
 - 不要尝试npx prisma studio，因为MSSQL不支持Studio，只要知道能正常获取数据即可，通过scripts/db-explorer.ts查询数据库表。
-- 全程使用test后缀的数据库表来作为测试开发，不要修改生产环境的数据库表。
 - 生成的data文件放在`backend/datas/script_filterd`目录下。
 - script文件统一放在`backend/scripts`目录下。
-- 不要sql文件，使用prisma。
-- don't create any new tables in the database. If you have to, ask me first.
+- only CRUD database tables when you have my permission.
+- only modify prisma schema when you have my permission.
 - when you create a script without I asking, DELETE it after finishing the task.
-- don't modify prisma schema unless I told you so.

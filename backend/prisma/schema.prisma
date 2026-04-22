@@ -1,9 +1,10 @@
 generator client {
   provider = "prisma-client-js"
+  engineType = "library"
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "mysql"
 }
 
 /// 学习场景
@@ -118,7 +119,7 @@ model TeacherProfile {
 /// parentNodeId 指向父级知识点节点，支持树状结构
 model KnowledgeProfile {
   nodeId        String    @id
-  content       String?
+  content       String?   @db.Text
   knowledgeType String?
   category      String?
   parentNodeId  String?
@@ -155,13 +156,13 @@ model InteractionSession {
 /// strength 表示交互强度/频次，decimal(10,4) 保证精度
 model Interaction {
   id              String             @id @default(cuid())
-  interactionType String
+  interactionType String             @db.VarChar(50)
   createdAt       DateTime           @default(now())
-  actionType      String?
+  actionType      String?            @db.VarChar(50)
   durationSec     Int?
   sessionId       String
   sourceNodeId    String
-  strength        Decimal                 @db.Decimal(10, 4)
+  strength        Decimal            @db.Decimal(10, 4)
   targetNodeId    String
   session         InteractionSession @relation(fields: [sessionId], references: [id])
   sourceNode      GraphNode          @relation("SourceNode", fields: [sourceNodeId], references: [id], onUpdate: NoAction)

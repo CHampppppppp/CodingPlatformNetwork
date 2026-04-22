@@ -1,6 +1,5 @@
 #!/usr/bin/env ts-node
 import { PrismaClient } from '@prisma/client';
-import { PrismaMssql } from '@prisma/adapter-mssql';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -8,17 +7,13 @@ import { parse } from 'csv-parse/sync';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) throw new Error('DATABASE_URL is not set');
-
-const adapter = new PrismaMssql(databaseUrl);
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 const SCHOOL_NAME = '杭州市星洲小学';
 const GRADE_NAME = 5;
 const CLASS_NAME = '五年级5班';
 const SCENARIO_CODE = 'COLLABORATIVE_LEARNING';
-const CSV_PATH = path.resolve(__dirname, '../datas/script_filterd/星洲小学学生（伪）.csv');
+const CSV_PATH = path.resolve(__dirname, '../datas/script_filterd/星洲小学学生.csv');
 
 function parseOptionScore(value: string): number {
   const map: Record<string, number> = {
