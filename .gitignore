@@ -38,3 +38,6 @@ dist-ssr
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Backend generated data files
+backend/datas/
