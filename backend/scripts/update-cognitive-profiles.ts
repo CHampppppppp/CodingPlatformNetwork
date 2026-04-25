@@ -1,5 +1,7 @@
 #!/usr/bin/env ts-node
 import { PrismaClient } from '@prisma/client';
+import { PrismaMssql } from '@prisma/adapter-mssql';
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -7,7 +9,19 @@ import { parse } from 'csv-parse/sync';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-const prisma = new PrismaClient();
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is not set');
+}
+
+let prisma: PrismaClient;
+if (databaseUrl.startsWith('sqlserver://')) {
+  const adapter = new PrismaMssql(databaseUrl);
+  prisma = new PrismaClient({ adapter });
+} else {
+  const adapter = new PrismaMariaDb(databaseUrl);
+  prisma = new PrismaClient({ adapter });
+}
 
 const SCENARIO_CODE = 'COLLABORATIVE_LEARNING';
 

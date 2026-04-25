@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "library"
 }
 
@@ -16,8 +16,8 @@ model LearningScenario {
   isActive  Boolean              @default(true)
   createdAt DateTime             @default(now())
   updatedAt DateTime             @updatedAt
-  sessions  InteractionSession[]
   nodes     GraphNode[]
+  sessions  InteractionSession[]
 
   @@map("learning_scenarios_test")
 }
@@ -63,23 +63,24 @@ model SchoolClass {
 /// nodeType 取值: Student | Teacher | Knowledge | Class | School | Grade
 /// 通过 nodeType 区分不同类型节点，关联的扩展信息存储在对应的 Profile 表中
 model GraphNode {
-  id                String                    @id @default(cuid())
+  id                String                      @id @default(cuid())
   nodeType          String
   displayName       String
   scenarioId        String
   schoolId          String?
   gradeId           String?
   classId           String?
-  createdAt         DateTime                  @default(now())
-  updatedAt         DateTime                  @updatedAt
-  sourceEdges       Interaction[]             @relation("SourceNode")
-  targetEdges       Interaction[]             @relation("TargetNode")
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+  scenario          LearningScenario            @relation(fields: [scenarioId], references: [id])
+  sourceEdges       Interaction[]               @relation("SourceNode")
+  targetEdges       Interaction[]               @relation("TargetNode")
   knowledgeProfile  KnowledgeProfile?
+  resourceRelations ResourceKnowledgeRelation[]
   cognitiveProfiles StudentCognitiveProfile[]
   studentProfile    StudentProfile?
+  studentWorks      StudentWork[]
   teacherProfile    TeacherProfile?
-  scenario          LearningScenario          @relation(fields: [scenarioId], references: [id])
-  resourceRelations ResourceKnowledgeRelation[]
 
   @@index([nodeType])
   @@index([scenarioId])
@@ -143,6 +144,7 @@ model InteractionSession {
   createdAt    DateTime         @default(now())
   scenario     LearningScenario @relation(fields: [scenarioId], references: [id])
   interactions Interaction[]
+  studentWorks StudentWork[]
 
   @@index([scenarioId, occurredAt])
   @@index([schoolId, gradeId, classId, occurredAt])
@@ -172,6 +174,7 @@ model Interaction {
   @@index([sessionId])
   @@index([sourceNodeId, targetNodeId])
   @@index([interactionType, createdAt])
+  @@index([targetNodeId], map: "interactions_test_targetNodeId_fkey")
   @@map("interactions_test")
 }
 
@@ -222,6 +225,7 @@ model StudentCognitiveDimensionScore {
 
   @@unique([profileId, dimensionCode])
   @@index([profileId])
+  @@index([dimensionCode], map: "student_cognitive_dimension_scores_test_dimensionCode_fkey")
   @@map("student_cognitive_dimension_scores_test")
 }
 
@@ -231,32 +235,27 @@ model StudentSurveyResponse {
   studentNodeId              String
   scenarioId                 String
   submittedAt                DateTime?
-
   gender                     String?
   learningStyle              String?
   personality                String?
   groupBehavior              String?
-
-  motivationScore            Decimal? @db.Decimal(5, 2)
-  attitudeScore              Decimal? @db.Decimal(5, 2)
-  engagementScore            Decimal? @db.Decimal(5, 2)
-  selfRegulationScore        Decimal? @db.Decimal(5, 2)
-  computationalThinkingScore Decimal? @db.Decimal(5, 2)
-  learningMethodScore        Decimal? @db.Decimal(5, 2)
-  cognitiveLoadScore         Decimal? @db.Decimal(5, 2)
-  humanAiTrustScore          Decimal? @db.Decimal(5, 2)
-  aiLiteracyScore            Decimal? @db.Decimal(5, 2)
-  priorKnowledgeScore        Decimal? @db.Decimal(5, 2)
-
-  totalScore                 Decimal? @db.Decimal(5, 2)
-
+  motivationScore            Decimal?  @db.Decimal(5, 2)
+  attitudeScore              Decimal?  @db.Decimal(5, 2)
+  engagementScore            Decimal?  @db.Decimal(5, 2)
+  selfRegulationScore        Decimal?  @db.Decimal(5, 2)
+  computationalThinkingScore Decimal?  @db.Decimal(5, 2)
+  learningMethodScore        Decimal?  @db.Decimal(5, 2)
+  cognitiveLoadScore         Decimal?  @db.Decimal(5, 2)
+  humanAiTrustScore          Decimal?  @db.Decimal(5, 2)
+  aiLiteracyScore            Decimal?  @db.Decimal(5, 2)
+  priorKnowledgeScore        Decimal?  @db.Decimal(5, 2)
+  totalScore                 Decimal?  @db.Decimal(5, 2)
   aiContentSatisfaction      String?
   resourceHelpfulness        String?
   posterSatisfaction         String?
   teachingPreference         String?
   helpSource                 String?
-
-  createdAt                  DateTime @default(now())
+  createdAt                  DateTime  @default(now())
 
   @@index([studentNodeId])
   @@index([scenarioId])
@@ -266,15 +265,14 @@ model StudentSurveyResponse {
 /// 资源表，存储资源中心展示的学习资源
 /// resourceType 取值: VIDEO | ARTICLE | PRACTICE | GAME | DOCUMENT
 model Resource {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  url         String?
-  resourceType String
-  acceptanceRate Decimal? @db.Decimal(5, 2)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+  id                 String                      @id @default(cuid())
+  title              String
+  description        String?
+  url                String?
+  resourceType       String
+  acceptanceRate     Decimal?                    @db.Decimal(5, 2)
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
   knowledgeRelations ResourceKnowledgeRelation[]
   studentRates       StudentResourceRate[]
 
@@ -287,8 +285,8 @@ model ResourceKnowledgeRelation {
   id              String    @id @default(cuid())
   resourceId      String
   knowledgeNodeId String
-  resource        Resource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
   knowledgeNode   GraphNode @relation(fields: [knowledgeNodeId], references: [id], onDelete: Cascade)
+  resource        Resource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
 
   @@unique([resourceId, knowledgeNodeId])
   @@index([knowledgeNodeId])
@@ -307,4 +305,43 @@ model StudentResourceRate {
   @@unique([studentId, resourceId])
   @@index([resourceId])
   @@map("student_resource_rates_test")
+}
+
+/// 学生作品表，存储学生创作的作品信息
+/// 关联至 GraphNode (nodeType = Student) 和 InteractionSession
+model StudentWork {
+  id               String              @id @default(cuid())
+  studentNodeId    String
+  sessionId        String?
+  externalWorkId   String?             @unique
+  workName         String
+  publishedAt      DateTime?
+  /// 作品所属主题信息
+  themeId          String?
+  themeName        String?
+  themeDirectory   String?
+  textbookName     String?
+  /// 作品互动数据
+  likeCount        Int                 @default(0)
+  commentCount     Int                 @default(0)
+  /// 教师评分
+  teacherName      String?
+  teacherScore     Decimal?            @db.Decimal(5, 2)
+  teacherComment   String?             @db.Text
+  /// 点赞详情（JSON 数组，存储点赞学生信息）
+  likeDetails      String?             @db.Text
+  /// 评论详情（JSON 数组，存储评论内容和学生信息）
+  commentDetails   String?             @db.Text
+  /// 埋点数据
+  activityLogCount Int                 @default(0)
+  activityLogMeta  String?             @db.Text
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  session          InteractionSession? @relation(fields: [sessionId], references: [id])
+  studentNode      GraphNode           @relation(fields: [studentNodeId], references: [id], onDelete: Cascade)
+
+  @@index([studentNodeId])
+  @@index([sessionId])
+  @@index([externalWorkId])
+  @@map("student_works_test")
 }

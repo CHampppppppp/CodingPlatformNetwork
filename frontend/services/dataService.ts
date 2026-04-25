@@ -30,9 +30,9 @@ import {
 /**
  * 获取可用的学校列表
  */
-export const getSchools = async (): Promise<string[]> => {
+export const getSchools = async (scenario?: string): Promise<string[]> => {
   try {
-    return await fetchSchools();
+    return await fetchSchools(scenario);
   } catch (error) {
     console.error("获取学校列表失败:", error);
     return [];
@@ -42,9 +42,9 @@ export const getSchools = async (): Promise<string[]> => {
 /**
  * 根据学校获取年级列表
  */
-export const getGradesBySchool = async (school: string): Promise<string[]> => {
+export const getGradesBySchool = async (school: string, scenario?: string): Promise<string[]> => {
   try {
-    return await fetchGradesBySchool(school);
+    return await fetchGradesBySchool(school, scenario);
   } catch (error) {
     console.error("获取年级列表失败:", error);
     return [];
@@ -57,9 +57,10 @@ export const getGradesBySchool = async (school: string): Promise<string[]> => {
 export const getClassesBySchoolAndGrade = async (
   school: string,
   grade: string,
+  scenario?: string,
 ): Promise<string[]> => {
   try {
-    return await fetchClassesBySchoolAndGrade(school, grade);
+    return await fetchClassesBySchoolAndGrade(school, grade, scenario);
   } catch (error) {
     console.error("获取班级列表失败:", error);
     return [];

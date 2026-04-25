@@ -1,7 +1,25 @@
+#!/usr/bin/env ts-node
 import { PrismaClient } from '@prisma/client';
+import { PrismaMssql } from '@prisma/adapter-mssql';
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import * as dotenv from 'dotenv';
-dotenv.config();
-const prisma = new PrismaClient();
+import * as path from 'path';
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is not set');
+}
+
+let prisma: PrismaClient;
+if (databaseUrl.startsWith('sqlserver://')) {
+  const adapter = new PrismaMssql(databaseUrl);
+  prisma = new PrismaClient({ adapter });
+} else {
+  const adapter = new PrismaMariaDb(databaseUrl);
+  prisma = new PrismaClient({ adapter });
+}
 
 async function main() {
   const school = await prisma.school.findUnique({ where: { name: '杭州市钱塘区前进小学' } });

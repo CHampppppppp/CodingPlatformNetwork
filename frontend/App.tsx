@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Settings,
   Users,
@@ -45,7 +45,7 @@ import {
   InteractionType,
   GraphLink,
 } from "./types";
-import { debounce } from "./services/performanceUtils";
+
 
 const dimensionCodeToStrategyKey: Record<string, keyof CognitiveAttributes> = {
   knowledgeReserve: "knowledgeReserve",
@@ -169,19 +169,24 @@ const App: React.FC = () => {
     setScenario(Object.values(Scenario)[0]);
   }, [classOptions.schools]);
 
-  // Load schools on mount
   useEffect(() => {
     const loadSchools = async () => {
       setOptionsLoading((prev) => ({ ...prev, schools: true }));
       try {
-        const schools = await getSchools();
+        const schools = await getSchools(scenario);
         setClassOptions((prev) => ({ ...prev, schools }));
 
-        // Set initial school if available
         if (schools.length > 0) {
           setClassInfo((prev) => ({
             ...prev,
             school: schools[0],
+            grade: "",
+            classId: "",
+          }));
+        } else {
+          setClassInfo((prev) => ({
+            ...prev,
+            school: "",
             grade: "",
             classId: "",
           }));
@@ -194,7 +199,7 @@ const App: React.FC = () => {
     };
 
     loadSchools();
-  }, []);
+  }, [scenario]);
 
   // Load grades when school changes
   useEffect(() => {
@@ -203,10 +208,9 @@ const App: React.FC = () => {
     const loadGrades = async () => {
       setOptionsLoading((prev) => ({ ...prev, grades: true }));
       try {
-        const grades = await getGradesBySchool(classInfo.school);
+        const grades = await getGradesBySchool(classInfo.school, scenario);
         setClassOptions((prev) => ({ ...prev, grades }));
 
-        // Reset grade and classId when school changes
         setClassInfo((prev) => ({
           ...prev,
           grade: grades.length > 0 ? grades[0] : "",
@@ -221,7 +225,7 @@ const App: React.FC = () => {
     };
 
     loadGrades();
-  }, [classInfo.school]);
+  }, [classInfo.school, scenario]);
 
   // Load classes when school or grade changes
   useEffect(() => {
@@ -240,6 +244,7 @@ const App: React.FC = () => {
         const classes = await getClassesBySchoolAndGrade(
           classInfo.school,
           classInfo.grade,
+          scenario,
         );
         setClassOptions((prev) => ({ ...prev, classes }));
 
@@ -264,12 +269,15 @@ const App: React.FC = () => {
     };
 
     loadClasses();
-  }, [classInfo.school, classInfo.grade]);
+  }, [classInfo.school, classInfo.grade, scenario]);
 
-  // Load Data Effect with debounce
+  const requestIdRef = useRef(0);
+  const loadDataTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const loadData = useCallback(async () => {
-    // Skip if classInfo is not complete
     if (!classInfo.school || !classInfo.grade || !classInfo.classId) return;
+
+    const currentRequestId = ++requestIdRef.current;
 
     setLoading(true);
     setError(null);
@@ -333,17 +341,33 @@ const App: React.FC = () => {
       setError(errorMessage);
       console.error("加载数据失败:", err);
     } finally {
-      setLoading(false);
+      if (currentRequestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [scenario, classInfo]);
 
-  const debouncedLoadData = useMemo(() => {
-    return debounce(loadData, 300);
-  }, [loadData]);
-
   useEffect(() => {
-    debouncedLoadData();
-  }, [debouncedLoadData]);
+    if (loadDataTimeoutRef.current) {
+      clearTimeout(loadDataTimeoutRef.current);
+      loadDataTimeoutRef.current = null;
+    }
+
+    if (!classInfo.school || !classInfo.grade || !classInfo.classId) {
+      return;
+    }
+
+    loadDataTimeoutRef.current = setTimeout(() => {
+      loadData();
+    }, 300);
+
+    return () => {
+      if (loadDataTimeoutRef.current) {
+        clearTimeout(loadDataTimeoutRef.current);
+        loadDataTimeoutRef.current = null;
+      }
+    };
+  }, [classInfo.school, classInfo.grade, classInfo.classId, scenario]);
 
   const openAnalysis = (tab: "overview" | "subgraph") => {
     setAnalysisDefaultTab(tab);

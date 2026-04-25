@@ -11,7 +11,7 @@
     "db:explore": "ts-node scripts/db-explorer.ts",
     "db:generate": "prisma generate",
     "start": "nest start",
-    "start:dev": "nest start --watch",
+    "start:dev": "NODE_OPTIONS='--max-old-space-size=4096' nest start --watch",
     "restart:dev": "lsof -ti:3334 | xargs kill -9 2>/dev/null; nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",

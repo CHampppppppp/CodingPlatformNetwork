@@ -479,9 +479,12 @@ export const fetchInteractions = async (params: {
 };
 
 // 获取学校列表
-export const fetchSchools = async (): Promise<string[]> => {
+export const fetchSchools = async (scenario?: string): Promise<string[]> => {
   try {
-    const url = `${API_BASE_URL}/org/schools`;
+    const scenarioCode = scenario ? scenarioCodeMap[scenario] || scenario : undefined;
+    const queryParams = new URLSearchParams();
+    if (scenarioCode) queryParams.append("scenario_code", scenarioCode);
+    const url = `${API_BASE_URL}/org/schools${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
     console.log("请求学校列表:", url);
 
     const response = await fetchWithRetry(url, {
@@ -518,6 +521,7 @@ export const fetchSchools = async (): Promise<string[]> => {
 // 根据学校获取年级列表
 export const fetchGradesBySchool = async (
   school: string,
+  scenario?: string,
 ): Promise<string[]> => {
   try {
     const schoolId = schoolNameToId.get(school);
@@ -525,9 +529,12 @@ export const fetchGradesBySchool = async (
       return [];
     }
 
-    const url = `${API_BASE_URL}/org/grades?school_id=${encodeURIComponent(
-      schoolId,
-    )}`;
+    const scenarioCode = scenario ? scenarioCodeMap[scenario] || scenario : undefined;
+    const queryParams = new URLSearchParams();
+    queryParams.append("school_id", schoolId);
+    if (scenarioCode) queryParams.append("scenario_code", scenarioCode);
+
+    const url = `${API_BASE_URL}/org/grades?${queryParams.toString()}`;
     console.log("请求年级列表:", url);
 
     const response = await fetchWithRetry(url, {
@@ -567,6 +574,7 @@ export const fetchGradesBySchool = async (
 export const fetchClassesBySchoolAndGrade = async (
   school: string,
   grade: string,
+  scenario?: string,
 ): Promise<string[]> => {
   try {
     const schoolId = schoolNameToId.get(school);
@@ -587,9 +595,12 @@ export const fetchClassesBySchoolAndGrade = async (
       return [];
     }
 
-    const url = `${API_BASE_URL}/org/classes?grade_id=${encodeURIComponent(
-      gradeId,
-    )}`;
+    const scenarioCode = scenario ? scenarioCodeMap[scenario] || scenario : undefined;
+    const queryParams = new URLSearchParams();
+    queryParams.append("grade_id", gradeId);
+    if (scenarioCode) queryParams.append("scenario_code", scenarioCode);
+
+    const url = `${API_BASE_URL}/org/classes?${queryParams.toString()}`;
     console.log("请求班级列表:", url);
 
     const response = await fetchWithRetry(url, {

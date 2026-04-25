@@ -1,5 +1,18 @@
 import { GraphData, GraphNode, GraphLink, NodeType, InteractionType } from '../types';
 
+const KNOWLEDGE_NODES_TO_KEEP = [
+  'html语言',
+  'html标签',
+  '超链接',
+  '基本标签',
+  '文档整体属性',
+  '文本标签',
+  '格式排版',
+  '多媒体',
+  '表格',
+  'html网页添加CSS',
+];
+
 type GraphDataAssertion = (data: any) => asserts data is GraphData;
 type GraphNodeAssertion = (node: any, index: number) => asserts node is GraphNode;
 type GraphLinkAssertion = (link: any, index: number) => asserts link is GraphLink;
@@ -156,14 +169,27 @@ export const validateScenario: ScenarioAssertion = (scenario) => {
 };
 
 export const sanitizeGraphData = (data: GraphData): GraphData => {
+  const filteredNodes = data.nodes.filter(node => {
+    if (node.type !== NodeType.KNOWLEDGE) return true;
+    return KNOWLEDGE_NODES_TO_KEEP.includes(node.name.trim());
+  });
+
+  const validNodeIds = new Set(filteredNodes.map(node => node.id.trim()));
+
+  const filteredLinks = data.links.filter(link => {
+    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+    return validNodeIds.has(sourceId.trim()) && validNodeIds.has(targetId.trim());
+  });
+
   return {
-    nodes: data.nodes.map(node => ({
+    nodes: filteredNodes.map(node => ({
       ...node,
       id: node.id.trim(),
       name: node.name.trim(),
       type: node.type
     })),
-    links: data.links.map(link => ({
+    links: filteredLinks.map(link => ({
       ...link,
       source: typeof link.source === 'object' ? link.source : link.source.trim(),
       target: typeof link.target === 'object' ? link.target : link.target.trim(),
