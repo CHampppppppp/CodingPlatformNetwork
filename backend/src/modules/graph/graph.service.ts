@@ -55,7 +55,6 @@ export class GraphService {
           ...(scenarioId
             ? {
                 sourceNode: { scenarioId },
-                targetNode: { scenarioId },
               }
             : {}),
         },
@@ -125,6 +124,8 @@ export class GraphService {
     for (const node of directNodes) {
       this.putNode(nodeMap, node, schoolNames, gradeNames, classNames);
     }
+
+    await this.addMockTeacherNodes(nodeMap, scenarioId, schoolNames, gradeNames, classNames);
 
     const mapInteractionType = (type: string): "PHYSICAL" | "PLATFORM" => {
       return type === "PLATFORM" ? "PLATFORM" : "PHYSICAL";
@@ -542,5 +543,135 @@ export class GraphService {
       classNames.set(cls.id, String(cls.className));
     }
     return classNames;
+  }
+
+  private async buildWorkInteractionLinks(
+    nodeMap: Map<string, Node>,
+    scenarioId: string | undefined,
+  ): Promise<Link[]> {
+    if (!scenarioId || nodeMap.size === 0) return [];
+
+    const externalIdMap = new Map<string, string>();
+    const nameMap = new Map<string, string>();
+    const studentIds: string[] = [];
+
+    for (const [id, node] of nodeMap) {
+      if (node.type === "STUDENT") {
+        studentIds.push(id);
+        if (node.studentProfile?.externalUserId) {
+          externalIdMap.set(node.studentProfile.externalUserId, id);
+        }
+        nameMap.set(node.name, id);
+      }
+    }
+
+    if (studentIds.length === 0) return [];
+
+    const works = await this.prisma.studentWork.findMany({
+      where: { studentNodeId: { in: studentIds } },
+    });
+
+    const links: Link[] = [];
+    const seen = new Set<string>();
+
+    for (const work of works) {
+      const authorId = work.studentNodeId;
+
+      if (work.likeDetails) {
+        const likerIds = work.likeDetails.split(";").filter((s) => s.trim());
+        for (const likerExternalId of likerIds) {
+          const likerNodeId = externalIdMap.get(likerExternalId.trim());
+          if (likerNodeId && likerNodeId !== authorId) {
+            const key = `${likerNodeId}_${authorId}_LIKE`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              links.push({
+                source: likerNodeId,
+                target: authorId,
+                value: 1.5,
+                type: "PLATFORM",
+                actionType: "LIKE",
+              });
+            }
+          }
+        }
+      }
+
+      if (work.commentDetails) {
+        const comments = work.commentDetails.split("|").filter((s) => s.trim());
+        for (const comment of comments) {
+          const colonIdx = comment.indexOf(":");
+          if (colonIdx <= 0) continue;
+          const commenterName = comment.substring(0, colonIdx).trim();
+          const commenterNodeId = nameMap.get(commenterName);
+          if (commenterNodeId && commenterNodeId !== authorId) {
+            const key = `${commenterNodeId}_${authorId}_COMMENT`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              links.push({
+                source: commenterNodeId,
+                target: authorId,
+                value: 2.5,
+                type: "PLATFORM",
+                actionType: "COMMENT",
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return links;
+  }
+
+  private async addMockTeacherNodes(
+    nodeMap: Map<string, Node>,
+    scenarioId: string | undefined,
+    schoolNames: Map<string, string>,
+    gradeNames: Map<string, string>,
+    classNames: Map<string, string>,
+  ): Promise<void> {
+    if (!scenarioId) return;
+
+    const classStudentMap = new Map<string, Node[]>();
+    for (const node of nodeMap.values()) {
+      if (node.type === "STUDENT" && node.studentProfile?.classId) {
+        const list = classStudentMap.get(node.studentProfile.classId) || [];
+        list.push(node);
+        classStudentMap.set(node.studentProfile.classId, list);
+      }
+    }
+
+    for (const [classId, students] of classStudentMap) {
+      const hasTeacher = Array.from(nodeMap.values()).some(
+        (n) => n.type === "TEACHER" && n.teacherProfile?.teachingClass === classId,
+      );
+
+      if (hasTeacher) continue;
+
+      const firstStudent = students[0];
+      const schoolId =
+        firstStudent.studentProfile?.school ||
+        Object.keys(schoolNames).find((k) => schoolNames.get(k) === firstStudent.studentProfile?.school) ||
+        "";
+      const gradeId =
+        Object.keys(gradeNames).find((k) => gradeNames.get(k) === firstStudent.studentProfile?.grade) || "";
+      const className = classNames.get(classId) || classId;
+
+      const mockTeacherId = `mock-teacher-${classId}`;
+      nodeMap.set(mockTeacherId, {
+        id: mockTeacherId,
+        type: "TEACHER",
+        name: `${className}教师`,
+        group: 1,
+        val: 25,
+        teacherProfile: {
+          school: firstStudent.studentProfile?.school || null,
+          teachingGrade: firstStudent.studentProfile?.grade || null,
+          teachingClass: className,
+          subject: "社团课",
+        },
+      });
+    }
   }
 }
