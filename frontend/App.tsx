@@ -463,7 +463,33 @@ const App: React.FC = () => {
       return;
     }
 
-    setHighlightedNodeIds([node.id]);
+    if (node.type === NodeType.STUDENT) {
+      const connectedKnowledgeIds: string[] = [];
+      const knowledgeIdSet = new Set(
+        graphData.nodes.filter((n) => n.type === NodeType.KNOWLEDGE).map((n) => n.id),
+      );
+
+      graphData.links.forEach((link) => {
+        const sourceId =
+          typeof link.source === "object"
+            ? (link.source as any).id
+            : link.source;
+        const targetId =
+          typeof link.target === "object"
+            ? (link.target as any).id
+            : link.target;
+
+        if (sourceId === node.id && knowledgeIdSet.has(targetId)) {
+          connectedKnowledgeIds.push(targetId);
+        } else if (targetId === node.id && knowledgeIdSet.has(sourceId)) {
+          connectedKnowledgeIds.push(sourceId);
+        }
+      });
+
+      setHighlightedNodeIds([node.id, ...connectedKnowledgeIds]);
+    } else {
+      setHighlightedNodeIds([node.id]);
+    }
 
     if (node.type !== NodeType.STUDENT) {
       return;
@@ -494,6 +520,35 @@ const App: React.FC = () => {
       const selfRegulatedLearning = getDim("PRAC_PROBLEM_SOLVING") / 2;
       const aiLiteracy = getDim("COG_TECH_LITERACY") / 2;
 
+      const newProfileData = {
+        knowledgeReserve,
+        learningEngagement,
+        cognitiveLoad,
+        learningMotivation,
+        computationalThinking,
+        humanAiTrust,
+        learningMethod,
+        learningAttitude,
+        selfRegulatedLearning,
+        aiLiteracy,
+        template: {
+          profileMeta: templateProfile.profile
+            ? {
+                version: templateProfile.profile.version,
+                generatedAt: templateProfile.profile.generatedAt,
+                totalScore: templateProfile.profile.totalScore,
+              }
+            : undefined,
+          dimensions: templateProfile.dimensions.map((d) => ({
+            code: d.dimensionCode,
+            name: d.dimensionNameZh,
+            category: d.category,
+            score: d.scoreValue,
+            level: d.scoreLevel,
+          })),
+        },
+      };
+
       setSelectedNode((prev) => {
         if (!prev || prev.id !== node.id || prev.type !== NodeType.STUDENT) {
           return prev;
@@ -519,35 +574,39 @@ const App: React.FC = () => {
           ...prev,
           studentProfile: {
             ...baseProfile,
-            knowledgeReserve,
-            learningEngagement,
-            cognitiveLoad,
-            learningMotivation,
-            computationalThinking,
-            humanAiTrust,
-            learningMethod,
-            learningAttitude,
-            selfRegulatedLearning,
-            aiLiteracy,
-            template: {
-              profileMeta: templateProfile.profile
-                ? {
-                    version: templateProfile.profile.version,
-                    generatedAt: templateProfile.profile.generatedAt,
-                    totalScore: templateProfile.profile.totalScore,
-                  }
-                : undefined,
-              dimensions: templateProfile.dimensions.map((d) => ({
-                code: d.dimensionCode,
-                name: d.dimensionNameZh,
-                category: d.category,
-                score: d.scoreValue,
-                level: d.scoreLevel,
-              })),
-            },
+            ...newProfileData,
           },
         };
       });
+
+      setGraphData((prev) => ({
+        ...prev,
+        nodes: prev.nodes.map((n) =>
+          n.id === node.id && n.type === NodeType.STUDENT
+            ? {
+                ...n,
+                studentProfile: {
+                  ...(n.studentProfile || {
+                    school: "",
+                    grade: "",
+                    classId: "",
+                    knowledgeReserve: 0,
+                    learningEngagement: 0,
+                    cognitiveLoad: 0,
+                    learningMotivation: 0,
+                    computationalThinking: 0,
+                    humanAiTrust: 0,
+                    learningMethod: 0,
+                    learningAttitude: 0,
+                    selfRegulatedLearning: 0,
+                    aiLiteracy: 0,
+                  }),
+                  ...newProfileData,
+                },
+              }
+            : n,
+        ),
+      }));
     } catch (err) {
       console.error("加载学生认知模板失败:", err);
     } finally {
