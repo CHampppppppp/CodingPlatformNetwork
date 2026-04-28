@@ -30,9 +30,9 @@ import {
   getSchools,
   getGradesBySchool,
   getClassesBySchoolAndGrade,
-  fetchStudentCognitiveTemplate,
   fetchResourceStudentRates,
 } from "./services/dataService";
+import { fetchStudentCognitiveTemplate as fetchStudentCognitiveTemplateRaw } from "./services/apiService";
 import { getStrategy } from "./services/strategies";
 import {
   Scenario,
@@ -463,31 +463,80 @@ const App: React.FC = () => {
 
     try {
       setTemplateLoadingStudentId(node.id);
-      const templateProfile = await fetchStudentCognitiveTemplate(node.id);
+      const templateProfile = await fetchStudentCognitiveTemplateRaw(node.id);
+
+      const dimMap = new Map<string, number>(
+        templateProfile.dimensions.map((d) => [d.dimensionCode, d.scoreValue]),
+      );
+
+      const getDim = (code: string): number => dimMap.get(code) ?? 0;
+
+      const knowledgeReserve =
+        ((getDim("COG_READING") + getDim("COG_LANGUAGE") + getDim("COG_SCIENCE_KNOWLEDGE")) / 3) / 2;
+      const learningEngagement =
+        ((getDim("COG_SCIENCE_INQUIRY") + getDim("PRAC_PRACTICE") + getDim("PRAC_COLLABORATION")) / 3) / 2;
+      const cognitiveLoad =
+        ((getDim("PSY_ANXIETY") + getDim("PSY_DEPRESSION") + getDim("PSY_PRESSURE")) / 3) * 0.5;
+      const learningMotivation = getDim("PSY_RESILIENCE") / 2;
+      const computationalThinking = getDim("COG_COMPUTATIONAL") / 2;
+      const humanAiTrust = getDim("COG_TECH_LITERACY") / 2;
+      const learningMethod =
+        ((getDim("PRAC_PROBLEM_SOLVING") + getDim("PRAC_COLLABORATION")) / 2) / 2;
+      const learningAttitude = getDim("PRAC_INNOVATION") / 2;
+      const selfRegulatedLearning = getDim("PRAC_PROBLEM_SOLVING") / 2;
+      const aiLiteracy = getDim("COG_TECH_LITERACY") / 2;
+
       setSelectedNode((prev) => {
         if (!prev || prev.id !== node.id || prev.type !== NodeType.STUDENT) {
           return prev;
         }
 
+        const baseProfile = prev.studentProfile || {
+          school: "",
+          grade: "",
+          classId: "",
+          knowledgeReserve: 0,
+          learningEngagement: 0,
+          cognitiveLoad: 0,
+          learningMotivation: 0,
+          computationalThinking: 0,
+          humanAiTrust: 0,
+          learningMethod: 0,
+          learningAttitude: 0,
+          selfRegulatedLearning: 0,
+          aiLiteracy: 0,
+        };
+
         return {
           ...prev,
           studentProfile: {
-            ...(prev.studentProfile || {
-              school: "",
-              grade: "",
-              classId: "",
-              knowledgeReserve: 0,
-              learningEngagement: 0,
-              cognitiveLoad: 0,
-              learningMotivation: 0,
-              computationalThinking: 0,
-              humanAiTrust: 0,
-              learningMethod: 0,
-              learningAttitude: 0,
-              selfRegulatedLearning: 0,
-              aiLiteracy: 0,
-            }),
-            ...templateProfile,
+            ...baseProfile,
+            knowledgeReserve,
+            learningEngagement,
+            cognitiveLoad,
+            learningMotivation,
+            computationalThinking,
+            humanAiTrust,
+            learningMethod,
+            learningAttitude,
+            selfRegulatedLearning,
+            aiLiteracy,
+            template: {
+              profileMeta: templateProfile.profile
+                ? {
+                    version: templateProfile.profile.version,
+                    generatedAt: templateProfile.profile.generatedAt,
+                    totalScore: templateProfile.profile.totalScore,
+                  }
+                : undefined,
+              dimensions: templateProfile.dimensions.map((d) => ({
+                code: d.dimensionCode,
+                name: d.dimensionNameZh,
+                category: d.category,
+                score: d.scoreValue,
+                level: d.scoreLevel,
+              })),
+            },
           },
         };
       });
@@ -872,110 +921,161 @@ const App: React.FC = () => {
                     {selectedNode.type === NodeType.STUDENT &&
                       selectedNode.studentProfile && (
                         <>
-                          <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
+                          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
                             <Activity className="w-4 h-4 text-indigo-500" />
                             <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                              认知维度分析
+                              个人维度分析
                             </h5>
                           </div>
-                          {templateLoadingStudentId === selectedNode.id && (
-                            <div className="mb-4 flex items-center gap-2 text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              正在加载认知模板...
-                            </div>
-                          )}
-                          <div className="space-y-4">
-                            {(selectedNode.studentProfile.template
-                              ?.dimensions &&
-                            selectedNode.studentProfile.template.dimensions
-                              .length > 0
-                              ? selectedNode.studentProfile.template.dimensions.map(
-                                  (item) => ({
-                                    renderKey: item.code,
-                                    label: item.name,
-                                    category: item.category,
-                                    score: item.score,
-                                    strategyKey:
-                                      dimensionCodeToStrategyKey[item.code],
-                                  }),
-                                )
-                              : Object.entries(cognitiveLabels).map(
-                                  ([key, label]) => {
-                                    const attributeKey =
-                                      key as keyof CognitiveAttributes;
-                                    const valueRaw =
-                                      selectedNode.studentProfile![
-                                        attributeKey
-                                      ];
-                                    const value =
-                                      typeof valueRaw === "number"
-                                        ? valueRaw
-                                        : 0;
-                                    return {
-                                      renderKey: key,
-                                      label,
-                                      category: "核心维度",
-                                      score: value,
-                                      strategyKey: attributeKey,
-                                    };
-                                  },
-                                )
-                            ).map((dimension) => {
-                              const value =
-                                typeof dimension.score === "number"
-                                  ? dimension.score
-                                  : 0;
-                              const canShowStrategy =
-                                typeof dimension.strategyKey !== "undefined";
-                              return (
-                                <div
-                                  key={dimension.renderKey}
-                                  className={`space-y-1.5 group relative ${
-                                    canShowStrategy
-                                      ? "cursor-help"
-                                      : "cursor-default"
-                                  }`}
-                                  onMouseEnter={(e) => {
-                                    if (dimension.strategyKey) {
-                                      handleAttributeEnter(
-                                        e,
-                                        dimension.label,
-                                        value,
-                                        dimension.strategyKey,
-                                      );
-                                    }
-                                  }}
-                                  onMouseLeave={() => {
-                                    if (canShowStrategy) {
-                                      handleAttributeLeave();
-                                    }
-                                  }}
-                                >
-                                  <div className="flex justify-between text-xs text-slate-600">
-                                    <span>{dimension.label}</span>
-                                    <span className="font-bold text-slate-800">
-                                      {value}/5
-                                    </span>
+                          <div className="grid grid-cols-2 gap-3">
+                            {Object.entries(cognitiveLabels).map(
+                              ([key, label]) => {
+                                const attributeKey =
+                                  key as keyof CognitiveAttributes;
+                                const valueRaw =
+                                  selectedNode.studentProfile![attributeKey];
+                                const value =
+                                  typeof valueRaw === "number" ? valueRaw : 0;
+                                const canShowStrategy =
+                                  typeof dimensionCodeToStrategyKey[key] !==
+                                  "undefined";
+                                return (
+                                  <div
+                                    key={key}
+                                    className={`space-y-1 group relative p-2 bg-slate-50 rounded-lg border border-slate-100 ${
+                                      canShowStrategy
+                                        ? "cursor-help"
+                                        : "cursor-default"
+                                    }`}
+                                    onMouseEnter={(e) => {
+                                      if (dimensionCodeToStrategyKey[key]) {
+                                        handleAttributeEnter(
+                                          e,
+                                          label,
+                                          value,
+                                          dimensionCodeToStrategyKey[key],
+                                        );
+                                      }
+                                    }}
+                                    onMouseLeave={() => {
+                                      if (canShowStrategy) {
+                                        handleAttributeLeave();
+                                      }
+                                    }}
+                                  >
+                                    <div className="flex justify-between text-[11px] text-slate-600">
+                                      <span className="font-medium">{label}</span>
+                                      <span className="font-bold text-slate-800">
+                                        {value.toFixed(1)}/5
+                                      </span>
+                                    </div>
+                                    <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all duration-500 ease-out ${
+                                          value >= 4
+                                            ? "bg-emerald-500"
+                                            : value >= 3
+                                            ? "bg-indigo-500"
+                                            : "bg-amber-500"
+                                        } group-hover:brightness-95`}
+                                        style={{
+                                          width: `${(value / 5) * 100}%`,
+                                        }}
+                                      ></div>
+                                    </div>
                                   </div>
-                                  <div className="text-[10px] text-slate-400">
-                                    {dimension.category}
-                                  </div>
-                                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                                    <div
-                                      className={`h-full rounded-full transition-all duration-500 ease-out ${
-                                        value >= 4
-                                          ? "bg-emerald-500"
-                                          : value >= 3
-                                          ? "bg-indigo-500"
-                                          : "bg-amber-500"
-                                      } group-hover:brightness-95`}
-                                      style={{ width: `${(value / 5) * 100}%` }}
-                                    ></div>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              },
+                            )}
                           </div>
+
+                          {selectedNode.studentProfile.template?.dimensions
+                            ?.length > 0 && (
+                            <>
+                              <div className="flex items-center gap-2 mt-5 mb-3 pb-2 border-b border-slate-100">
+                                <Activity className="w-4 h-4 text-indigo-500" />
+                                <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                  个人学情画像
+                                </h5>
+                              </div>
+                              {templateLoadingStudentId === selectedNode.id && (
+                                <div className="mb-4 flex items-center gap-2 text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  正在加载认知模板...
+                                </div>
+                              )}
+                              <div className="grid grid-cols-2 gap-3">
+                                {selectedNode.studentProfile.template.dimensions.map(
+                                  (item) => {
+                                    const rawValue =
+                                      typeof item.score === "number"
+                                        ? item.score
+                                        : 0;
+                                    const value = rawValue;
+                                    const canShowStrategy =
+                                      typeof dimensionCodeToStrategyKey[
+                                        item.code
+                                      ] !== "undefined";
+                                    return (
+                                      <div
+                                        key={item.code}
+                                        className={`space-y-1 group relative p-2 bg-slate-50 rounded-lg border border-slate-100 ${
+                                          canShowStrategy
+                                            ? "cursor-help"
+                                            : "cursor-default"
+                                        }`}
+                                        onMouseEnter={(e) => {
+                                          if (
+                                            dimensionCodeToStrategyKey[item.code]
+                                          ) {
+                                            handleAttributeEnter(
+                                              e,
+                                              item.name,
+                                              value,
+                                              dimensionCodeToStrategyKey[
+                                                item.code
+                                              ],
+                                            );
+                                          }
+                                        }}
+                                        onMouseLeave={() => {
+                                          if (canShowStrategy) {
+                                            handleAttributeLeave();
+                                          }
+                                        }}
+                                      >
+                                        <div className="flex justify-between text-[11px] text-slate-600">
+                                          <span className="font-medium">
+                                            {item.name}
+                                          </span>
+                                          <span className="font-bold text-slate-800">
+                                            {value.toFixed(1)}/10
+                                          </span>
+                                        </div>
+                                        <div className="text-[9px] text-slate-400 truncate">
+                                          {item.category}
+                                        </div>
+                                        <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                                          <div
+                                            className={`h-full rounded-full transition-all duration-500 ease-out ${
+                                              value >= 8
+                                                ? "bg-emerald-500"
+                                                : value >= 6
+                                                ? "bg-indigo-500"
+                                                : "bg-amber-500"
+                                            } group-hover:brightness-95`}
+                                            style={{
+                                              width: `${Math.min((value / 10) * 100, 100)}%`,
+                                            }}
+                                          ></div>
+                                        </div>
+                                      </div>
+                                    );
+                                  },
+                                )}
+                              </div>
+                            </>
+                          )}
                           <div className="mt-5 p-3 bg-indigo-50 rounded-lg border border-indigo-100 flex gap-2 items-start">
                             <Lightbulb className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
                             <p className="text-[10px] text-indigo-700 leading-relaxed">
@@ -1206,6 +1306,8 @@ const App: React.FC = () => {
         onClose={() => setIsAnalysisOpen(false)}
         data={graphData}
         resources={resources}
+        scenario={scenario}
+        classInfo={classInfo}
         defaultTab={analysisDefaultTab}
       />
     </div>

@@ -134,17 +134,18 @@ model KnowledgeProfile {
 
 /// 一次交互会话，记录某学习场景在某班级/时间下的完整交互记录
 model InteractionSession {
-  id           String           @id @default(cuid())
-  scenarioId   String
-  schoolId     String
-  gradeId      String
-  classId      String?
-  sessionName  String?
-  occurredAt   DateTime
-  createdAt    DateTime         @default(now())
-  scenario     LearningScenario @relation(fields: [scenarioId], references: [id])
-  interactions Interaction[]
-  studentWorks StudentWork[]
+  id                String                    @id @default(cuid())
+  scenarioId        String
+  schoolId          String
+  gradeId           String
+  classId           String?
+  sessionName       String?
+  occurredAt        DateTime
+  createdAt         DateTime                  @default(now())
+  scenario          LearningScenario          @relation(fields: [scenarioId], references: [id])
+  interactions      Interaction[]
+  studentWorks      StudentWork[]
+  classroomAnalysis SessionClassroomAnalysis?
 
   @@index([scenarioId, occurredAt])
   @@index([schoolId, gradeId, classId, occurredAt])
@@ -344,4 +345,55 @@ model StudentWork {
   @@index([sessionId])
   @@index([externalWorkId])
   @@map("student_works_test")
+}
+
+/// 课堂视频自动分析报告，存储基于课堂视频分析框架的九维度评估结果
+model SessionClassroomAnalysis {
+  id                          String             @id @default(cuid())
+  sessionId                   String             @unique
+  // 1. 知识点激活
+  knowledgeActivationRate     Decimal?           @db.Decimal(5, 2)
+  activatedKnowledgeCount     Int?
+  totalKnowledgeCount         Int?
+  // 2. 行为投入度
+  behavioralEngagementLevel   String?
+  teacherStudentInteractionCount Int?
+  peerCollaborationCount      Int?
+  // 3. 认知投入度
+  cognitiveEngagementLevel    String?
+  constructiveUtteranceCount  Int?
+  // 4. 情感投入度
+  hasBurnout                  Boolean?
+  hasFrustration              Boolean?
+  // 5. 教学支持
+  conceptDevelopmentLevel     String?
+  feedbackQualityLevel        String?
+  academicExpectationLevel    String?
+  // 6. 课堂互动 - 提问
+  closedQuestionCount         Int?
+  applicationQuestionCount    Int?
+  openQuestionCount           Int?
+  // 6. 课堂互动 - 反馈
+  acceptFeedbackCount         Int?
+  praiseFeedbackCount         Int?
+  extendFeedbackCount         Int?
+  correctFeedbackCount        Int?
+  // 7. 课堂参与
+  studentUtteranceCount       Int?
+  teacherFluencyLevel         String?
+  toolVarietyCount            Int?
+  // 8. 教师情感能力
+  selfAwarenessLevel          String?
+  selfManagementLevel         String?
+  collectiveManagementLevel   String?
+  // 9. 课堂组织管理
+  ruleClarityLevel            String?
+  positiveReinforcementLevel  String?
+  negativeReductionLevel      String?
+  // 元数据
+  createdAt                   DateTime           @default(now())
+  updatedAt                   DateTime           @updatedAt
+  session                     InteractionSession @relation(fields: [sessionId], references: [id])
+
+  @@map("session_classroom_analyses_test")
 }

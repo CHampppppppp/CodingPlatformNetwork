@@ -128,7 +128,7 @@ export class GraphService {
     await this.addMockTeacherNodes(nodeMap, scenarioId, schoolNames, gradeNames, classNames);
 
     const mapInteractionType = (type: string): "PHYSICAL" | "PLATFORM" => {
-      return type === "PLATFORM" ? "PLATFORM" : "PHYSICAL";
+      return type === "PHYSICAL" ? "PHYSICAL" : "PLATFORM";
     };
 
     const TEACHER_STUDENT_ACTIONS = ["TEACHER_EVALUATION", "HELP_SEEKING"];
@@ -632,6 +632,12 @@ export class GraphService {
     classNames: Map<string, string>,
   ): Promise<void> {
     if (!scenarioId) return;
+
+    // 如果已经存在任何教师节点，不再创建 mock 教师
+    const hasAnyTeacher = Array.from(nodeMap.values()).some(
+      (n) => n.type === "TEACHER",
+    );
+    if (hasAnyTeacher) return;
 
     const classStudentMap = new Map<string, Node[]>();
     for (const node of nodeMap.values()) {

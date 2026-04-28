@@ -189,3 +189,39 @@ export interface ClassInfo {
   grade: string;
   classId: string;
 }
+
+export interface ClassroomAnalysis {
+  id: string;
+  sessionId: string;
+  knowledgeActivationRate: number | null;
+  activatedKnowledgeCount: number | null;
+  totalKnowledgeCount: number | null;
+  behavioralEngagementLevel: string | null;
+  teacherStudentInteractionCount: number | null;
+  peerCollaborationCount: number | null;
+  cognitiveEngagementLevel: string | null;
+  constructiveUtteranceCount: number | null;
+  hasBurnout: boolean | null;
+  hasFrustration: boolean | null;
+  conceptDevelopmentLevel: string | null;
+  feedbackQualityLevel: string | null;
+  academicExpectationLevel: string | null;
+  closedQuestionCount: number | null;
+  applicationQuestionCount: number | null;
+  openQuestionCount: number | null;
+  acceptFeedbackCount: number | null;
+  praiseFeedbackCount: number | null;
+  extendFeedbackCount: number | null;
+  correctFeedbackCount: number | null;
+  studentUtteranceCount: number | null;
+  teacherFluencyLevel: string | null;
+  toolVarietyCount: number | null;
+  selfAwarenessLevel: string | null;
+  selfManagementLevel: string | null;
+  collectiveManagementLevel: string | null;
+  ruleClarityLevel: string | null;
+  positiveReinforcementLevel: string | null;
+  negativeReductionLevel: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

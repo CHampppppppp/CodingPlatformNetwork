@@ -58,8 +58,8 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
       .join("line")
       .attr("stroke-width", (d) => Math.sqrt(d.value))
       .attr("stroke", (d) => linkColor(d.type))
-      .attr("stroke-dasharray", (d) => d.type === InteractionType.PLATFORM ? "4, 2" : null)
-      .attr("class", (d) => d.type === InteractionType.PLATFORM ? "platform-link" : "physical-link");
+      .attr("stroke-dasharray", (d) => (d.type === InteractionType.PLATFORM || d.type === 'SOCIAL') ? "4, 2" : null)
+      .attr("class", (d) => (d.type === InteractionType.PLATFORM || d.type === 'SOCIAL') ? "platform-link" : "physical-link");
 
     const node = rootG.append("g")
       .attr("stroke", "#fff")

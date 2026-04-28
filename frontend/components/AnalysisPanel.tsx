@@ -1,13 +1,17 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { GraphData, NodeType, Resource, CognitiveAttributes, GraphNode, InteractionType } from '../types';
-import { PieChart, Users, Book, Activity, ThumbsUp, Send, CheckCircle, BarChart3, X, GitGraph, Share2, Target, TrendingUp, Layers } from 'lucide-react';
+import { GraphData, NodeType, Resource, CognitiveAttributes, GraphNode, InteractionType, ClassroomAnalysis, Scenario } from '../types';
+import { PieChart, Users, Book, Activity, ThumbsUp, Send, CheckCircle, BarChart3, X, GitGraph, Share2, Target, TrendingUp, Layers, Video } from 'lucide-react';
+import { ClassroomAnalysisView } from './ClassroomAnalysisView';
+import { fetchClassroomAnalysis } from '../services/dataService';
 
 interface AnalysisPanelProps {
   isOpen: boolean;
   onClose: () => void;
   data: GraphData;
   resources: Resource[];
-  defaultTab?: 'overview' | 'subgraph';
+  scenario: Scenario;
+  classInfo: { school: string; grade: string; classId: string };
+  defaultTab?: 'overview' | 'subgraph' | 'classroom-analysis';
 }
 
 // Simple SVG Donut Chart
@@ -137,8 +141,12 @@ const TrendChart: React.FC<{ points: TrendPoint[] }> = ({ points }) => {
   );
 }
 
-const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, resources, defaultTab = 'overview' }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'subgraph'>('overview');
+const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, resources, scenario, classInfo, defaultTab = 'overview' }) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'subgraph' | 'classroom-analysis'>('overview');
+  const [classroomAnalysis, setClassroomAnalysis] = useState<ClassroomAnalysis | null>(null);
+  const [classroomAnalysisLoading, setClassroomAnalysisLoading] = useState(false);
+
+  const isShowCase = scenario === '展示场景';
 
   // Sync activeTab with defaultTab when panel opens
   useEffect(() => {
@@ -146,6 +154,22 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
         setActiveTab(defaultTab);
     }
   }, [isOpen, defaultTab]);
+
+  useEffect(() => {
+    if (activeTab === 'classroom-analysis' && isShowCase && !classroomAnalysis && !classroomAnalysisLoading) {
+      setClassroomAnalysisLoading(true);
+      fetchClassroomAnalysis(scenario, classInfo)
+        .then((analysis) => {
+          setClassroomAnalysis(analysis);
+        })
+        .catch((err) => {
+          console.error('加载课堂视频分析数据失败:', err);
+        })
+        .finally(() => {
+          setClassroomAnalysisLoading(false);
+        });
+    }
+  }, [activeTab, isShowCase, scenario, classInfo, classroomAnalysis, classroomAnalysisLoading]);
 
   // --- Data Calculations ---
   
@@ -337,6 +361,14 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
                 >
                     <GitGraph className="w-4 h-4" /> 子图透视
                 </button>
+                {isShowCase && (
+                    <button 
+                        onClick={() => setActiveTab('classroom-analysis')}
+                        className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'classroom-analysis' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    >
+                        <Video className="w-4 h-4" /> 课堂视频分析
+                    </button>
+                )}
             </div>
         </div>
 
@@ -539,6 +571,18 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
                             </p>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {activeTab === 'classroom-analysis' && isShowCase && (
+                <div className="animate-in slide-in-from-bottom-2 duration-300">
+                    {classroomAnalysisLoading ? (
+                        <div className="flex items-center justify-center h-64 text-gray-400">
+                            加载中...
+                        </div>
+                    ) : (
+                        <ClassroomAnalysisView data={classroomAnalysis} />
+                    )}
                 </div>
             )}
 

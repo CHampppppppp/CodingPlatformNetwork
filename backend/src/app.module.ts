@@ -8,6 +8,7 @@ import { NodeModule } from "./modules/node/node.module";
 import { InteractionSessionModule } from "./modules/interaction-session/interaction-session.module";
 import { InteractionModule } from "./modules/interaction/interaction.module";
 import { ResourceModule } from "./modules/resource/resource.module";
+import { ClassroomAnalysisModule } from "./modules/classroom-analysis/classroom-analysis.module";
 import { PrismaModule } from "./shared/utils/prisma.module";
 
 @Module({
@@ -25,6 +26,7 @@ import { PrismaModule } from "./shared/utils/prisma.module";
     InteractionModule,
     GraphModule,
     ResourceModule,
+    ClassroomAnalysisModule,
   ],
   controllers: [],
   providers: [],

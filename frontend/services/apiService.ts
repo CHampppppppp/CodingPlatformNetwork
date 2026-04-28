@@ -667,6 +667,45 @@ export const fetchResourceStudentRates = async (
   }
 };
 
+export const fetchClassroomAnalysis = async (params: {
+  scenarioCode?: string;
+  schoolId?: string;
+  gradeId?: string;
+  classId?: string;
+}): Promise<any> => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params.scenarioCode) queryParams.append("scenario_code", params.scenarioCode);
+    if (params.schoolId) queryParams.append("school_id", params.schoolId);
+    if (params.gradeId) queryParams.append("grade_id", params.gradeId);
+    if (params.classId) queryParams.append("class_id", params.classId);
+
+    const url = `${API_BASE_URL}/classroom-analysis${
+      queryParams.toString() ? `?${queryParams.toString()}` : ""
+    }`;
+    console.log("请求课堂视频分析数据:", url);
+
+    const response = await fetchWithRetry(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API请求失败: ${response.status}`);
+    }
+
+    const payload = await response.json();
+    const data = payload?.data ?? payload;
+    console.log("获取课堂视频分析数据成功:", data ? "有数据" : "无数据");
+    return data;
+  } catch (error) {
+    console.error("获取课堂视频分析数据失败:", error);
+    return null;
+  }
+};
+
 export const fetchStudentCognitiveTemplate = async (
   studentNodeId: string,
 ): Promise<StudentCognitiveTemplateApiResponse> => {

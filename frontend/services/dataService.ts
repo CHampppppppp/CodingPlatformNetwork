@@ -5,6 +5,8 @@ import {
   ClassInfo,
   StudentProfile,
   StudentCognitiveTemplate,
+  ClassroomAnalysis,
+  NodeType,
 } from "../types";
 import {
   fetchGraphData as fetchGraphDataFromApi,
@@ -14,6 +16,7 @@ import {
   fetchStudentCognitiveTemplate as fetchStudentCognitiveTemplateFromApi,
   fetchResources as fetchResourcesFromApi,
   fetchResourceStudentRates,
+  fetchClassroomAnalysis as fetchClassroomAnalysisFromApi,
 } from "./apiService";
 import {
   transformGraphData,
@@ -26,6 +29,27 @@ import {
   generateCacheKey,
   graphDataCache,
 } from "./performanceUtils";
+
+function anonymizeStudentNames(data: GraphData): GraphData {
+  let studentIndex = 0;
+
+  const nodes = data.nodes.map((node) => {
+    if (node.type === NodeType.STUDENT) {
+      studentIndex++;
+      const anonymousName = `student_${String(studentIndex).padStart(2, "0")}`;
+      return {
+        ...node,
+        name: anonymousName,
+      };
+    }
+    return node;
+  });
+
+  return {
+    ...data,
+    nodes,
+  };
+}
 
 /**
  * 获取可用的学校列表
@@ -105,7 +129,9 @@ export const fetchGraphData = async (
       // 清理和规范化数据
       const sanitizedData = sanitizeGraphData(transformedData);
 
-      return sanitizedData;
+      const anonymizedData = anonymizeStudentNames(sanitizedData);
+
+      return anonymizedData;
     });
 
     // 验证数据内容
@@ -213,6 +239,76 @@ export const fetchResources = async (): Promise<Resource[]> => {
 };
 
 export { fetchResourceStudentRates };
+
+// Mock 课堂视频分析数据
+const mockClassroomAnalysisData: ClassroomAnalysis = {
+  id: "mock-analysis-001",
+  sessionId: "mock-session-001",
+  knowledgeActivationRate: 85.7,
+  activatedKnowledgeCount: 12,
+  totalKnowledgeCount: 14,
+  behavioralEngagementLevel: "高",
+  teacherStudentInteractionCount: 45,
+  peerCollaborationCount: 23,
+  cognitiveEngagementLevel: "中",
+  constructiveUtteranceCount: 18,
+  hasBurnout: false,
+  hasFrustration: false,
+  conceptDevelopmentLevel: "优秀",
+  feedbackQualityLevel: "良好",
+  academicExpectationLevel: "中等",
+  closedQuestionCount: 8,
+  applicationQuestionCount: 12,
+  openQuestionCount: 6,
+  acceptFeedbackCount: 15,
+  praiseFeedbackCount: 20,
+  extendFeedbackCount: 10,
+  correctFeedbackCount: 5,
+  studentUtteranceCount: 32,
+  teacherFluencyLevel: "优秀",
+  toolVarietyCount: 3,
+  selfAwarenessLevel: "优秀",
+  selfManagementLevel: "良好",
+  collectiveManagementLevel: "中等",
+  ruleClarityLevel: "良好",
+  positiveReinforcementLevel: "优秀",
+  negativeReductionLevel: "中等",
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+export const fetchClassroomAnalysis = async (
+  scenario: Scenario,
+  classInfo: ClassInfo,
+): Promise<ClassroomAnalysis | null> => {
+  try {
+    // 展示场景直接返回 mock 数据
+    if (scenario === "展示场景") {
+      console.log("使用课堂视频分析 mock 数据");
+      return { ...mockClassroomAnalysisData };
+    }
+
+    const scenarioCodeMap: Record<string, string> = {
+      展示场景: "SHOW_CASE",
+      学科课程在线学习: "ONLINE_COURSE",
+      课后线上教师授课答疑: "TEACHER_QA",
+      家庭在线学习: "HOME_LEARNING",
+      在线协作学习: "COLLABORATIVE_LEARNING",
+      社团课等非正式学习: "INFORMAL_LEARNING",
+    };
+
+    const scenarioCode = scenarioCodeMap[scenario] || scenario;
+
+    const data = await fetchClassroomAnalysisFromApi({
+      scenarioCode,
+    });
+
+    return data as ClassroomAnalysis | null;
+  } catch (error) {
+    console.error("获取课堂视频分析数据失败:", error);
+    return null;
+  }
+};
 
 const dimensionCodeToKey: Record<string, keyof StudentProfile> = {
   knowledgeReserve: "knowledgeReserve",
