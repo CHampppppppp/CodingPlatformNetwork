@@ -21,6 +21,8 @@ import {
   Activity,
   Loader2,
   AlertCircle,
+  Stethoscope,
+  Sparkles,
 } from "lucide-react";
 import NetworkGraph from "./components/NetworkGraph";
 import AnalysisPanel from "./components/AnalysisPanel";
@@ -32,7 +34,7 @@ import {
   getClassesBySchoolAndGrade,
   fetchResourceStudentRates,
 } from "./services/dataService";
-import { fetchStudentCognitiveTemplate as fetchStudentCognitiveTemplateRaw } from "./services/apiService";
+import { fetchStudentCognitiveTemplate as fetchStudentCognitiveTemplateRaw, fetchStudentExpertIntervention } from "./services/apiService";
 import { getStrategy } from "./services/strategies";
 import {
   Scenario,
@@ -107,6 +109,12 @@ const App: React.FC = () => {
   const [templateLoadingStudentId, setTemplateLoadingStudentId] = useState<
     string | null
   >(null);
+
+  const [isExpertInterventionOpen, setIsExpertInterventionOpen] = useState(false);
+  const [expertInterventionData, setExpertInterventionData] = useState<
+    Awaited<ReturnType<typeof fetchStudentExpertIntervention>> | null
+  >(null);
+  const [expertInterventionLoading, setExpertInterventionLoading] = useState(false);
 
   // Class options state (loaded async)
   const [classOptions, setClassOptions] = useState<{
@@ -552,6 +560,28 @@ const App: React.FC = () => {
     setHighlightedNodeIds([]);
     setStudentRates({});
     setHoveredAttribute(null);
+    setIsExpertInterventionOpen(false);
+    setExpertInterventionData(null);
+  };
+
+  const handleOpenExpertIntervention = async () => {
+    if (!selectedNode || selectedNode.type !== NodeType.STUDENT) return;
+
+    setIsExpertInterventionOpen(true);
+    setExpertInterventionLoading(true);
+    try {
+      const data = await fetchStudentExpertIntervention(selectedNode.id);
+      setExpertInterventionData(data);
+    } catch (err) {
+      console.error("加载专家干预数据失败:", err);
+    } finally {
+      setExpertInterventionLoading(false);
+    }
+  };
+
+  const handleCloseExpertIntervention = () => {
+    setIsExpertInterventionOpen(false);
+    setExpertInterventionData(null);
   };
 
   const handleAttributeEnter = (
@@ -908,12 +938,23 @@ const App: React.FC = () => {
                         {selectedNode.type === NodeType.TEACHER && "授课教师"}
                       </p>
                     </div>
-                    <button
-                      onClick={closeNodeDetail}
-                      className="absolute top-4 right-4 text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-1 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {selectedNode.type === NodeType.STUDENT && (
+                        <button
+                          onClick={handleOpenExpertIntervention}
+                          className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg transition-colors text-xs font-medium backdrop-blur-sm"
+                        >
+                          <Stethoscope className="w-3.5 h-3.5" />
+                          <span>专家干预</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={closeNodeDetail}
+                        className="text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-1 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="p-5 max-h-[calc(100vh-280px)] overflow-y-auto custom-scrollbar">
@@ -1310,6 +1351,189 @@ const App: React.FC = () => {
         classInfo={classInfo}
         defaultTab={analysisDefaultTab}
       />
+
+      {/* Expert Intervention Modal */}
+      {isExpertInterventionOpen && selectedNode?.type === NodeType.STUDENT && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-[800px] max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-indigo-50 to-blue-50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-500 rounded-lg">
+                  <Stethoscope className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800">专家干预方案</h2>
+                  <p className="text-xs text-slate-500">
+                    {selectedNode.name} · 基于认知维度分析与学情画像的个性化建议
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseExpertIntervention}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full p-2 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+              {expertInterventionLoading ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-3" />
+                  <p className="text-sm text-slate-500">正在生成专家干预方案...</p>
+                </div>
+              ) : expertInterventionData ? (
+                <>
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Sparkles className="w-5 h-5 text-amber-500" />
+                      <h3 className="text-base font-bold text-slate-800">专家诊断与建议</h3>
+                    </div>
+
+                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 mb-4">
+                      <h4 className="text-sm font-semibold text-slate-700 mb-2">学情综合诊断</h4>
+                      {expertInterventionData.weakDimensions.length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-sm text-slate-600 leading-relaxed">
+                            该学生在
+                            <span className="font-semibold text-amber-600">
+                              {expertInterventionData.weakDimensions.map(d => d.dimensionNameZh).join("、")}
+                            </span>
+                            等维度表现较弱，需要重点关注和干预。建议根据以下针对性策略进行辅导：
+                          </p>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {expertInterventionData.weakDimensions.map((dim) => (
+                              <span
+                                key={dim.dimensionCode}
+                                className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200"
+                              >
+                                {dim.dimensionNameZh} · {dim.scoreValue.toFixed(1)}分
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-600 leading-relaxed">
+                          该学生各维度表现良好，无明显薄弱环节。建议继续保持，可适当挑战更高难度的学习任务。
+                        </p>
+                      )}
+                    </div>
+
+                    {expertInterventionData.weakDimensions.length > 0 && (
+                      <div className="space-y-3">
+                        {expertInterventionData.weakDimensions.map((dim) => {
+                          const strategyKey = dimensionCodeToStrategyKey[dim.dimensionCode];
+                          const suggestion = strategyKey
+                            ? getStrategy(scenario, strategyKey, dim.scoreValue)
+                            : "该维度暂无具体干预策略数据。";
+                          return (
+                            <div
+                              key={dim.dimensionCode}
+                              className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <h5 className="text-sm font-bold text-slate-800">
+                                  {dim.dimensionNameZh}
+                                </h5>
+                                <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                                  dim.scoreValue <= 2
+                                    ? "bg-red-50 text-red-600"
+                                    : dim.scoreValue <= 3
+                                    ? "bg-amber-50 text-amber-600"
+                                    : "bg-emerald-50 text-emerald-600"
+                                }`}>
+                                  {dim.scoreValue.toFixed(1)}/5
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-500 mb-2">{dim.category}</p>
+                              <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-slate-50 rounded-lg p-3">
+                                {suggestion}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {expertInterventionData.resources.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-4">
+                        <BookOpen className="w-5 h-5 text-emerald-500" />
+                        <h3 className="text-base font-bold text-slate-800">专家推荐资源</h3>
+                        <span className="text-xs text-slate-400">
+                          共 {expertInterventionData.resources.length} 个
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        {expertInterventionData.resources.map((resource) => (
+                          <div
+                            key={resource.id}
+                            className="bg-white rounded-xl border border-slate-200 p-4 hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer group"
+                            onClick={() => {
+                              if (resource.url) {
+                                window.open(resource.url, '_blank', 'noopener,noreferrer');
+                              }
+                            }}
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                                {resource.resourceType}
+                              </span>
+                              {resource.acceptanceRate != null && (
+                                <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                  接受度 {Math.round(resource.acceptanceRate)}%
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="text-sm font-bold text-slate-800 group-hover:text-indigo-600 mb-1 transition-colors line-clamp-1">
+                              {resource.title}
+                            </h4>
+                            {resource.description && (
+                              <p className="text-xs text-slate-500 line-clamp-2 mb-2">
+                                {resource.description}
+                              </p>
+                            )}
+                            {resource.knowledgeNodes.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {resource.knowledgeNodes.slice(0, 2).map((node) => (
+                                  <span
+                                    key={node.id}
+                                    className="text-[10px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100"
+                                  >
+                                    {node.name}
+                                  </span>
+                                ))}
+                                {resource.knowledgeNodes.length > 2 && (
+                                  <span className="text-[10px] text-slate-400 px-1.5 py-0.5">
+                                    +{resource.knowledgeNodes.length - 2}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {expertInterventionData.resources.length === 0 && (
+                    <div className="bg-slate-50 rounded-xl p-6 text-center border border-dashed border-slate-200">
+                      <BookOpen className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="text-sm text-slate-500">暂无针对该学生的推荐资源</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <AlertCircle className="w-8 h-8 text-red-400 mb-3" />
+                  <p className="text-sm text-slate-500">加载专家干预数据失败，请重试</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

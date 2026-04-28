@@ -5,6 +5,139 @@ import { PrismaService } from "../../shared/utils/prisma.service";
 export class StudentService {
   constructor(private prisma: PrismaService) {}
 
+  async getExpertIntervention(studentNodeId: string) {
+    const cognitiveTemplate = await this.getLatestCognitiveTemplate(studentNodeId);
+    if (!cognitiveTemplate || cognitiveTemplate.error) {
+      return {
+        data: null,
+        meta: null,
+        error: "学生不存在或无法获取认知模板",
+      };
+    }
+
+    const studentData = cognitiveTemplate.data;
+    const weakDimensions = studentData.dimensions.filter(
+      (d: any) => d.scoreValue <= 2 || d.scoreLevel?.includes("低")
+    );
+
+    const interactions = await this.prisma.interaction.findMany({
+      where: {
+        OR: [
+          { sourceNodeId: studentNodeId },
+          { targetNodeId: studentNodeId },
+        ],
+      },
+      select: {
+        sourceNodeId: true,
+        targetNodeId: true,
+      },
+    });
+
+    const connectedNodeIds = new Set<string>();
+    for (const interaction of interactions) {
+      if (interaction.sourceNodeId !== studentNodeId) {
+        connectedNodeIds.add(interaction.sourceNodeId);
+      }
+      if (interaction.targetNodeId !== studentNodeId) {
+        connectedNodeIds.add(interaction.targetNodeId);
+      }
+    }
+
+    const knowledgeNodes = await this.prisma.graphNode.findMany({
+      where: {
+        id: { in: Array.from(connectedNodeIds) },
+        nodeType: "KNOWLEDGE",
+      },
+      select: {
+        id: true,
+        displayName: true,
+        knowledgeProfile: {
+          select: {
+            category: true,
+            content: true,
+          },
+        },
+      },
+    });
+
+    const knowledgeNodeIds = knowledgeNodes.map((n) => n.id);
+    const resources = await this.prisma.resource.findMany({
+      where: {
+        knowledgeRelations: {
+          some: {
+            knowledgeNodeId: { in: knowledgeNodeIds },
+          },
+        },
+      },
+      include: {
+        knowledgeRelations: {
+          include: {
+            knowledgeNode: {
+              select: {
+                id: true,
+                displayName: true,
+              },
+            },
+          },
+        },
+      },
+      take: 20,
+    });
+
+    const resourceIds = resources.map((r) => r.id);
+    const rateGroups = await this.prisma.studentResourceRate.groupBy({
+      by: ["resourceId"],
+      where: { resourceId: { in: resourceIds } },
+      _avg: { rate: true },
+    });
+
+    const rateMap = new Map(
+      rateGroups.map((g) => [
+        g.resourceId,
+        g._avg.rate != null ? Number(g._avg.rate) : null,
+      ])
+    );
+
+    const enrichedResources = resources.map((resource) => {
+      const avgRate = rateMap.get(resource.id) ?? null;
+      return {
+        id: resource.id,
+        title: resource.title,
+        description: resource.description,
+        url: resource.url,
+        resourceType: resource.resourceType,
+        acceptanceRate: avgRate != null ? (avgRate / 5) * 100 : null,
+        knowledgeNodes: resource.knowledgeRelations.map((rel) => ({
+          id: rel.knowledgeNode.id,
+          name: rel.knowledgeNode.displayName,
+        })),
+      };
+    });
+
+    return {
+      data: {
+        student: studentData.student,
+        profile: studentData.profile,
+        dimensions: studentData.dimensions,
+        weakDimensions: weakDimensions.map((d: any) => ({
+          dimensionCode: d.dimensionCode,
+          dimensionNameZh: d.dimensionNameZh,
+          category: d.category,
+          scoreValue: d.scoreValue,
+          scoreLevel: d.scoreLevel,
+        })),
+        connectedKnowledgeNodes: knowledgeNodes.map((n) => ({
+          id: n.id,
+          name: n.displayName,
+          category: n.knowledgeProfile?.category || "",
+        })),
+        resources: enrichedResources,
+      },
+      meta: null,
+      error: null,
+    };
+  }
+
   async getLatestCognitiveTemplate(studentNodeId: string) {
     const studentNode = await this.prisma.graphNode.findFirst({
       where: {

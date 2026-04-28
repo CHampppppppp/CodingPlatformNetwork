@@ -706,6 +706,86 @@ export const fetchClassroomAnalysis = async (params: {
   }
 };
 
+export interface ExpertInterventionApiResponse {
+  student: {
+    id: string;
+    name: string;
+    school: string | null;
+    grade: string | null;
+    classId: string | null;
+  };
+  profile: {
+    version: string;
+    generatedAt: string;
+    totalScore: number;
+  } | null;
+  dimensions: Array<{
+    dimensionCode: string;
+    dimensionNameZh: string;
+    category: string;
+    scoreValue: number;
+    scoreLevel: string;
+  }>;
+  weakDimensions: Array<{
+    dimensionCode: string;
+    dimensionNameZh: string;
+    category: string;
+    scoreValue: number;
+    scoreLevel: string;
+  }>;
+  connectedKnowledgeNodes: Array<{
+    id: string;
+    name: string;
+    category: string;
+  }>;
+  resources: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    url: string | null;
+    resourceType: string;
+    acceptanceRate: number | null;
+    knowledgeNodes: Array<{
+      id: string;
+      name: string;
+    }>;
+  }>;
+}
+
+export const fetchStudentExpertIntervention = async (
+  studentNodeId: string,
+): Promise<ExpertInterventionApiResponse> => {
+  try {
+    const url = `${API_BASE_URL}/students/${encodeURIComponent(
+      studentNodeId,
+    )}/expert-intervention`;
+    console.log("请求学生专家干预数据:", url);
+
+    const response = await fetchWithRetry(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API请求失败: ${response.status}`);
+    }
+
+    const payload = await response.json();
+    const data = payload?.data ?? payload;
+    if (!data || !data.student) {
+      throw new Error("专家干预数据返回结构无效");
+    }
+
+    console.log("获取学生专家干预数据成功");
+    return data as ExpertInterventionApiResponse;
+  } catch (error) {
+    console.error("获取学生专家干预数据失败:", error);
+    throw error;
+  }
+};
+
 export const fetchStudentCognitiveTemplate = async (
   studentNodeId: string,
 ): Promise<StudentCognitiveTemplateApiResponse> => {
