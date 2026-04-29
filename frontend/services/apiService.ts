@@ -413,7 +413,7 @@ export const fetchKnowledgePoints = async (params: {
 
 export const fetchResources = async (): Promise<any[]> => {
   try {
-    const url = `${API_BASE_URL}/resources`;
+    const url = `${API_BASE_URL}/resources?page_size=200`;
     console.log("请求资源数据:", url);
 
     const response = await fetchWithRetry(url, {

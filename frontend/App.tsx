@@ -65,6 +65,32 @@ const dimensionCodeToStrategyKey: Record<string, keyof CognitiveAttributes> = {
   aiLiteracy: "aiLiteracy",
 };
 
+function isRealUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  return url.startsWith('http') && !url.includes('example.com');
+}
+
+function buildSearchUrl(title: string, type: string): string {
+  const encoded = encodeURIComponent(title);
+  switch (type) {
+    case 'VIDEO':
+    case '视频':
+      return `https://search.bilibili.com/all?keyword=${encoded}`;
+    case 'ARTICLE':
+    case '文章':
+      return `https://www.zhihu.com/search?type=content&q=${encoded}`;
+    case 'DOCUMENT':
+    case '文档':
+      return `https://wenku.baidu.com/search?word=${encoded}`;
+    case 'PRACTICE':
+    case '练习题':
+    case 'GAME':
+    case '互动游戏':
+    default:
+      return `https://cn.bing.com/search?q=${encoded}`;
+  }
+}
+
 const App: React.FC = () => {
   // State
   const [scenario, setScenario] = useState<Scenario>(Object.values(Scenario)[0]);
@@ -1185,11 +1211,8 @@ const App: React.FC = () => {
                                     key={res.id}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      if (res.url) {
-                                        window.open(res.url, '_blank', 'noopener,noreferrer');
-                                      } else {
-                                        handleResourceClick(res);
-                                      }
+                                      const url = isRealUrl(res.url) ? res.url : buildSearchUrl(res.title, res.type);
+                                      window.open(url, '_blank', 'noopener,noreferrer');
                                     }}
                                     className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/50 cursor-pointer transition-all group shadow-sm hover:shadow-md bg-white"
                                   >
@@ -1199,9 +1222,7 @@ const App: React.FC = () => {
                                     <span className="text-xs font-medium text-slate-700 group-hover:text-emerald-800 truncate flex-1">
                                       {res.title}
                                     </span>
-                                    {res.url && (
-                                      <ExternalLink className="w-3 h-3 text-slate-300" />
-                                    )}
+                                    <ExternalLink className="w-3 h-3 text-slate-300" />
                                   </div>
                                 ))}
                               {resources.filter((r) =>

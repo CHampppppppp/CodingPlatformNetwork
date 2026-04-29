@@ -58,17 +58,17 @@ function buildSearchUrl(title: string, resourceType: string): string {
   const encoded = encodeURIComponent(title);
   switch (resourceType) {
     case "VIDEO":
-      return `https://search.bilibili.com/all?keyword=${encoded}`;
+      return `https://duckduckgo.com/?q=!ducky+site%3Abilibili.com+${encoded}`;
     case "ARTICLE":
-      return `https://www.zhihu.com/search?type=content&q=${encoded}`;
+      return `https://duckduckgo.com/?q=!ducky+site%3Azhihu.com+${encoded}`;
     case "DOCUMENT":
-      return `https://wenku.baidu.com/search?word=${encoded}`;
+      return `https://duckduckgo.com/?q=!ducky+site%3Awenku.baidu.com+${encoded}`;
     case "PRACTICE":
-      return `https://cn.bing.com/search?q=${encoded}`;
+      return `https://duckduckgo.com/?q=!ducky+${encoded}`;
     case "GAME":
-      return `https://cn.bing.com/search?q=${encoded}`;
+      return `https://duckduckgo.com/?q=!ducky+${encoded}`;
     default:
-      return `https://cn.bing.com/search?q=${encoded}`;
+      return `https://duckduckgo.com/?q=!ducky+${encoded}`;
   }
 }
 

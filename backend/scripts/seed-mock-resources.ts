@@ -32,15 +32,19 @@ const RESOURCE_POOL = [
   { title: '小组合作项目', resourceType: 'GAME', description: '协作式学习项目任务，培养团队合作与问题解决能力。' },
 ];
 
-function getResourceUrl(title: string, type: string): string {
-  const slug = title.replace(/\s+/g, '-').toLowerCase();
+function buildSearchUrl(title: string, type: string): string {
+  const encoded = encodeURIComponent(title);
   switch (type) {
-    case 'VIDEO': return `https://edu-video.example.com/v/${slug}`;
-    case 'ARTICLE': return `https://edu-article.example.com/a/${slug}`;
-    case 'PRACTICE': return `https://edu-quiz.example.com/q/${slug}`;
-    case 'GAME': return `https://edu-game.example.com/g/${slug}`;
-    case 'DOCUMENT': return `https://edu-doc.example.com/d/${slug}.pdf`;
-    default: return `https://edu.example.com/r/${slug}`;
+    case 'VIDEO':
+      return `https://search.bilibili.com/all?keyword=${encoded}`;
+    case 'ARTICLE':
+      return `https://www.zhihu.com/search?type=content&q=${encoded}`;
+    case 'DOCUMENT':
+      return `https://wenku.baidu.com/search?word=${encoded}`;
+    case 'PRACTICE':
+    case 'GAME':
+    default:
+      return `https://cn.bing.com/search?q=${encoded}`;
   }
 }
 
@@ -95,7 +99,7 @@ async function main() {
             title,
             description: tpl.description,
             resourceType: tpl.resourceType,
-            url: getResourceUrl(title, tpl.resourceType),
+            url: buildSearchUrl(title, tpl.resourceType),
             knowledgeRelations: {
               create: { knowledgeNodeId: knowledge.id },
             },

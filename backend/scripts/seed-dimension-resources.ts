@@ -462,7 +462,7 @@ async function main() {
         for (const template of allTemplates) {
           const selectedNodes = dim.isGeneric
             ? [genericKnowledgeNode]
-            : [...knowledgeNodes].sort(() =>> 0.5 - Math.random()).slice(0, Math.min(2, knowledgeNodes.length));
+            : [...knowledgeNodes].sort(() => 0.5 - Math.random()).slice(0, Math.min(2, knowledgeNodes.length));
 
           for (const knowledge of selectedNodes) {
             const title = dim.isGeneric
@@ -477,7 +477,7 @@ async function main() {
                 title,
                 description: `[${dim.dimensionName}] ${template.description}`,
                 resourceType: template.type,
-                url: buildSearchUrl(title, template.type),
+                url: `https://example.com/r/${dim.dimensionCode}/${template.type}`,
                 knowledgeRelations: {
                   create: { knowledgeNodeId: knowledge.id },
                 },

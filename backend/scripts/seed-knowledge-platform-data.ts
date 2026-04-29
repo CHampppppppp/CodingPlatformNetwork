@@ -63,6 +63,22 @@ const RESOURCE_TEMPLATES = [
   { titleSuffix: '互动练习题', resourceType: 'PRACTICE', description: '巩固知识点的配套练习' },
 ];
 
+function buildSearchUrl(title: string, type: string): string {
+  const encoded = encodeURIComponent(title);
+  switch (type) {
+    case 'VIDEO':
+      return `https://search.bilibili.com/all?keyword=${encoded}`;
+    case 'ARTICLE':
+      return `https://www.zhihu.com/search?type=content&q=${encoded}`;
+    case 'DOCUMENT':
+      return `https://wenku.baidu.com/search?word=${encoded}`;
+    case 'PRACTICE':
+    case 'GAME':
+    default:
+      return `https://cn.bing.com/search?q=${encoded}`;
+  }
+}
+
 async function main() {
   try {
     console.log('🚀 开始为801班级创建知识点和平台交互数据...\n');
@@ -181,7 +197,7 @@ async function main() {
           title: `${knowledgeNode.displayName} - ${template.titleSuffix}`,
           description: template.description,
           resourceType: template.resourceType,
-          url: `https://example.com/resource/${knowledgeNode.id}`,
+          url: buildSearchUrl(`${knowledgeNode.displayName} - ${template.titleSuffix}`, template.resourceType),
           knowledgeRelations: {
             create: {
               knowledgeNodeId: knowledgeNode.id,
