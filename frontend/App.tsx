@@ -578,35 +578,6 @@ const App: React.FC = () => {
           },
         };
       });
-
-      setGraphData((prev) => ({
-        ...prev,
-        nodes: prev.nodes.map((n) =>
-          n.id === node.id && n.type === NodeType.STUDENT
-            ? {
-                ...n,
-                studentProfile: {
-                  ...(n.studentProfile || {
-                    school: "",
-                    grade: "",
-                    classId: "",
-                    knowledgeReserve: 0,
-                    learningEngagement: 0,
-                    cognitiveLoad: 0,
-                    learningMotivation: 0,
-                    computationalThinking: 0,
-                    humanAiTrust: 0,
-                    learningMethod: 0,
-                    learningAttitude: 0,
-                    selfRegulatedLearning: 0,
-                    aiLiteracy: 0,
-                  }),
-                  ...newProfileData,
-                },
-              }
-            : n,
-        ),
-      }));
     } catch (err) {
       console.error("加载学生认知模板失败:", err);
     } finally {
@@ -1481,9 +1452,8 @@ const App: React.FC = () => {
                     {expertInterventionData.weakDimensions.length > 0 && (
                       <div className="space-y-3">
                         {expertInterventionData.weakDimensions.map((dim) => {
-                          const strategyKey = dimensionCodeToStrategyKey[dim.dimensionCode];
-                          const suggestion = strategyKey
-                            ? getStrategy(scenario, strategyKey, dim.scoreValue)
+                          const suggestion = dim.strategyKey
+                            ? getStrategy(scenario, dim.strategyKey as keyof CognitiveAttributes, dim.scoreValue)
                             : "该维度暂无具体干预策略数据。";
                           return (
                             <div
@@ -1548,6 +1518,11 @@ const App: React.FC = () => {
                             <h4 className="text-sm font-bold text-slate-800 group-hover:text-indigo-600 mb-1 transition-colors line-clamp-1">
                               {resource.title}
                             </h4>
+                            {resource.recommendReason && (
+                              <p className="text-[10px] text-indigo-600 font-medium bg-indigo-50 px-2 py-1 rounded mb-2">
+                                {resource.recommendReason}
+                              </p>
+                            )}
                             {resource.description && (
                               <p className="text-xs text-slate-500 line-clamp-2 mb-2">
                                 {resource.description}

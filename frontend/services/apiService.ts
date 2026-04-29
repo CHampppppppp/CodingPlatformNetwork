@@ -732,6 +732,7 @@ export interface ExpertInterventionApiResponse {
     category: string;
     scoreValue: number;
     scoreLevel: string;
+    strategyKey: string | null;
   }>;
   connectedKnowledgeNodes: Array<{
     id: string;
@@ -749,6 +750,7 @@ export interface ExpertInterventionApiResponse {
       id: string;
       name: string;
     }>;
+    recommendReason: string;
   }>;
 }
 

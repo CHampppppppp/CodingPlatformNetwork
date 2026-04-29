@@ -6,6 +6,16 @@ export interface StudentProfile {
   learningStylePreference?: string | null;
   personality?: string | null;
   groupBehavior?: string | null;
+  knowledgeReserve?: number;
+  learningEngagement?: number;
+  cognitiveLoad?: number;
+  learningMotivation?: number;
+  computationalThinking?: number;
+  humanAiTrust?: number;
+  learningMethod?: number;
+  learningAttitude?: number;
+  selfRegulatedLearning?: number;
+  aiLiteracy?: number;
 }
 
 export interface TeacherProfile {

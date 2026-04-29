@@ -1,6 +1,88 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../shared/utils/prisma.service";
 
+const dimensionCodeToStrategyKey: Record<string, string> = {
+  COG_READING: "knowledgeReserve",
+  COG_LANGUAGE: "knowledgeReserve",
+  COG_SCIENCE_KNOWLEDGE: "knowledgeReserve",
+  COG_SCIENCE_INQUIRY: "learningEngagement",
+  COG_COMPUTATIONAL: "computationalThinking",
+  COG_TECH_LITERACY: "aiLiteracy",
+  PSY_ANXIETY: "cognitiveLoad",
+  PSY_DEPRESSION: "cognitiveLoad",
+  PSY_PRESSURE: "cognitiveLoad",
+  PSY_RESILIENCE: "learningMotivation",
+  PRAC_INNOVATION: "learningAttitude",
+  PRAC_PROBLEM_SOLVING: "selfRegulatedLearning",
+  PRAC_COLLABORATION: "learningMethod",
+  PRAC_PRACTICE: "learningEngagement",
+  knowledgeReserve: "knowledgeReserve",
+  learningEngagement: "learningEngagement",
+  cognitiveLoad: "cognitiveLoad",
+  learningMotivation: "learningMotivation",
+  computationalThinking: "computationalThinking",
+  humanAiTrust: "humanAiTrust",
+  learningMethod: "learningMethod",
+  learningAttitude: "learningAttitude",
+  selfRegulatedLearning: "selfRegulatedLearning",
+  aiLiteracy: "aiLiteracy",
+};
+
+const strategyKeyToResourceTypes: Record<string, string[]> = {
+  knowledgeReserve: ["DOCUMENT", "VIDEO", "ARTICLE"],
+  learningEngagement: ["GAME", "VIDEO", "PRACTICE"],
+  cognitiveLoad: ["DOCUMENT", "VIDEO", "GAME"],
+  learningMotivation: ["GAME", "VIDEO"],
+  computationalThinking: ["PRACTICE", "GAME", "DOCUMENT"],
+  humanAiTrust: ["ARTICLE", "VIDEO", "DOCUMENT"],
+  learningMethod: ["GAME", "PRACTICE", "VIDEO"],
+  learningAttitude: ["GAME", "VIDEO", "PRACTICE"],
+  selfRegulatedLearning: ["DOCUMENT", "PRACTICE"],
+  aiLiteracy: ["ARTICLE", "VIDEO", "DOCUMENT"],
+};
+
+const strategyKeyToDimensionName: Record<string, string> = {
+  knowledgeReserve: "知识储备",
+  learningEngagement: "学习投入",
+  cognitiveLoad: "认知负荷",
+  learningMotivation: "学习动机",
+  computationalThinking: "计算思维",
+  humanAiTrust: "人机信任度",
+  learningMethod: "学习方法与协作",
+  learningAttitude: "学习态度",
+  selfRegulatedLearning: "自我调节学习",
+  aiLiteracy: "人工智能素养",
+};
+
+function buildSearchUrl(title: string, resourceType: string): string {
+  const encoded = encodeURIComponent(title);
+  switch (resourceType) {
+    case "VIDEO":
+      return `https://search.bilibili.com/all?keyword=${encoded}`;
+    case "ARTICLE":
+      return `https://www.zhihu.com/search?type=content&q=${encoded}`;
+    case "DOCUMENT":
+      return `https://wenku.baidu.com/search?word=${encoded}`;
+    case "PRACTICE":
+      return `https://cn.bing.com/search?q=${encoded}`;
+    case "GAME":
+      return `https://cn.bing.com/search?q=${encoded}`;
+    default:
+      return `https://cn.bing.com/search?q=${encoded}`;
+  }
+}
+
+function resolveResourceUrl(
+  title: string,
+  resourceType: string,
+  existingUrl: string | null,
+): string {
+  if (existingUrl && !existingUrl.includes("example.com")) {
+    return existingUrl;
+  }
+  return buildSearchUrl(title, resourceType);
+}
+
 @Injectable()
 export class StudentService {
   constructor(private prisma: PrismaService) {}
@@ -61,28 +143,161 @@ export class StudentService {
     });
 
     const knowledgeNodeIds = knowledgeNodes.map((n) => n.id);
-    const resources = await this.prisma.resource.findMany({
-      where: {
-        knowledgeRelations: {
-          some: {
-            knowledgeNodeId: { in: knowledgeNodeIds },
+
+    const weakDimMap = new Map<
+      string,
+      { strategyKey: string; dimensionName: string; scoreValue: number }
+    >();
+    for (const dim of weakDimensions) {
+      const strategyKey = dimensionCodeToStrategyKey[dim.dimensionCode];
+      if (strategyKey) {
+        weakDimMap.set(dim.dimensionCode, {
+          strategyKey,
+          dimensionName: dim.dimensionNameZh,
+          scoreValue: dim.scoreValue,
+        });
+      }
+    }
+
+    const weakStrategyKeys = new Set<string>();
+    for (const { strategyKey } of weakDimMap.values()) {
+      weakStrategyKeys.add(strategyKey);
+    }
+
+    const prioritizedTypes: string[] = [];
+    for (const key of weakStrategyKeys) {
+      const types = strategyKeyToResourceTypes[key] || [];
+      for (const t of types) {
+        if (!prioritizedTypes.includes(t)) {
+          prioritizedTypes.push(t);
+        }
+      }
+    }
+
+    let resources: any[] = [];
+    const dimensionNames = Array.from(weakDimMap.values()).map(
+      (d) => d.dimensionName,
+    );
+
+    if (knowledgeNodeIds.length > 0) {
+      const dimSpecificLinkedResources = await this.prisma.resource.findMany({
+        where: {
+          OR: dimensionNames.flatMap((name) => [
+            { title: { contains: name } },
+            { description: { contains: name } },
+          ]),
+          knowledgeRelations: {
+            some: {
+              knowledgeNodeId: { in: knowledgeNodeIds },
+            },
           },
         },
-      },
-      include: {
-        knowledgeRelations: {
-          include: {
-            knowledgeNode: {
-              select: {
-                id: true,
-                displayName: true,
+        include: {
+          knowledgeRelations: {
+            include: {
+              knowledgeNode: {
+                select: {
+                  id: true,
+                  displayName: true,
+                },
               },
             },
           },
         },
-      },
-      take: 20,
-    });
+        take: 10,
+      });
+
+      const linkedIds = new Set(dimSpecificLinkedResources.map((r) => r.id));
+
+      const dimSpecificUnlinkedResources = await this.prisma.resource.findMany({
+        where: {
+          OR: dimensionNames.flatMap((name) => [
+            { title: { contains: name } },
+            { description: { contains: name } },
+          ]),
+          id: { notIn: Array.from(linkedIds) },
+        },
+        include: {
+          knowledgeRelations: {
+            include: {
+              knowledgeNode: {
+                select: {
+                  id: true,
+                  displayName: true,
+                },
+              },
+            },
+          },
+        },
+        take: 8,
+      });
+
+      const dimSpecificIds = new Set([
+        ...dimSpecificLinkedResources.map((r) => r.id),
+        ...dimSpecificUnlinkedResources.map((r) => r.id),
+      ]);
+
+      const typeMatchedResources = await this.prisma.resource.findMany({
+        where: {
+          id: { notIn: Array.from(dimSpecificIds) },
+          resourceType: { in: prioritizedTypes },
+          knowledgeRelations: {
+            some: {
+              knowledgeNodeId: { in: knowledgeNodeIds },
+            },
+          },
+          NOT: {
+            title: { contains: "教学资源" },
+          },
+        },
+        include: {
+          knowledgeRelations: {
+            include: {
+              knowledgeNode: {
+                select: {
+                  id: true,
+                  displayName: true,
+                },
+              },
+            },
+          },
+        },
+        take: 8,
+      });
+
+      resources = [
+        ...dimSpecificLinkedResources,
+        ...dimSpecificUnlinkedResources,
+        ...typeMatchedResources,
+      ];
+    } else if (dimensionNames.length > 0) {
+      const genericResources = await this.prisma.resource.findMany({
+        where: {
+          OR: dimensionNames.flatMap((name) => [
+            { title: { contains: name } },
+            { description: { contains: name } },
+          ]),
+          NOT: {
+            title: { contains: "教学资源" },
+          },
+        },
+        include: {
+          knowledgeRelations: {
+            include: {
+              knowledgeNode: {
+                select: {
+                  id: true,
+                  displayName: true,
+                },
+              },
+            },
+          },
+        },
+        take: 15,
+      });
+
+      resources = genericResources;
+    }
 
     const resourceIds = resources.map((r) => r.id);
     const rateGroups = await this.prisma.studentResourceRate.groupBy({
@@ -95,22 +310,53 @@ export class StudentService {
       rateGroups.map((g) => [
         g.resourceId,
         g._avg.rate != null ? Number(g._avg.rate) : null,
-      ])
+      ]),
     );
 
     const enrichedResources = resources.map((resource) => {
       const avgRate = rateMap.get(resource.id) ?? null;
+
+      const matchedDimensions: string[] = [];
+      for (const [dimCode, dimInfo] of weakDimMap.entries()) {
+        const types = strategyKeyToResourceTypes[dimInfo.strategyKey] || [];
+        if (types.includes(resource.resourceType)) {
+          matchedDimensions.push(dimInfo.dimensionName);
+        }
+      }
+
+      for (const [dimCode, dimInfo] of weakDimMap.entries()) {
+        const name = dimInfo.dimensionName;
+        if (
+          !matchedDimensions.includes(name) &&
+          (resource.title?.includes(name) || resource.description?.includes(name))
+        ) {
+          matchedDimensions.push(name);
+        }
+      }
+
+      const recommendReason =
+        matchedDimensions.length > 0
+          ? `针对${matchedDimensions.join("、")}薄弱维度推荐`
+          : weakDimMap.size > 0
+            ? "辅助学习资源"
+            : "关联知识点资源";
+
       return {
         id: resource.id,
         title: resource.title,
         description: resource.description,
-        url: resource.url,
+        url: resolveResourceUrl(
+          resource.title,
+          resource.resourceType,
+          resource.url,
+        ),
         resourceType: resource.resourceType,
         acceptanceRate: avgRate != null ? (avgRate / 5) * 100 : null,
-        knowledgeNodes: resource.knowledgeRelations.map((rel) => ({
+        knowledgeNodes: resource.knowledgeRelations.map((rel: any) => ({
           id: rel.knowledgeNode.id,
           name: rel.knowledgeNode.displayName,
         })),
+        recommendReason,
       };
     });
 
@@ -125,6 +371,7 @@ export class StudentService {
           category: d.category,
           scoreValue: d.scoreValue,
           scoreLevel: d.scoreLevel,
+          strategyKey: dimensionCodeToStrategyKey[d.dimensionCode] || null,
         })),
         connectedKnowledgeNodes: knowledgeNodes.map((n) => ({
           id: n.id,
@@ -199,7 +446,10 @@ export class StudentService {
           id: studentNode.id,
           name: studentNode.displayName,
           school: school?.name ?? studentNode.schoolId ?? null,
-          grade: grade?.gradeName != null ? `${grade.gradeName}年级` : studentNode.gradeId ?? null,
+          grade:
+            grade?.gradeName != null
+              ? `${grade.gradeName}年级`
+              : studentNode.gradeId ?? null,
           classId: schoolClass?.className ?? studentNode.classId ?? null,
           learningStylePreference:
             studentNode.studentProfile?.learningStylePreference ?? null,
