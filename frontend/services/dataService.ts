@@ -335,10 +335,6 @@ export const fetchStudentCognitiveTemplate = async (
     school: result.student.school || "",
     grade: result.student.grade || "",
     classId: result.student.classId || "",
-    learningStylePreference:
-      result.student.learningStylePreference || undefined,
-    personality: result.student.personality || undefined,
-    groupBehavior: result.student.groupBehavior || undefined,
   };
 
   result.dimensions.forEach((dimension) => {
@@ -391,9 +387,9 @@ export const fetchStudentCognitiveTemplate = async (
       level: dimension.scoreLevel,
     })),
     learningStyle: {
-      preference: result.student.learningStylePreference || undefined,
-      personality: result.student.personality || undefined,
-      groupBehavior: result.student.groupBehavior || undefined,
+      preference: undefined,
+      personality: undefined,
+      groupBehavior: undefined,
     },
     learningMotivation:
       typeof learningMotivationScore === "number"

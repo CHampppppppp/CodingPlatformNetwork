@@ -675,10 +675,6 @@ export class GraphService {
             ? classNames.get(node.classId) ?? node.classId
             : null,
           externalUserId: node.studentProfile?.externalUserId ?? null,
-          learningStylePreference:
-            node.studentProfile?.learningStylePreference ?? null,
-          personality: node.studentProfile?.personality ?? null,
-          groupBehavior: node.studentProfile?.groupBehavior ?? null,
         },
       });
       return;
@@ -721,7 +717,6 @@ export class GraphService {
         content: node.knowledgeProfile?.content ?? null,
         type: node.knowledgeProfile?.knowledgeType ?? null,
         category: node.knowledgeProfile?.category ?? null,
-        parentId: node.knowledgeProfile?.parentNodeId ?? null,
       },
     });
   }

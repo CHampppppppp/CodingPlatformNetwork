@@ -1521,9 +1521,8 @@ const App: React.FC = () => {
                             key={resource.id}
                             className="bg-white rounded-xl border border-slate-200 p-4 hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer group"
                             onClick={() => {
-                              if (resource.url) {
-                                window.open(resource.url, '_blank', 'noopener,noreferrer');
-                              }
+                              const url = isRealUrl(resource.url) ? resource.url : buildSearchUrl(resource.title, resource.resourceType);
+                              window.open(url, '_blank', 'noopener,noreferrer');
                             }}
                           >
                             <div className="flex items-start justify-between mb-2">

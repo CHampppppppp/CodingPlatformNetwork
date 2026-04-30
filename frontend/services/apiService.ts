@@ -7,9 +7,7 @@ export interface StudentCognitiveTemplateApiResponse {
     school: string | null;
     grade: string | null;
     classId: string | null;
-    learningStylePreference?: string | null;
-    personality?: string | null;
-    groupBehavior?: string | null;
+
   };
   profile: {
     version: string;

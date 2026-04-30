@@ -90,14 +90,11 @@ model GraphNode {
 
 /// 学生节点扩展属性，1:1 关联 GraphNode (nodeType = Student)
 model StudentProfile {
-  nodeId                  String    @id
-  externalUserId          String?
-  learningStylePreference String?
-  personality             String?
-  groupBehavior           String?
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
-  node                    GraphNode @relation(fields: [nodeId], references: [id])
+  nodeId         String    @id
+  externalUserId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  node           GraphNode @relation(fields: [nodeId], references: [id])
 
   @@index([externalUserId])
   @@map("student_profiles_test")
@@ -117,18 +114,15 @@ model TeacherProfile {
 }
 
 /// 知识点节点扩展属性，1:1 关联 GraphNode (nodeType = Knowledge)
-/// parentNodeId 指向父级知识点节点，支持树状结构
 model KnowledgeProfile {
   nodeId        String    @id
   content       String?   @db.Text
   knowledgeType String?
   category      String?
-  parentNodeId  String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   node          GraphNode @relation(fields: [nodeId], references: [id])
 
-  @@index([parentNodeId])
   @@map("knowledge_profiles_test")
 }
 
@@ -144,8 +138,8 @@ model InteractionSession {
   createdAt         DateTime                  @default(now())
   scenario          LearningScenario          @relation(fields: [scenarioId], references: [id])
   interactions      Interaction[]
-  studentWorks      StudentWork[]
   classroomAnalysis SessionClassroomAnalysis?
+  studentWorks      StudentWork[]
 
   @@index([scenarioId, occurredAt])
   @@index([schoolId, gradeId, classId, occurredAt])
@@ -349,51 +343,40 @@ model StudentWork {
 
 /// 课堂视频自动分析报告，存储基于课堂视频分析框架的九维度评估结果
 model SessionClassroomAnalysis {
-  id                          String             @id @default(cuid())
-  sessionId                   String             @unique
-  // 1. 知识点激活
-  knowledgeActivationRate     Decimal?           @db.Decimal(5, 2)
-  activatedKnowledgeCount     Int?
-  totalKnowledgeCount         Int?
-  // 2. 行为投入度
-  behavioralEngagementLevel   String?
+  id                             String             @id @default(cuid())
+  sessionId                      String             @unique
+  knowledgeActivationRate        Decimal?           @db.Decimal(5, 2)
+  activatedKnowledgeCount        Int?
+  totalKnowledgeCount            Int?
+  behavioralEngagementLevel      String?
   teacherStudentInteractionCount Int?
-  peerCollaborationCount      Int?
-  // 3. 认知投入度
-  cognitiveEngagementLevel    String?
-  constructiveUtteranceCount  Int?
-  // 4. 情感投入度
-  hasBurnout                  Boolean?
-  hasFrustration              Boolean?
-  // 5. 教学支持
-  conceptDevelopmentLevel     String?
-  feedbackQualityLevel        String?
-  academicExpectationLevel    String?
-  // 6. 课堂互动 - 提问
-  closedQuestionCount         Int?
-  applicationQuestionCount    Int?
-  openQuestionCount           Int?
-  // 6. 课堂互动 - 反馈
-  acceptFeedbackCount         Int?
-  praiseFeedbackCount         Int?
-  extendFeedbackCount         Int?
-  correctFeedbackCount        Int?
-  // 7. 课堂参与
-  studentUtteranceCount       Int?
-  teacherFluencyLevel         String?
-  toolVarietyCount            Int?
-  // 8. 教师情感能力
-  selfAwarenessLevel          String?
-  selfManagementLevel         String?
-  collectiveManagementLevel   String?
-  // 9. 课堂组织管理
-  ruleClarityLevel            String?
-  positiveReinforcementLevel  String?
-  negativeReductionLevel      String?
-  // 元数据
-  createdAt                   DateTime           @default(now())
-  updatedAt                   DateTime           @updatedAt
-  session                     InteractionSession @relation(fields: [sessionId], references: [id])
+  peerCollaborationCount         Int?
+  cognitiveEngagementLevel       String?
+  constructiveUtteranceCount     Int?
+  hasBurnout                     Boolean?
+  hasFrustration                 Boolean?
+  conceptDevelopmentLevel        String?
+  feedbackQualityLevel           String?
+  academicExpectationLevel       String?
+  closedQuestionCount            Int?
+  applicationQuestionCount       Int?
+  openQuestionCount              Int?
+  acceptFeedbackCount            Int?
+  praiseFeedbackCount            Int?
+  extendFeedbackCount            Int?
+  correctFeedbackCount           Int?
+  studentUtteranceCount          Int?
+  teacherFluencyLevel            String?
+  toolVarietyCount               Int?
+  selfAwarenessLevel             String?
+  selfManagementLevel            String?
+  collectiveManagementLevel      String?
+  ruleClarityLevel               String?
+  positiveReinforcementLevel     String?
+  negativeReductionLevel         String?
+  createdAt                      DateTime           @default(now())
+  updatedAt                      DateTime           @updatedAt
+  session                        InteractionSession @relation(fields: [sessionId], references: [id])
 
   @@map("session_classroom_analyses_test")
 }

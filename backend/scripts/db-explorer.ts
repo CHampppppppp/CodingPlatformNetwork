@@ -119,8 +119,6 @@ async function listAllTables() {
       id: truncateId(n.id),
       name: n.displayName,
       scenario: n.scenario.nameZh,
-      learningStyle: n.studentProfile?.learningStylePreference || '-',
-      personality: n.studentProfile?.personality || '-'
     }));
   }, await prisma.graphNode.count({ where: { nodeType: 'Student' } }));
 
@@ -133,8 +131,6 @@ async function listAllTables() {
       nodeId: truncateId(sp.nodeId),
       name: sp.node.displayName,
       externalUserId: sp.externalUserId || '-',
-      learningStyle: sp.learningStylePreference || '-',
-      personality: sp.personality || '-'
     }));
   }, await prisma.studentProfile.count());
 

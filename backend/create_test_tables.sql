@@ -69,9 +69,7 @@ IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'student_profiles_test')
 BEGIN
 CREATE TABLE [student_profiles_test] (
     [nodeId] nvarchar(1000) NOT NULL,
-    [learningStylePreference] nvarchar(1000) NULL,
-    [personality] nvarchar(1000) NULL,
-    [groupBehavior] nvarchar(1000) NULL,
+    [externalUserId] nvarchar(1000) NULL,
     [createdAt] datetime2 NOT NULL DEFAULT (getdate()),
     [updatedAt] datetime2 NOT NULL,
     CONSTRAINT [PK_student_profiles_test] PRIMARY KEY CLUSTERED ([nodeId])
@@ -95,10 +93,7 @@ IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'knowledge_profiles_test')
 BEGIN
 CREATE TABLE [knowledge_profiles_test] (
     [nodeId] nvarchar(1000) NOT NULL,
-    [content] nvarchar(1000) NULL,
-    [knowledgeType] nvarchar(1000) NULL,
-    [category] nvarchar(1000) NULL,
-    [parentNodeId] nvarchar(1000) NULL,
+    [externalUserId] nvarchar(1000) NULL,
     [createdAt] datetime2 NOT NULL DEFAULT (getdate()),
     [updatedAt] datetime2 NOT NULL,
     CONSTRAINT [PK_knowledge_profiles_test] PRIMARY KEY CLUSTERED ([nodeId])
@@ -227,11 +222,6 @@ END
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'graph_nodes_test_schoolId_gradeId_classId_idx' AND object_id = OBJECT_ID('graph_nodes_test'))
 BEGIN
 CREATE NONCLUSTERED INDEX [graph_nodes_test_schoolId_gradeId_classId_idx] ON [graph_nodes_test] ([schoolId], [gradeId], [classId]);
-END
-
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'knowledge_profiles_test_parentNodeId_idx' AND object_id = OBJECT_ID('knowledge_profiles_test'))
-BEGIN
-CREATE NONCLUSTERED INDEX [knowledge_profiles_test_parentNodeId_idx] ON [knowledge_profiles_test] ([parentNodeId]);
 END
 
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'cognitive_dimension_defs_test_dimensionCode_key' AND object_id = OBJECT_ID('cognitive_dimension_defs_test'))

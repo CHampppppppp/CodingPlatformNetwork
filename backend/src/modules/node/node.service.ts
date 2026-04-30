@@ -66,10 +66,6 @@ export class NodeService {
         await tx.studentProfile.create({
           data: {
             nodeId: node.id,
-            learningStylePreference:
-              dto.profile?.learningStylePreference ?? null,
-            personality: dto.profile?.personality ?? null,
-            groupBehavior: dto.profile?.groupBehavior ?? null,
           },
         });
       }
@@ -92,7 +88,6 @@ export class NodeService {
             content: dto.profile?.content ?? dto.displayName,
             knowledgeType: dto.profile?.knowledgeType ?? "GENERAL",
             category: dto.profile?.category ?? null,
-            parentNodeId: dto.profile?.parentNodeId ?? null,
           },
         });
       }

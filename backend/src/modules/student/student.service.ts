@@ -451,10 +451,6 @@ export class StudentService {
               ? `${grade.gradeName}年级`
               : studentNode.gradeId ?? null,
           classId: schoolClass?.className ?? studentNode.classId ?? null,
-          learningStylePreference:
-            studentNode.studentProfile?.learningStylePreference ?? null,
-          personality: studentNode.studentProfile?.personality ?? null,
-          groupBehavior: studentNode.studentProfile?.groupBehavior ?? null,
         },
         profile: latestProfile
           ? {

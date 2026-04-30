@@ -79,9 +79,7 @@
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `nodeId` | String (PK) | 关联的 GraphNode ID |
-| `learningStylePreference` | String? | 学习风格偏好 |
-| `personality` | String? | 性格 |
-| `groupBehavior` | String? | 小组行为 |
+| `externalUserId` | String? | 外部用户ID |
 | `createdAt` | DateTime | 创建时间 |
 | `updatedAt` | DateTime | 更新时间 |
 
@@ -112,7 +110,6 @@
 | `content` | String? | 知识点具体内容/操作步骤 |
 | `knowledgeType` | String? | 知识点类型: "知识单元" / "知识点" |
 | `category` | String? | 分类: "信息技术" / "数学" / "语文" 等 |
-| `parentNodeId` | String? | 父级知识点ID（支持树状结构） |
 | `createdAt` | DateTime | 创建时间 |
 | `updatedAt` | DateTime | 更新时间 |
 

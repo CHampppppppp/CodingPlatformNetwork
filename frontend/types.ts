@@ -97,11 +97,6 @@ export interface StudentProfile extends CognitiveAttributes {
   classId: string;
   externalUserId?: string;
 
-  // 认知模板文档中的非核心字段
-  learningStylePreference?: LearningStyleProfile["preference"];
-  personality?: LearningStyleProfile["personality"];
-  groupBehavior?: LearningStyleProfile["groupBehavior"];
-
   // 文档命名兼容别名
   humanMachineTrust?: number; // = humanAiTrust
   learningApproach?: number; // = learningMethod

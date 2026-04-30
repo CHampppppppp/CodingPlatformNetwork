@@ -3,9 +3,6 @@ export interface StudentProfile {
   grade: string | null;
   classId: string | null;
   externalUserId?: string | null;
-  learningStylePreference?: string | null;
-  personality?: string | null;
-  groupBehavior?: string | null;
   knowledgeReserve?: number;
   learningEngagement?: number;
   cognitiveLoad?: number;

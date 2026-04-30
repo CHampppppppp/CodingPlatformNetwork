@@ -11,16 +11,12 @@ export const createNodeSchema = z.object({
   classId: z.string().trim().optional().nullable(),
   profile: z
     .object({
-      learningStylePreference: z.string().optional().nullable(),
-      personality: z.string().optional().nullable(),
-      groupBehavior: z.string().optional().nullable(),
       teachingGrade: z.number().optional().nullable(),
       teachingClass: z.string().optional().nullable(),
       subject: z.string().optional().nullable(),
       content: z.string().optional(),
       knowledgeType: z.string().optional(),
       category: z.string().optional().nullable(),
-      parentNodeId: z.string().optional().nullable(),
     })
     .optional(),
 });
