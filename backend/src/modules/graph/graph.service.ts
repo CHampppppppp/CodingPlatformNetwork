@@ -138,8 +138,8 @@ export class GraphService {
           interaction.targetNode.nodeType === "Student") ||
         (interaction.sourceNode.nodeType === "Student" &&
           interaction.targetNode.nodeType === "Teacher");
-      return !(
-        isTeacherStudent &&
+      if (!isTeacherStudent) return true;
+      return (
         interaction.actionType &&
         TEACHER_STUDENT_ACTIONS.includes(interaction.actionType)
       );
