@@ -39,8 +39,14 @@ export class ResourceController {
   }
 
   @Get(":id/student-rates")
-  async getResourceStudentRates(@Param("id") id: string) {
-    return this.resourceService.getResourceStudentRates(id);
+  async getResourceStudentRates(
+    @Param("id") id: string,
+    @Query("student_ids") studentIds?: string,
+    @Query("limit") limit?: string,
+  ) {
+    const parsedLimit = limit ? parseInt(limit, 10) : 500;
+    const parsedStudentIds = studentIds ? studentIds.split(",") : undefined;
+    return this.resourceService.getResourceStudentRates(id, parsedStudentIds, parsedLimit);
   }
 
   @Post()

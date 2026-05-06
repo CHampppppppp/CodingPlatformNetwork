@@ -623,11 +623,17 @@ export const fetchClassesBySchoolAndGrade = async (
 
 export const fetchResourceStudentRates = async (
   resourceId: string,
+  studentIds?: string[],
 ): Promise<Record<string, number>> => {
   try {
+    const queryParams = new URLSearchParams();
+    if (studentIds && studentIds.length > 0) {
+      queryParams.append("student_ids", studentIds.join(","));
+    }
+    const queryString = queryParams.toString();
     const url = `${API_BASE_URL}/resources/${encodeURIComponent(
       resourceId,
-    )}/student-rates`;
+    )}/student-rates${queryString ? `?${queryString}` : ""}`;
     console.log("请求资源学生评分:", url);
 
     const response = await fetchWithRetry(url, {

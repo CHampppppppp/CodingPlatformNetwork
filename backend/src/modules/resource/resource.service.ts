@@ -82,30 +82,27 @@ export class ResourceService {
     };
   }
 
-  async getResourceStudentRates(resourceId: string) {
+  async getResourceStudentRates(resourceId: string, studentIds?: string[], limit = 500) {
+    const where: Prisma.StudentResourceRateWhereInput = { resourceId };
+    
+    if (studentIds && studentIds.length > 0) {
+      where.studentId = { in: studentIds };
+    }
+    
     const rates = await this.prisma.studentResourceRate.findMany({
-      where: { resourceId },
+      where,
       select: { studentId: true, rate: true },
+      take: limit,
     });
-
-    const studentIds = rates.map((r) => r.studentId);
-    const profiles = await this.prisma.studentProfile.findMany({
-      where: { nodeId: { in: studentIds } },
-      select: { nodeId: true },
-    });
-
-    const validNodeIds = new Set(profiles.map((p) => p.nodeId));
 
     const matchedRates: Record<string, number> = {};
     for (const r of rates) {
-      if (validNodeIds.has(r.studentId)) {
-        matchedRates[r.studentId] = Number(r.rate);
-      }
+      matchedRates[r.studentId] = Number(r.rate);
     }
 
     return {
       data: matchedRates,
-      meta: null,
+      meta: { count: Object.keys(matchedRates).length },
       error: null,
     };
   }

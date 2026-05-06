@@ -405,7 +405,8 @@ const App: React.FC = () => {
       });
 
       try {
-        const rawRates = await fetchResourceStudentRates(resource.id);
+        const studentIdsInGraph = Array.from(studentIdSet);
+        const rawRates = await fetchResourceStudentRates(resource.id, studentIdsInGraph);
         const ratedStudentIds = Object.keys(rawRates).filter((id) =>
           studentIdSet.has(id),
         );

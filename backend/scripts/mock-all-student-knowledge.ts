@@ -101,7 +101,11 @@ async function main() {
     }> = [];
 
     for (const student of classStudents) {
-      for (const knowledge of selectedKnowledge) {
+      const studentKnowledgeCount = Math.floor(Math.random() * 3) + 1;
+      const shuffledKnowledge = [...selectedKnowledge].sort(() => 0.5 - Math.random());
+      const studentKnowledge = shuffledKnowledge.slice(0, studentKnowledgeCount);
+
+      for (const knowledge of studentKnowledge) {
         const relationId = `rel_${student.id}_${knowledge.id}`;
 
         relationsData.push({
