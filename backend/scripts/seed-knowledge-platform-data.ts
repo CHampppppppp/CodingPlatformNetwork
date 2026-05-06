@@ -229,7 +229,7 @@ async function main() {
           sourceNodeId: student.id,
           targetNodeId: knowledgeNode.id,
           strength: strength,
-          actionType: 'LEARN',
+          actionType: 'STUDY',
         });
       }
     }

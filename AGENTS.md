@@ -121,7 +121,6 @@
 ## MUST
 
 - don't make docs unless I told you so
-- 不要尝试npx prisma studio，因为MSSQL不支持Studio，只要知道能正常获取数据即可，通过scripts/db-explorer.ts查询数据库表。
 - 生成的data文件放在`backend/datas/script_filterd`目录下。
 - script文件统一放在`backend/scripts`目录下。
 - only CRUD database tables when you have my permission.

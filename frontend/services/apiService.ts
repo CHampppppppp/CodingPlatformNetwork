@@ -1,4 +1,5 @@
 import { GraphData } from "../types";
+import { API_BASE_URL, SCENARIO_CODE_MAP } from "../constants";
 
 export interface StudentCognitiveTemplateApiResponse {
   student: {
@@ -22,21 +23,6 @@ export interface StudentCognitiveTemplateApiResponse {
     scoreLevel: string;
   }>;
 }
-
-// API基础URL
-const API_BASE_URL =
-  process.env.NODE_ENV === "production"
-    ? "http://interaction-network.mgsai.cn/api/v1"
-    : "http://localhost:3334/api/v1";
-
-const scenarioCodeMap: Record<string, string> = {
-  展示场景: "SHOW_CASE",
-  学科课程在线学习: "ONLINE_COURSE",
-  课后线上教师授课答疑: "TEACHER_QA",
-  家庭在线学习: "HOME_LEARNING",
-  在线协作学习: "COLLABORATIVE_LEARNING",
-  社团课等非正式学习: "INFORMAL_LEARNING",
-};
 
 const schoolNameToId = new Map<string, string>();
 const gradeKeyToId = new Map<string, string>();
@@ -162,7 +148,7 @@ export const fetchGraphData = async (params: {
     // 构建查询参数
     const queryParams = new URLSearchParams();
     const scenarioCode = params.scenario
-      ? scenarioCodeMap[params.scenario] || params.scenario
+      ? SCENARIO_CODE_MAP[params.scenario] || params.scenario
       : undefined;
     if (scenarioCode) queryParams.append("scenario_code", scenarioCode);
 
@@ -479,7 +465,7 @@ export const fetchInteractions = async (params: {
 // 获取学校列表
 export const fetchSchools = async (scenario?: string): Promise<string[]> => {
   try {
-    const scenarioCode = scenario ? scenarioCodeMap[scenario] || scenario : undefined;
+    const scenarioCode = scenario ? SCENARIO_CODE_MAP[scenario] || scenario : undefined;
     const queryParams = new URLSearchParams();
     if (scenarioCode) queryParams.append("scenario_code", scenarioCode);
     const url = `${API_BASE_URL}/org/schools${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
@@ -527,7 +513,7 @@ export const fetchGradesBySchool = async (
       return [];
     }
 
-    const scenarioCode = scenario ? scenarioCodeMap[scenario] || scenario : undefined;
+    const scenarioCode = scenario ? SCENARIO_CODE_MAP[scenario] || scenario : undefined;
     const queryParams = new URLSearchParams();
     queryParams.append("school_id", schoolId);
     if (scenarioCode) queryParams.append("scenario_code", scenarioCode);
@@ -593,7 +579,7 @@ export const fetchClassesBySchoolAndGrade = async (
       return [];
     }
 
-    const scenarioCode = scenario ? scenarioCodeMap[scenario] || scenario : undefined;
+    const scenarioCode = scenario ? SCENARIO_CODE_MAP[scenario] || scenario : undefined;
     const queryParams = new URLSearchParams();
     queryParams.append("grade_id", gradeId);
     if (scenarioCode) queryParams.append("scenario_code", scenarioCode);
@@ -695,7 +681,13 @@ export const fetchClassroomAnalysis = async (params: {
     }
 
     const payload = await response.json();
-    const data = payload?.data ?? payload;
+    
+    if (payload.error) {
+      console.log("课堂视频分析数据未找到:", payload.error);
+      return null;
+    }
+    
+    const data = payload?.data ?? null;
     console.log("获取课堂视频分析数据成功:", data ? "有数据" : "无数据");
     return data;
   } catch (error) {

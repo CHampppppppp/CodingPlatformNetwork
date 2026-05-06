@@ -17,6 +17,44 @@ type GraphQuery = {
   to?: string;
 };
 
+const dimCodes: Record<string, string[]> = {
+  knowledgeReserve: ["COG_READING", "COG_LANGUAGE", "COG_SCIENCE_KNOWLEDGE"],
+  learningEngagement: ["COG_SCIENCE_INQUIRY", "PRAC_PRACTICE", "PRAC_COLLABORATION"],
+  cognitiveLoad: ["PSY_ANXIETY", "PSY_DEPRESSION", "PSY_PRESSURE"],
+  learningMotivation: ["PSY_RESILIENCE"],
+  computationalThinking: ["COG_COMPUTATIONAL"],
+  humanAiTrust: ["COG_TECH_LITERACY"],
+  learningMethod: ["PRAC_PROBLEM_SOLVING", "PRAC_COLLABORATION"],
+  learningAttitude: ["PRAC_INNOVATION"],
+  selfRegulatedLearning: ["PRAC_PROBLEM_SOLVING"],
+  aiLiteracy: ["COG_TECH_LITERACY"],
+};
+
+const multipliers: Record<string, number> = {
+  knowledgeReserve: 1 / 2,
+  learningEngagement: 1 / 2,
+  cognitiveLoad: 0.5,
+  learningMotivation: 1 / 2,
+  computationalThinking: 1 / 2,
+  humanAiTrust: 1 / 2,
+  learningMethod: 1 / 2,
+  learningAttitude: 1 / 2,
+  selfRegulatedLearning: 1 / 2,
+  aiLiteracy: 1 / 2,
+};
+
+function computeDimension(
+  dimMap: Map<string, number>,
+  codes: string[],
+  multiplier: number,
+): number {
+  const values = codes
+    .map((code) => dimMap.get(code) ?? 0)
+    .filter((v) => v > 0);
+  if (values.length === 0) return 0;
+  return (values.reduce((a, b) => a + b, 0) / values.length) * multiplier;
+}
+
 @Injectable()
 export class GraphService {
   constructor(private prisma: PrismaService) {}
@@ -79,7 +117,6 @@ export class GraphService {
 
     const nodeMap = new Map<string, Node>();
 
-    // 从交互中提取节点
     for (const interaction of interactions) {
       this.putNode(
         nodeMap,
@@ -187,117 +224,80 @@ export class GraphService {
         if (scenario) scenarioId = scenario.id;
       }
 
-      const where: any = {};
-      if (scenarioId) where.scenarioId = scenarioId;
+      const nodeWhere: any = { nodeType: 'Student' };
+      if (params.schoolId) nodeWhere.schoolId = params.schoolId;
+      if (params.gradeId) nodeWhere.gradeId = params.gradeId;
+      if (params.classId) nodeWhere.classId = params.classId;
+      if (scenarioId) nodeWhere.scenarioId = scenarioId;
 
-      let studentNodeIds: string[] | undefined;
-      if (params.classId || params.gradeId || params.schoolId) {
-        const nodeWhere: any = { nodeType: 'Student' };
-        if (params.schoolId) nodeWhere.schoolId = params.schoolId;
-        if (params.gradeId) nodeWhere.gradeId = params.gradeId;
-        if (params.classId) nodeWhere.classId = params.classId;
-        if (scenarioId) nodeWhere.scenarioId = scenarioId;
+      const studentNodes = await this.prisma.graphNode.findMany({
+        where: nodeWhere,
+        select: { id: true },
+      });
+      const studentNodeIds = studentNodes.map((n) => n.id);
 
-        const studentNodes = await this.prisma.graphNode.findMany({
-          where: nodeWhere,
-          select: { id: true },
-        });
-        studentNodeIds = studentNodes.map((n) => n.id);
-        if (studentNodeIds.length > 0) {
-          where.studentNodeId = { in: studentNodeIds };
-        } else {
-          return null;
-        }
+      if (studentNodeIds.length === 0) {
+        return null;
       }
 
-      const responses = await this.prisma.studentSurveyResponse.findMany({
-        where,
+      const profiles = await this.prisma.studentProfile.findMany({
+        where: { nodeId: { in: studentNodeIds } },
         select: {
           aiContentSatisfaction: true,
           resourceHelpfulness: true,
           posterSatisfaction: true,
-          motivationScore: true,
-          attitudeScore: true,
-          engagementScore: true,
-          selfRegulationScore: true,
-          computationalThinkingScore: true,
-          learningMethodScore: true,
-          cognitiveLoadScore: true,
-          humanAiTrustScore: true,
-          aiLiteracyScore: true,
-          priorKnowledgeScore: true,
         },
       });
 
-      if (responses.length > 0) {
-        const validSatisfactionResponses = responses.filter(
-          (r) =>
-            r.aiContentSatisfaction !== null &&
-            r.resourceHelpfulness !== null &&
-            r.posterSatisfaction !== null,
-        );
-        const personalSatisfactionScores = validSatisfactionResponses.map((r) => {
-          const q4 = Number(r.aiContentSatisfaction);
-          const q5 = Number(r.resourceHelpfulness);
-          const q6 = Number(r.posterSatisfaction);
-          return (q4 + q5 + q6) / 3;
-        });
-        const overallSatisfactionAvg =
-          personalSatisfactionScores.length > 0
-            ? Number(
-                (
-                  personalSatisfactionScores.reduce((a, b) => a + b, 0) /
-                  personalSatisfactionScores.length
-                ).toFixed(2),
-              )
-            : 0;
+      const validSatisfactionResponses = profiles.filter(
+        (r) =>
+          r.aiContentSatisfaction !== null &&
+          r.resourceHelpfulness !== null &&
+          r.posterSatisfaction !== null,
+      );
+      const personalSatisfactionScores = validSatisfactionResponses.map((r) => {
+        const q4 = Number(r.aiContentSatisfaction);
+        const q5 = Number(r.resourceHelpfulness);
+        const q6 = Number(r.posterSatisfaction);
+        return (q4 + q5 + q6) / 3;
+      });
+      const overallSatisfactionAvg =
+        personalSatisfactionScores.length > 0
+          ? Number(
+              (
+                personalSatisfactionScores.reduce((a, b) => a + b, 0) /
+                personalSatisfactionScores.length
+              ).toFixed(2),
+            )
+          : 0;
 
-        const sum = (key: keyof (typeof responses)[0]) =>
-          responses.reduce(
-            (acc, r) => acc + (r[key] !== null ? Number(r[key]) : 0),
-            0,
-          );
-        const count = (key: keyof (typeof responses)[0]) =>
-          responses.filter((r) => r[key] !== null).length;
-        const avg = (key: keyof (typeof responses)[0]) => {
-          const c = count(key);
-          return c > 0 ? Number((sum(key) / c).toFixed(2)) : 0;
-        };
-
+      const cognitiveStats = await this.computeStatsFromCognitiveProfiles(studentNodeIds);
+      if (!cognitiveStats) {
         return {
-          pushed: responses.length,
+          pushed: profiles.length,
           filled: validSatisfactionResponses.length,
           score: Number(overallSatisfactionAvg.toFixed(1)),
           percentage: Math.round((overallSatisfactionAvg / 5) * 100),
-          knowledgeReserve: avg("priorKnowledgeScore"),
-          learningEngagement: avg("engagementScore"),
-          cognitiveLoad: avg("cognitiveLoadScore"),
-          learningMotivation: avg("motivationScore"),
-          computationalThinking: avg("computationalThinkingScore"),
-          humanAiTrust: avg("humanAiTrustScore"),
-          learningMethod: avg("learningMethodScore"),
-          learningAttitude: avg("attitudeScore"),
-          selfRegulatedLearning: avg("selfRegulationScore"),
-          aiLiteracy: avg("aiLiteracyScore"),
+          knowledgeReserve: 0,
+          learningEngagement: 0,
+          cognitiveLoad: 0,
+          learningMotivation: 0,
+          computationalThinking: 0,
+          humanAiTrust: 0,
+          learningMethod: 0,
+          learningAttitude: 0,
+          selfRegulatedLearning: 0,
+          aiLiteracy: 0,
         };
       }
 
-      if (!studentNodeIds || studentNodeIds.length === 0) {
-        const nodeWhere: any = { nodeType: 'Student' };
-        if (scenarioId) nodeWhere.scenarioId = scenarioId;
-
-        const studentNodes = await this.prisma.graphNode.findMany({
-          where: nodeWhere,
-          select: { id: true },
-        });
-        studentNodeIds = studentNodes.map((n) => n.id);
-      }
-
-      if (!studentNodeIds || studentNodeIds.length === 0) {
-        return null;
-      }
-
-      return this.computeStatsFromCognitiveProfiles(studentNodeIds);
+      return {
+        pushed: profiles.length,
+        filled: validSatisfactionResponses.length,
+        score: Number(overallSatisfactionAvg.toFixed(1)),
+        percentage: Math.round((overallSatisfactionAvg / 5) * 100),
+        ...cognitiveStats,
+      };
     } catch {
       return null;
     }
@@ -324,32 +324,6 @@ export class GraphService {
     }
     const latestProfiles = Array.from(latestProfileMap.values());
 
-    const dimCodes: Record<string, string[]> = {
-      knowledgeReserve: ["COG_READING", "COG_LANGUAGE", "COG_SCIENCE_KNOWLEDGE"],
-      learningEngagement: ["COG_SCIENCE_INQUIRY", "PRAC_PRACTICE", "PRAC_COLLABORATION"],
-      cognitiveLoad: ["PSY_ANXIETY", "PSY_DEPRESSION", "PSY_PRESSURE"],
-      learningMotivation: ["PSY_RESILIENCE"],
-      computationalThinking: ["COG_COMPUTATIONAL"],
-      humanAiTrust: ["COG_TECH_LITERACY"],
-      learningMethod: ["PRAC_PROBLEM_SOLVING", "PRAC_COLLABORATION"],
-      learningAttitude: ["PRAC_INNOVATION"],
-      selfRegulatedLearning: ["PRAC_PROBLEM_SOLVING"],
-      aiLiteracy: ["COG_TECH_LITERACY"],
-    };
-
-    const multipliers: Record<string, number> = {
-      knowledgeReserve: 1 / 2,
-      learningEngagement: 1 / 2,
-      cognitiveLoad: 0.5,
-      learningMotivation: 1 / 2,
-      computationalThinking: 1 / 2,
-      humanAiTrust: 1 / 2,
-      learningMethod: 1 / 2,
-      learningAttitude: 1 / 2,
-      selfRegulatedLearning: 1 / 2,
-      aiLiteracy: 1 / 2,
-    };
-
     const studentDimensions = latestProfiles.map((profile) => {
       const dimMap = new Map(
         profile.dimensionScores.map((ds) => [ds.dimensionCode, Number(ds.scoreValue)]),
@@ -357,10 +331,7 @@ export class GraphService {
 
       const result: Record<string, number> = {};
       for (const [key, codes] of Object.entries(dimCodes)) {
-        const avgValue =
-          codes.reduce((sum, code) => sum + (dimMap.get(code) ?? 0), 0) /
-          codes.length;
-        result[key] = avgValue * (multipliers[key] ?? 1);
+        result[key] = computeDimension(dimMap, codes, multipliers[key] ?? 1);
       }
       return result;
     });
@@ -374,13 +345,7 @@ export class GraphService {
         : 0;
     };
 
-    const mockSatisfactionScore = 4.1;
-
     return {
-      pushed: latestProfiles.length,
-      filled: latestProfiles.length,
-      score: mockSatisfactionScore,
-      percentage: Math.round((mockSatisfactionScore / 5) * 100),
       knowledgeReserve: avg("knowledgeReserve"),
       learningEngagement: avg("learningEngagement"),
       cognitiveLoad: avg("cognitiveLoad"),
@@ -415,32 +380,6 @@ export class GraphService {
       }
     }
 
-    const dimCodes: Record<string, string[]> = {
-      knowledgeReserve: ["COG_READING", "COG_LANGUAGE", "COG_SCIENCE_KNOWLEDGE"],
-      learningEngagement: ["COG_SCIENCE_INQUIRY", "PRAC_PRACTICE", "PRAC_COLLABORATION"],
-      cognitiveLoad: ["PSY_ANXIETY", "PSY_DEPRESSION", "PSY_PRESSURE"],
-      learningMotivation: ["PSY_RESILIENCE"],
-      computationalThinking: ["COG_COMPUTATIONAL"],
-      humanAiTrust: ["COG_TECH_LITERACY"],
-      learningMethod: ["PRAC_PROBLEM_SOLVING", "PRAC_COLLABORATION"],
-      learningAttitude: ["PRAC_INNOVATION"],
-      selfRegulatedLearning: ["PRAC_PROBLEM_SOLVING"],
-      aiLiteracy: ["COG_TECH_LITERACY"],
-    };
-
-    const multipliers: Record<string, number> = {
-      knowledgeReserve: 1 / 2,
-      learningEngagement: 1 / 2,
-      cognitiveLoad: 0.5,
-      learningMotivation: 1 / 2,
-      computationalThinking: 1 / 2,
-      humanAiTrust: 1 / 2,
-      learningMethod: 1 / 2,
-      learningAttitude: 1 / 2,
-      selfRegulatedLearning: 1 / 2,
-      aiLiteracy: 1 / 2,
-    };
-
     const seededRandom = (seed: string) => {
       let hash = 0;
       for (let i = 0; i < seed.length; i++) {
@@ -457,46 +396,73 @@ export class GraphService {
           profile.dimensionScores.map((ds) => [ds.dimensionCode, Number(ds.scoreValue)]),
         );
 
-        const computeDim = (codes: string[], multiplier: number) => {
-          const values = codes.map((code) => dimMap.get(code) ?? 0).filter((v) => v > 0);
-          if (values.length === 0) return 0;
-          return (values.reduce((a, b) => a + b, 0) / values.length) * multiplier;
-        };
+        const precomputedKeys = [
+          'knowledgeReserve',
+          'learningEngagement',
+          'cognitiveLoad',
+          'learningMotivation',
+          'computationalThinking',
+          'humanAiTrust',
+          'learningMethod',
+          'learningAttitude',
+          'selfRegulatedLearning',
+          'aiLiteracy',
+        ];
+        const hasPrecomputedDimensions = precomputedKeys.some(
+          (key) => dimMap.has(key) && (dimMap.get(key) ?? 0) > 0,
+        );
 
-        node.studentProfile = {
-          ...node.studentProfile,
-          knowledgeReserve: computeDim(dimCodes.knowledgeReserve, multipliers.knowledgeReserve),
-          learningEngagement: computeDim(dimCodes.learningEngagement, multipliers.learningEngagement),
-          cognitiveLoad: computeDim(dimCodes.cognitiveLoad, multipliers.cognitiveLoad),
-          learningMotivation: computeDim(dimCodes.learningMotivation, multipliers.learningMotivation),
-          computationalThinking: computeDim(dimCodes.computationalThinking, multipliers.computationalThinking),
-          humanAiTrust: computeDim(dimCodes.humanAiTrust, multipliers.humanAiTrust),
-          learningMethod: computeDim(dimCodes.learningMethod, multipliers.learningMethod),
-          learningAttitude: computeDim(dimCodes.learningAttitude, multipliers.learningAttitude),
-          selfRegulatedLearning: computeDim(dimCodes.selfRegulatedLearning, multipliers.selfRegulatedLearning),
-          aiLiteracy: computeDim(dimCodes.aiLiteracy, multipliers.aiLiteracy),
-        };
-      } else {
-        const seed = node.id;
-        const mockValue = (min: number, max: number, offset: number) => {
-          const raw = seededRandom(seed + offset);
-          return Number((min + raw * (max - min)).toFixed(1));
-        };
-
-        node.studentProfile = {
-          ...node.studentProfile,
-          knowledgeReserve: mockValue(1.5, 3.5, 1),
-          learningEngagement: mockValue(1.5, 3.5, 2),
-          cognitiveLoad: mockValue(2.0, 4.0, 3),
-          learningMotivation: mockValue(1.5, 3.5, 4),
-          computationalThinking: mockValue(1.5, 3.5, 5),
-          humanAiTrust: mockValue(1.5, 3.5, 6),
-          learningMethod: mockValue(1.5, 3.5, 7),
-          learningAttitude: mockValue(1.5, 3.5, 8),
-          selfRegulatedLearning: mockValue(1.5, 3.5, 9),
-          aiLiteracy: mockValue(1.5, 3.5, 10),
-        };
+        if (hasPrecomputedDimensions) {
+          node.studentProfile = {
+            ...node.studentProfile,
+            knowledgeReserve: dimMap.get('knowledgeReserve') ?? 0,
+            learningEngagement: dimMap.get('learningEngagement') ?? 0,
+            cognitiveLoad: dimMap.get('cognitiveLoad') ?? 0,
+            learningMotivation: dimMap.get('learningMotivation') ?? 0,
+            computationalThinking: dimMap.get('computationalThinking') ?? 0,
+            humanAiTrust: dimMap.get('humanAiTrust') ?? 0,
+            learningMethod: dimMap.get('learningMethod') ?? 0,
+            learningAttitude: dimMap.get('learningAttitude') ?? 0,
+            selfRegulatedLearning: dimMap.get('selfRegulatedLearning') ?? 0,
+            aiLiteracy: dimMap.get('aiLiteracy') ?? 0,
+          };
+        } else {
+          node.studentProfile = {
+            ...node.studentProfile,
+            knowledgeReserve: computeDimension(dimMap, dimCodes.knowledgeReserve, multipliers.knowledgeReserve),
+            learningEngagement: computeDimension(dimMap, dimCodes.learningEngagement, multipliers.learningEngagement),
+            cognitiveLoad: computeDimension(dimMap, dimCodes.cognitiveLoad, multipliers.cognitiveLoad),
+            learningMotivation: computeDimension(dimMap, dimCodes.learningMotivation, multipliers.learningMotivation),
+            computationalThinking: computeDimension(dimMap, dimCodes.computationalThinking, multipliers.computationalThinking),
+            humanAiTrust: computeDimension(dimMap, dimCodes.humanAiTrust, multipliers.humanAiTrust),
+            learningMethod: computeDimension(dimMap, dimCodes.learningMethod, multipliers.learningMethod),
+            learningAttitude: computeDimension(dimMap, dimCodes.learningAttitude, multipliers.learningAttitude),
+            selfRegulatedLearning: computeDimension(dimMap, dimCodes.selfRegulatedLearning, multipliers.selfRegulatedLearning),
+            aiLiteracy: computeDimension(dimMap, dimCodes.aiLiteracy, multipliers.aiLiteracy),
+          };
+        }
+        continue;
       }
+
+      const seed = node.id;
+      const mockValue = (min: number, max: number, offset: number) => {
+        const raw = seededRandom(seed + offset);
+        return Number((min + raw * (max - min)).toFixed(1));
+      };
+
+      node.studentProfile = {
+        ...node.studentProfile,
+        knowledgeReserve: mockValue(1.5, 3.5, 1),
+        learningEngagement: mockValue(1.5, 3.5, 2),
+        cognitiveLoad: mockValue(2.0, 4.0, 3),
+        learningMotivation: mockValue(1.5, 3.5, 4),
+        computationalThinking: mockValue(1.5, 3.5, 5),
+        humanAiTrust: mockValue(1.5, 3.5, 6),
+        learningMethod: mockValue(1.5, 3.5, 7),
+        learningAttitude: mockValue(1.5, 3.5, 8),
+        selfRegulatedLearning: mockValue(1.5, 3.5, 9),
+        aiLiteracy: mockValue(1.5, 3.5, 10),
+      };
     }
   }
 

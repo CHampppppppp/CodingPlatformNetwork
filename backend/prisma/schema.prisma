@@ -73,14 +73,16 @@ model GraphNode {
   createdAt         DateTime                    @default(now())
   updatedAt         DateTime                    @updatedAt
   scenario          LearningScenario            @relation(fields: [scenarioId], references: [id])
-  sourceEdges       Interaction[]               @relation("SourceNode")
-  targetEdges       Interaction[]               @relation("TargetNode")
-  knowledgeProfile  KnowledgeProfile?
-  resourceRelations ResourceKnowledgeRelation[]
-  cognitiveProfiles StudentCognitiveProfile[]
-  studentProfile    StudentProfile?
-  studentWorks      StudentWork[]
-  teacherProfile    TeacherProfile?
+  sourceEdges                 Interaction[]               @relation("SourceNode")
+  targetEdges                 Interaction[]               @relation("TargetNode")
+  studentKnowledgeRelations   StudentKnowledgeRelation[]  @relation("StudentKnowledgeStudent")
+  knowledgeStudentRelations   StudentKnowledgeRelation[]  @relation("StudentKnowledgeKnowledge")
+  knowledgeProfile            KnowledgeProfile?
+  resourceRelations           ResourceKnowledgeRelation[]
+  cognitiveProfiles           StudentCognitiveProfile[]
+  studentProfile              StudentProfile?
+  studentWorks                StudentWork[]
+  teacherProfile              TeacherProfile?
 
   @@index([nodeType])
   @@index([scenarioId])
@@ -90,11 +92,20 @@ model GraphNode {
 
 /// 学生节点扩展属性，1:1 关联 GraphNode (nodeType = Student)
 model StudentProfile {
-  nodeId         String    @id
-  externalUserId String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  node           GraphNode @relation(fields: [nodeId], references: [id])
+  nodeId                String    @id
+  externalUserId        String?
+  gender                String?
+  learningStyle         String?
+  personality           String?
+  groupBehavior         String?
+  aiContentSatisfaction String?
+  resourceHelpfulness   String?
+  posterSatisfaction    String?
+  teachingPreference    String?
+  helpSource            String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  node                  GraphNode @relation(fields: [nodeId], references: [id])
 
   @@index([externalUserId])
   @@map("student_profiles_test")
@@ -161,9 +172,11 @@ model Interaction {
   sourceNodeId    String
   strength        Decimal            @db.Decimal(10, 4)
   targetNodeId    String
-  session         InteractionSession @relation(fields: [sessionId], references: [id])
-  sourceNode      GraphNode          @relation("SourceNode", fields: [sourceNodeId], references: [id], onUpdate: NoAction)
-  targetNode      GraphNode          @relation("TargetNode", fields: [targetNodeId], references: [id], onUpdate: NoAction)
+  relationSourceId String?
+  session          InteractionSession           @relation(fields: [sessionId], references: [id])
+  sourceNode       GraphNode                    @relation("SourceNode", fields: [sourceNodeId], references: [id], onUpdate: NoAction)
+  targetNode       GraphNode                    @relation("TargetNode", fields: [targetNodeId], references: [id], onUpdate: NoAction)
+  relationSource   StudentKnowledgeRelation?    @relation(fields: [relationSourceId], references: [id], onDelete: SetNull)
 
   @@unique([sessionId, sourceNodeId, targetNodeId, interactionType, actionType])
   @@index([sessionId])
@@ -224,39 +237,6 @@ model StudentCognitiveDimensionScore {
   @@map("student_cognitive_dimension_scores_test")
 }
 
-/// 学生问卷响应表，存储从CSV导入的认知维度问卷数据
-model StudentSurveyResponse {
-  id                         String    @id @default(cuid())
-  studentNodeId              String
-  scenarioId                 String
-  submittedAt                DateTime?
-  gender                     String?
-  learningStyle              String?
-  personality                String?
-  groupBehavior              String?
-  motivationScore            Decimal?  @db.Decimal(5, 2)
-  attitudeScore              Decimal?  @db.Decimal(5, 2)
-  engagementScore            Decimal?  @db.Decimal(5, 2)
-  selfRegulationScore        Decimal?  @db.Decimal(5, 2)
-  computationalThinkingScore Decimal?  @db.Decimal(5, 2)
-  learningMethodScore        Decimal?  @db.Decimal(5, 2)
-  cognitiveLoadScore         Decimal?  @db.Decimal(5, 2)
-  humanAiTrustScore          Decimal?  @db.Decimal(5, 2)
-  aiLiteracyScore            Decimal?  @db.Decimal(5, 2)
-  priorKnowledgeScore        Decimal?  @db.Decimal(5, 2)
-  totalScore                 Decimal?  @db.Decimal(5, 2)
-  aiContentSatisfaction      String?
-  resourceHelpfulness        String?
-  posterSatisfaction         String?
-  teachingPreference         String?
-  helpSource                 String?
-  createdAt                  DateTime  @default(now())
-
-  @@index([studentNodeId])
-  @@index([scenarioId])
-  @@map("student_survey_responses_test")
-}
-
 /// 资源表，存储资源中心展示的学习资源
 /// resourceType 取值: VIDEO | ARTICLE | PRACTICE | GAME | DOCUMENT
 model Resource {
@@ -300,6 +280,25 @@ model StudentResourceRate {
   @@unique([studentId, resourceId])
   @@index([resourceId])
   @@map("student_resource_rates_test")
+}
+
+/// 学生与知识点的关联表，记录学生学习了哪些知识点
+/// 作为学生-知识点关系的权威数据源，自动同步到 interactions 表
+model StudentKnowledgeRelation {
+  id              String    @id @default(cuid())
+  studentNodeId   String
+  knowledgeNodeId String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  studentNode     GraphNode       @relation("StudentKnowledgeStudent", fields: [studentNodeId], references: [id], onDelete: Cascade)
+  knowledgeNode   GraphNode       @relation("StudentKnowledgeKnowledge", fields: [knowledgeNodeId], references: [id], onDelete: Cascade)
+  derivedInteractions Interaction[]
+
+  @@unique([studentNodeId, knowledgeNodeId])
+  @@index([studentNodeId])
+  @@index([knowledgeNodeId])
+  @@map("student_knowledge_relations_test")
 }
 
 /// 学生作品表，存储学生创作的作品信息

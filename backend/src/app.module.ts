@@ -9,6 +9,7 @@ import { InteractionSessionModule } from "./modules/interaction-session/interact
 import { InteractionModule } from "./modules/interaction/interaction.module";
 import { ResourceModule } from "./modules/resource/resource.module";
 import { ClassroomAnalysisModule } from "./modules/classroom-analysis/classroom-analysis.module";
+import { StudentKnowledgeRelationModule } from "./modules/student-knowledge-relation/student-knowledge-relation.module";
 import { PrismaModule } from "./shared/utils/prisma.module";
 
 @Module({
@@ -26,6 +27,7 @@ import { PrismaModule } from "./shared/utils/prisma.module";
     InteractionModule,
     GraphModule,
     ResourceModule,
+    StudentKnowledgeRelationModule,
     ClassroomAnalysisModule,
   ],
   controllers: [],

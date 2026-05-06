@@ -46,8 +46,13 @@ import {
   CognitiveAttributes,
   InteractionType,
   GraphLink,
+  StudentProfile,
 } from "./types";
-
+import {
+  COGNITIVE_DIMENSION_LABELS,
+  LIKERT_SCALE_MAP,
+  buildSearchUrl,
+} from "./constants";
 
 const dimensionCodeToStrategyKey: Record<string, keyof CognitiveAttributes> = {
   knowledgeReserve: "knowledgeReserve",
@@ -68,27 +73,6 @@ const dimensionCodeToStrategyKey: Record<string, keyof CognitiveAttributes> = {
 function isRealUrl(url: string | undefined): boolean {
   if (!url) return false;
   return url.startsWith('http') && !url.includes('example.com');
-}
-
-function buildSearchUrl(title: string, type: string): string {
-  const encoded = encodeURIComponent(title);
-  switch (type) {
-    case 'VIDEO':
-    case '视频':
-      return `https://search.bilibili.com/all?keyword=${encoded}`;
-    case 'ARTICLE':
-    case '文章':
-      return `https://www.zhihu.com/search?type=content&q=${encoded}`;
-    case 'DOCUMENT':
-    case '文档':
-      return `https://wenku.baidu.com/search?word=${encoded}`;
-    case 'PRACTICE':
-    case '练习题':
-    case 'GAME':
-    case '互动游戏':
-    default:
-      return `https://cn.bing.com/search?q=${encoded}`;
-  }
 }
 
 const App: React.FC = () => {
@@ -163,31 +147,9 @@ const App: React.FC = () => {
   // Constants
   const scenarios = Object.values(Scenario);
 
-  // Cognitive attribute labels
-  const cognitiveLabels: Record<keyof CognitiveAttributes, string> = {
-    knowledgeReserve: "知识储备",
-    learningEngagement: "学习投入",
-    cognitiveLoad: "认知负荷",
-    learningMotivation: "学习动机",
-    computationalThinking: "计算思维",
-    humanAiTrust: "人机信任度",
-    learningMethod: "学习方法倾向",
-  learningAttitude: "学习态度",
-  selfRegulatedLearning: "自我调节学习",
-  aiLiteracy: "人工智能素养",
-};
-
-  const likertScaleMap: Record<string, number> = {
-    '非常同意': 5,
-    '同意': 4,
-    '一般': 3,
-    '不同意': 2,
-    '非常不同意': 1,
-  };
-
   const formatProfileValue = (val?: string | null): string => {
     if (!val) return "未知";
-    const score = likertScaleMap[val];
+    const score = LIKERT_SCALE_MAP[val];
     return score !== undefined ? `${val} (${score}/5)` : val;
   };
 
@@ -531,48 +493,82 @@ const App: React.FC = () => {
 
       const getDim = (code: string): number => dimMap.get(code) ?? 0;
 
-      const knowledgeReserve =
-        ((getDim("COG_READING") + getDim("COG_LANGUAGE") + getDim("COG_SCIENCE_KNOWLEDGE")) / 3) / 2;
-      const learningEngagement =
-        ((getDim("COG_SCIENCE_INQUIRY") + getDim("PRAC_PRACTICE") + getDim("PRAC_COLLABORATION")) / 3) / 2;
-      const cognitiveLoad =
-        ((getDim("PSY_ANXIETY") + getDim("PSY_DEPRESSION") + getDim("PSY_PRESSURE")) / 3) * 0.5;
-      const learningMotivation = getDim("PSY_RESILIENCE") / 2;
-      const computationalThinking = getDim("COG_COMPUTATIONAL") / 2;
-      const humanAiTrust = getDim("COG_TECH_LITERACY") / 2;
-      const learningMethod =
-        ((getDim("PRAC_PROBLEM_SOLVING") + getDim("PRAC_COLLABORATION")) / 2) / 2;
-      const learningAttitude = getDim("PRAC_INNOVATION") / 2;
-      const selfRegulatedLearning = getDim("PRAC_PROBLEM_SOLVING") / 2;
-      const aiLiteracy = getDim("COG_TECH_LITERACY") / 2;
+      const precomputedKeys = [
+        'knowledgeReserve',
+        'learningEngagement',
+        'cognitiveLoad',
+        'learningMotivation',
+        'computationalThinking',
+        'humanAiTrust',
+        'learningMethod',
+        'learningAttitude',
+        'selfRegulatedLearning',
+        'aiLiteracy',
+      ];
+      const hasPrecomputedDimensions = precomputedKeys.some(
+        (key) => dimMap.has(key) && (dimMap.get(key) ?? 0) > 0,
+      );
 
-      const newProfileData = {
-        knowledgeReserve,
-        learningEngagement,
-        cognitiveLoad,
-        learningMotivation,
-        computationalThinking,
-        humanAiTrust,
-        learningMethod,
-        learningAttitude,
-        selfRegulatedLearning,
-        aiLiteracy,
-        template: {
-          profileMeta: templateProfile.profile
-            ? {
-                version: templateProfile.profile.version,
-                generatedAt: templateProfile.profile.generatedAt,
-                totalScore: templateProfile.profile.totalScore,
-              }
-            : undefined,
-          dimensions: templateProfile.dimensions.map((d) => ({
-            code: d.dimensionCode,
-            name: d.dimensionNameZh,
-            category: d.category,
-            score: d.scoreValue,
-            level: d.scoreLevel,
-          })),
-        },
+      let newProfileData: Partial<StudentProfile>;
+
+      if (hasPrecomputedDimensions) {
+        newProfileData = {
+          knowledgeReserve: getDim('knowledgeReserve'),
+          learningEngagement: getDim('learningEngagement'),
+          cognitiveLoad: getDim('cognitiveLoad'),
+          learningMotivation: getDim('learningMotivation'),
+          computationalThinking: getDim('computationalThinking'),
+          humanAiTrust: getDim('humanAiTrust'),
+          learningMethod: getDim('learningMethod'),
+          learningAttitude: getDim('learningAttitude'),
+          selfRegulatedLearning: getDim('selfRegulatedLearning'),
+          aiLiteracy: getDim('aiLiteracy'),
+        };
+      } else {
+        const knowledgeReserve =
+          ((getDim("COG_READING") + getDim("COG_LANGUAGE") + getDim("COG_SCIENCE_KNOWLEDGE")) / 3) / 2;
+        const learningEngagement =
+          ((getDim("COG_SCIENCE_INQUIRY") + getDim("PRAC_PRACTICE") + getDim("PRAC_COLLABORATION")) / 3) / 2;
+        const cognitiveLoad =
+          ((getDim("PSY_ANXIETY") + getDim("PSY_DEPRESSION") + getDim("PSY_PRESSURE")) / 3) * 0.5;
+        const learningMotivation = getDim("PSY_RESILIENCE") / 2;
+        const computationalThinking = getDim("COG_COMPUTATIONAL") / 2;
+        const humanAiTrust = getDim("COG_TECH_LITERACY") / 2;
+        const learningMethod =
+          ((getDim("PRAC_PROBLEM_SOLVING") + getDim("PRAC_COLLABORATION")) / 2) / 2;
+        const learningAttitude = getDim("PRAC_INNOVATION") / 2;
+        const selfRegulatedLearning = getDim("PRAC_PROBLEM_SOLVING") / 2;
+        const aiLiteracy = getDim("COG_TECH_LITERACY") / 2;
+
+        newProfileData = {
+          knowledgeReserve,
+          learningEngagement,
+          cognitiveLoad,
+          learningMotivation,
+          computationalThinking,
+          humanAiTrust,
+          learningMethod,
+          learningAttitude,
+          selfRegulatedLearning,
+          aiLiteracy,
+        };
+      }
+
+      newProfileData.template = {
+        profileMeta: templateProfile.profile
+          ? {
+              version: templateProfile.profile.version,
+              generatedAt: templateProfile.profile.generatedAt,
+              totalScore: templateProfile.profile.totalScore,
+            }
+          : undefined,
+        dimensions: templateProfile.dimensions.map((d) => ({
+          code: d.dimensionCode,
+          name: d.dimensionNameZh,
+          category: d.category,
+          score: d.scoreValue,
+          level: d.scoreLevel,
+        })),
       };
 
       setSelectedNode((prev) => {
@@ -1025,7 +1021,7 @@ const App: React.FC = () => {
                             </h5>
                           </div>
                           <div className="grid grid-cols-2 gap-3">
-                            {Object.entries(cognitiveLabels).map(
+                            {Object.entries(COGNITIVE_DIMENSION_LABELS).map(
                               ([key, label]) => {
                                 const attributeKey =
                                   key as keyof CognitiveAttributes;
@@ -1086,7 +1082,8 @@ const App: React.FC = () => {
                             )}
                           </div>
 
-                          {selectedNode.studentProfile.template?.dimensions
+                          {scenario === Scenario.SHOW_CASE &&
+                            selectedNode.studentProfile.template?.dimensions
                             ?.length > 0 && (
                             <>
                               <div className="flex items-center gap-2 mt-5 mb-3 pb-2 border-b border-slate-100">

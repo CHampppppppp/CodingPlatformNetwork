@@ -18,6 +18,7 @@ import {
   fetchResourceStudentRates,
   fetchClassroomAnalysis as fetchClassroomAnalysisFromApi,
 } from "./apiService";
+import { SCENARIO_CODE_MAP } from "../constants";
 import {
   transformGraphData,
   validateClassInfo,
@@ -240,64 +241,12 @@ export const fetchResources = async (): Promise<Resource[]> => {
 
 export { fetchResourceStudentRates };
 
-// Mock 课堂视频分析数据
-const mockClassroomAnalysisData: ClassroomAnalysis = {
-  id: "mock-analysis-001",
-  sessionId: "mock-session-001",
-  knowledgeActivationRate: 85.7,
-  activatedKnowledgeCount: 12,
-  totalKnowledgeCount: 14,
-  behavioralEngagementLevel: "高",
-  teacherStudentInteractionCount: 45,
-  peerCollaborationCount: 23,
-  cognitiveEngagementLevel: "中",
-  constructiveUtteranceCount: 18,
-  hasBurnout: false,
-  hasFrustration: false,
-  conceptDevelopmentLevel: "优秀",
-  feedbackQualityLevel: "良好",
-  academicExpectationLevel: "中等",
-  closedQuestionCount: 8,
-  applicationQuestionCount: 12,
-  openQuestionCount: 6,
-  acceptFeedbackCount: 15,
-  praiseFeedbackCount: 20,
-  extendFeedbackCount: 10,
-  correctFeedbackCount: 5,
-  studentUtteranceCount: 32,
-  teacherFluencyLevel: "优秀",
-  toolVarietyCount: 3,
-  selfAwarenessLevel: "优秀",
-  selfManagementLevel: "良好",
-  collectiveManagementLevel: "中等",
-  ruleClarityLevel: "良好",
-  positiveReinforcementLevel: "优秀",
-  negativeReductionLevel: "中等",
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
-
 export const fetchClassroomAnalysis = async (
   scenario: Scenario,
   classInfo: ClassInfo,
 ): Promise<ClassroomAnalysis | null> => {
   try {
-    // 展示场景直接返回 mock 数据
-    if (scenario === "展示场景") {
-      console.log("使用课堂视频分析 mock 数据");
-      return { ...mockClassroomAnalysisData };
-    }
-
-    const scenarioCodeMap: Record<string, string> = {
-      展示场景: "SHOW_CASE",
-      学科课程在线学习: "ONLINE_COURSE",
-      课后线上教师授课答疑: "TEACHER_QA",
-      家庭在线学习: "HOME_LEARNING",
-      在线协作学习: "COLLABORATIVE_LEARNING",
-      社团课等非正式学习: "INFORMAL_LEARNING",
-    };
-
-    const scenarioCode = scenarioCodeMap[scenario] || scenario;
+        const scenarioCode = SCENARIO_CODE_MAP[scenario] || scenario;
 
     const data = await fetchClassroomAnalysisFromApi({
       scenarioCode,

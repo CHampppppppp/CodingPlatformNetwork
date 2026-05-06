@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { GraphData, NodeType, Resource, CognitiveAttributes, GraphNode, InteractionType, ClassroomAnalysis, Scenario } from '../types';
+import { COGNITIVE_DIMENSION_LABELS } from '../constants';
 import { PieChart, Users, Book, Activity, ThumbsUp, Send, CheckCircle, BarChart3, X, GitGraph, Share2, Target, TrendingUp, Layers, Video } from 'lucide-react';
 import { ClassroomAnalysisView } from './ClassroomAnalysisView';
 import { fetchClassroomAnalysis } from '../services/dataService';
@@ -183,7 +184,6 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
 
   const cognitiveAverages = useMemo(() => {
     const keys: (keyof CognitiveAttributes)[] = ['knowledgeReserve', 'learningEngagement', 'cognitiveLoad', 'learningMotivation', 'computationalThinking', 'humanAiTrust', 'learningMethod', 'learningAttitude', 'selfRegulatedLearning', 'aiLiteracy'];
-    const labelMap: Record<string, string> = { knowledgeReserve: '知识储备', learningEngagement: '学习投入', cognitiveLoad: '认知负荷', learningMotivation: '学习动机', computationalThinking: '计算思维', humanAiTrust: '人机信任度', learningMethod: '学习方法', learningAttitude: '学习态度', selfRegulatedLearning: '自我调节学习', aiLiteracy: '人工智能素养' };
 
     const studentsWithProfile = data.nodes.filter(n => n.type === NodeType.STUDENT && n.studentProfile);
     if (studentsWithProfile.length === 0) return null;
@@ -195,7 +195,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
       const avg = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
       return {
         key,
-        label: labelMap[key],
+        label: COGNITIVE_DIMENSION_LABELS[key],
         value: avg.toFixed(1)
       };
     });
@@ -218,15 +218,8 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
         percentage: survey.percentage.toString(),
       };
     }
-    const pushed = stats.studentCount;
-    const mockScore = 4.1;
-    return {
-      pushed,
-      filled: pushed,
-      score: mockScore.toFixed(1),
-      percentage: Math.round((mockScore / 5) * 100).toString(),
-    };
-  }, [stats.studentCount, data.meta]);
+    return null;
+  }, [data.meta]);
 
   // --- Subgraph Analysis Data ---
 
@@ -480,40 +473,47 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
                         <h3 className="text-sm font-bold text-gray-500 uppercase mb-4 flex items-center gap-2">
                         <ThumbsUp className="w-4 h-4 text-pink-500" /> 满意度调查分析
                         </h3>
-                        <div className="grid grid-cols-3 gap-6">
-                            <div className="bg-blue-50 p-4 rounded-xl flex items-center gap-4 border border-blue-100">
-                                <div className="p-3 bg-white rounded-full text-blue-500 shadow-sm">
-                                    <Send className="w-6 h-6" />
+                        {satisfactionStats ? (
+                            <div className="grid grid-cols-3 gap-6">
+                                <div className="bg-blue-50 p-4 rounded-xl flex items-center gap-4 border border-blue-100">
+                                    <div className="p-3 bg-white rounded-full text-blue-500 shadow-sm">
+                                        <Send className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-blue-500 font-medium uppercase">问卷推送人数</p>
+                                        <p className="text-2xl font-bold text-blue-900">{satisfactionStats.pushed} 人</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-xs text-blue-500 font-medium uppercase">问卷推送人数</p>
-                                    <p className="text-2xl font-bold text-blue-900">{satisfactionStats.pushed} 人</p>
-                                </div>
-                            </div>
 
-                            <div className="bg-violet-50 p-4 rounded-xl flex items-center gap-4 border border-violet-100">
-                                <div className="p-3 bg-white rounded-full text-violet-500 shadow-sm">
-                                    <CheckCircle className="w-6 h-6" />
+                                <div className="bg-violet-50 p-4 rounded-xl flex items-center gap-4 border border-violet-100">
+                                    <div className="p-3 bg-white rounded-full text-violet-500 shadow-sm">
+                                        <CheckCircle className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-violet-500 font-medium uppercase">问卷填写人数</p>
+                                        <p className="text-2xl font-bold text-violet-900">{satisfactionStats.filled} 人</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-xs text-violet-500 font-medium uppercase">问卷填写人数</p>
-                                    <p className="text-2xl font-bold text-violet-900">{satisfactionStats.filled} 人</p>
-                                </div>
-                            </div>
 
-                            <div className="bg-pink-50 p-4 rounded-xl flex items-center gap-4 border border-pink-100">
-                                <div className="p-3 bg-white rounded-full text-pink-500 shadow-sm">
-                                    <ThumbsUp className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <p className="text-xs text-pink-500 font-medium uppercase">整体满意度</p>
-                                    <div className="flex items-baseline gap-2">
-                                        <p className="text-2xl font-bold text-pink-900">{satisfactionStats.score}/5.0</p>
-                                        <span className="text-xs text-pink-600 font-medium">({satisfactionStats.percentage}%)</span>
+                                <div className="bg-pink-50 p-4 rounded-xl flex items-center gap-4 border border-pink-100">
+                                    <div className="p-3 bg-white rounded-full text-pink-500 shadow-sm">
+                                        <ThumbsUp className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-pink-500 font-medium uppercase">整体满意度</p>
+                                        <div className="flex items-baseline gap-2">
+                                            <p className="text-2xl font-bold text-pink-900">{satisfactionStats.score}/5.0</p>
+                                            <span className="text-xs text-pink-600 font-medium">({satisfactionStats.percentage}%)</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                                <ThumbsUp className="w-8 h-8 mb-2 text-gray-300" />
+                                <p className="text-xs">暂无满意度调查数据</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
