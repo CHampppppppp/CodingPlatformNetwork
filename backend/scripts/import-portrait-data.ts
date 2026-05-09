@@ -182,12 +182,17 @@ async function importPortraitData() {
     });
 
     const gender = record['gender'] || record['1、你的性别：'] || null;
+    const learningStyle = record['learningStyle'] || null;
+
     await prisma.studentProfile.upsert({
       where: { nodeId: studentNode.id },
       create: {
         nodeId: studentNode.id,
+        learningStylePreference: learningStyle,
       },
-      update: {},
+      update: {
+        learningStylePreference: learningStyle,
+      },
     });
 
     console.log(`✅ 导入完成: ${studentName} (总得分: ${totalScore.toFixed(2)})`);

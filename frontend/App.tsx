@@ -286,41 +286,6 @@ const App: React.FC = () => {
     try {
       const data = await fetchGraphData(scenario, classInfo);
 
-      const teacherStudentThreshold = 75;
-      const existingLinkKeys = new Set(
-        data.links.map((l) => {
-          const s = typeof l.source === "object" ? l.source.id : l.source;
-          const t = typeof l.target === "object" ? l.target.id : l.target;
-          return `${s}#${t}`;
-        }),
-      );
-      const studentNodes = data.nodes.filter((n) => n.type === NodeType.STUDENT);
-      const teacherNodes = data.nodes.filter((n) => n.type === NodeType.TEACHER);
-      for (const teacher of teacherNodes) {
-        for (const student of studentNodes) {
-          const sameSchool =
-            teacher.teacherProfile?.school &&
-            student.studentProfile?.school &&
-            teacher.teacherProfile.school === student.studentProfile.school;
-          if (!sameSchool) continue;
-          const key1 = `${teacher.id}#${student.id}`;
-          const key2 = `${student.id}#${teacher.id}`;
-          if (existingLinkKeys.has(key1) || existingLinkKeys.has(key2)) {
-            continue;
-          }
-          if (Math.random() * 100 <= teacherStudentThreshold) {
-            const syntheticLink: GraphLink = {
-              source: teacher.id,
-              target: student.id,
-              value: 1,
-              type: InteractionType.PHYSICAL,
-            };
-            data.links.push(syntheticLink);
-            existingLinkKeys.add(key1);
-          }
-        }
-      }
-
       setGraphData(data);
 
       const allResources = await fetchResources();

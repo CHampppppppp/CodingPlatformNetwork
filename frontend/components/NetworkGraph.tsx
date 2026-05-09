@@ -52,12 +52,20 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
       .force("collide", d3.forceCollide().radius((d: any) => (d.val || 8) + 4));
 
     const link = rootG.append("g")
-      .attr("stroke-opacity", 0.6)
       .selectAll("line")
       .data(data.links)
       .join("line")
-      .attr("stroke-width", (d) => Math.sqrt(d.value))
+      .attr("stroke-width", (d: any) => {
+        if (d.actionType === "COLLABORATION") return 0.8;
+        if (d.actionType === "HELP_SEEKING") return 2.5;
+        return Math.sqrt(d.value);
+      })
       .attr("stroke", (d) => linkColor(d.type))
+      .attr("stroke-opacity", (d: any) => {
+        if (d.actionType === "COLLABORATION") return 0.25;
+        if (d.actionType === "HELP_SEEKING") return 0.5;
+        return 0.6;
+      })
       .attr("stroke-dasharray", (d) => (d.type === InteractionType.PLATFORM || d.type === 'SOCIAL') ? "4, 2" : null)
       .attr("class", (d) => (d.type === InteractionType.PLATFORM || d.type === 'SOCIAL') ? "platform-link" : "physical-link");
 

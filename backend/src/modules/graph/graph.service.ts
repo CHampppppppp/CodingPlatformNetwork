@@ -90,11 +90,6 @@ export class GraphService {
       interactions = await this.prisma.interaction.findMany({
         where: {
           sessionId: { in: sessionIds },
-          ...(scenarioId
-            ? {
-                sourceNode: { scenarioId },
-              }
-            : {}),
         },
         include: {
           sourceNode: {
@@ -724,22 +719,19 @@ export class GraphService {
     nodeMap: Map<string, Node>,
     scenarioId: string | undefined,
   ): Promise<Link[]> {
-    if (!scenarioId || nodeMap.size === 0) return [];
+    if (nodeMap.size === 0) return [];
 
-    const externalIdMap = new Map<string, string>();
+    const studentIdSet = new Set<string>();
     const nameMap = new Map<string, string>();
-    const studentIds: string[] = [];
 
     for (const [id, node] of nodeMap) {
       if (node.type === "STUDENT") {
-        studentIds.push(id);
-        if (node.studentProfile?.externalUserId) {
-          externalIdMap.set(node.studentProfile.externalUserId, id);
-        }
+        studentIdSet.add(id);
         nameMap.set(node.name, id);
       }
     }
 
+    const studentIds = Array.from(studentIdSet);
     if (studentIds.length === 0) return [];
 
     const works = await this.prisma.studentWork.findMany({
@@ -754,14 +746,14 @@ export class GraphService {
 
       if (work.likeDetails) {
         const likerIds = work.likeDetails.split(";").filter((s) => s.trim());
-        for (const likerExternalId of likerIds) {
-          const likerNodeId = externalIdMap.get(likerExternalId.trim());
-          if (likerNodeId && likerNodeId !== authorId) {
-            const key = `${likerNodeId}_${authorId}_LIKE`;
+        for (const likerId of likerIds) {
+          const trimmedId = likerId.trim();
+          if (studentIdSet.has(trimmedId) && trimmedId !== authorId) {
+            const key = `${trimmedId}_${authorId}_LIKE`;
             if (!seen.has(key)) {
               seen.add(key);
               links.push({
-                source: likerNodeId,
+                source: trimmedId,
                 target: authorId,
                 value: 1.5,
                 type: "PLATFORM",
@@ -794,6 +786,72 @@ export class GraphService {
           }
         }
       }
+    }
+
+    return links;
+  }
+
+  private async buildCollaborationLinksFromKnowledge(
+    nodeMap: Map<string, Node>,
+    scenarioId: string | undefined,
+  ): Promise<Link[]> {
+    if (nodeMap.size === 0) return [];
+
+    const studentIds: string[] = [];
+    for (const [id, node] of nodeMap) {
+      if (node.type === "STUDENT") {
+        studentIds.push(id);
+      }
+    }
+
+    if (studentIds.length === 0) return [];
+
+    const relations = await this.prisma.studentKnowledgeRelation.findMany({
+      where: { studentNodeId: { in: studentIds } },
+      select: { studentNodeId: true, knowledgeNodeId: true },
+    });
+
+    const knowledgeToStudents = new Map<string, Set<string>>();
+    for (const r of relations) {
+      const set = knowledgeToStudents.get(r.knowledgeNodeId) || new Set<string>();
+      set.add(r.studentNodeId);
+      knowledgeToStudents.set(r.knowledgeNodeId, set);
+    }
+
+    const pairStrength = new Map<string, number>();
+    for (const [, students] of knowledgeToStudents) {
+      const studentList = Array.from(students);
+      for (let i = 0; i < studentList.length; i++) {
+        for (let j = i + 1; j < studentList.length; j++) {
+          const s1 = studentList[i];
+          const s2 = studentList[j];
+          const key = s1 < s2 ? `${s1}#${s2}` : `${s2}#${s1}`;
+          pairStrength.set(key, (pairStrength.get(key) || 0) + 1);
+        }
+      }
+    }
+
+    const MIN_SHARED_KNOWLEDGE = studentIds.length < 50 ? 2 : 3;
+    const MAX_COLLABORATION_LINKS = studentIds.length < 50 ? 100 : 200;
+
+    const qualifiedPairs = Array.from(pairStrength.entries())
+      .filter(([, strength]) => strength >= MIN_SHARED_KNOWLEDGE)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, MAX_COLLABORATION_LINKS);
+
+    const links: Link[] = [];
+
+    for (const [key, strength] of qualifiedPairs) {
+      const [s1, s2] = key.split("#");
+
+      const value = Math.min(2, 1 + strength * 0.2);
+      links.push({
+        source: s1,
+        target: s2,
+        value,
+        type: "PLATFORM",
+        actionType: "COLLABORATION",
+      });
     }
 
     return links;

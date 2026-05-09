@@ -65,10 +65,7 @@ export class OrgService {
     const scenarioId = await resolveScenarioId(this.prisma, scenarioCode);
 
     const where: any = {
-      OR: [
-        { nodeType: "Student" },
-        { nodeType: "Teacher" }
-      ],
+      nodeType: "Student",
       schoolId: { not: null }
     };
     if (scenarioId) {
@@ -111,7 +108,7 @@ export class OrgService {
     const scenarioId = await resolveScenarioId(this.prisma, scenarioCode);
 
     const where: any = {
-      OR: [{ nodeType: "Student" }, { nodeType: "Teacher" }],
+      nodeType: "Student",
       schoolId,
       gradeId: { not: null },
     };
@@ -159,7 +156,7 @@ export class OrgService {
     const scenarioId = await resolveScenarioId(this.prisma, scenarioCode);
 
     const where: any = {
-      OR: [{ nodeType: "Student" }, { nodeType: "Teacher" }],
+      nodeType: "Student",
       gradeId,
       classId: { not: null },
     };
@@ -207,7 +204,7 @@ export class OrgService {
     const scenarioId = await resolveScenarioId(this.prisma, scenarioCode);
 
     const nodeWhere: any = {
-      OR: [{ nodeType: "Student" }, { nodeType: "Teacher" }],
+      nodeType: "Student",
       schoolId: { not: null },
     };
     if (scenarioId) {

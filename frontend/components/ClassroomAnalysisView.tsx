@@ -31,9 +31,10 @@ const LevelBadge: React.FC<{ level: string | null; type?: 'rating' | 'achievemen
   );
 };
 
-const CountDisplay: React.FC<{ value: number | null; suffix?: string; decimals?: number }> = ({ value, suffix = '', decimals }) => {
-  if (value === null || value === undefined || Number.isNaN(value)) return <span className="text-gray-400">-</span>;
-  const displayValue = decimals !== undefined ? value.toFixed(decimals) : value;
+const CountDisplay: React.FC<{ value: number | string | null; suffix?: string; decimals?: number }> = ({ value, suffix = '', decimals }) => {
+  const numValue = value === null || value === undefined ? NaN : Number(value);
+  if (Number.isNaN(numValue)) return <span className="text-gray-400">-</span>;
+  const displayValue = decimals !== undefined ? numValue.toFixed(decimals) : numValue;
   return <span className="text-lg font-bold text-gray-800">{displayValue}{suffix}</span>;
 };
 

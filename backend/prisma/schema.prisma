@@ -24,22 +24,24 @@ model LearningScenario {
 
 /// 学校/校区节点，顶级组织单位
 model School {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  createdAt DateTime @default(now())
+  id        String          @id @default(cuid())
+  name      String          @unique
+  createdAt DateTime        @default(now())
   grades    Grade[]
+  teachers  TeacherProfile[]
 
   @@map("schools_test")
 }
 
 /// 年级节点，属某一学校
 model Grade {
-  id        String        @id @default(cuid())
+  id        String           @id @default(cuid())
   schoolId  String
   gradeName Int
-  createdAt DateTime      @default(now())
+  createdAt DateTime         @default(now())
   classes   SchoolClass[]
-  school    School        @relation(fields: [schoolId], references: [id])
+  school    School           @relation(fields: [schoolId], references: [id])
+  teachers  TeacherProfile[]
 
   @@unique([schoolId, gradeName])
   @@index([schoolId])
@@ -48,11 +50,14 @@ model Grade {
 
 /// 班级节点，属某一年级
 model SchoolClass {
-  id        String   @id @default(cuid())
-  gradeId   String
-  className String
-  createdAt DateTime @default(now())
-  grade     Grade    @relation(fields: [gradeId], references: [id])
+  id          String         @id @default(cuid())
+  gradeId     String
+  className   String
+  teacherId   String?        @unique
+  createdAt   DateTime       @default(now())
+  grade       Grade          @relation(fields: [gradeId], references: [id])
+  teacher     TeacherProfile?
+  teacherNode GraphNode?     @relation("ClassTeacherNode", fields: [teacherId], references: [id])
 
   @@unique([gradeId, className])
   @@index([gradeId])
@@ -82,7 +87,9 @@ model GraphNode {
   cognitiveProfiles           StudentCognitiveProfile[]
   studentProfile              StudentProfile?
   studentWorks                StudentWork[]
+  teacherStudentWorks         StudentWork[]     @relation("TeacherStudentWorks")
   teacherProfile              TeacherProfile?
+  teachingClass               SchoolClass?    @relation("ClassTeacherNode")
 
   @@index([nodeType])
   @@index([scenarioId])
@@ -113,13 +120,19 @@ model StudentProfile {
 
 /// 教师节点扩展属性，1:1 关联 GraphNode (nodeType = Teacher)
 model TeacherProfile {
-  nodeId        String    @id
+  nodeId        String      @id
   subject       String?
   teachingGrade Int?
   teachingClass String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  node          GraphNode @relation(fields: [nodeId], references: [id])
+  schoolId      String?
+  gradeId       String?
+  classId       String?     @unique
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  node          GraphNode   @relation(fields: [nodeId], references: [id])
+  school        School?     @relation(fields: [schoolId], references: [id])
+  grade         Grade?      @relation(fields: [gradeId], references: [id])
+  class         SchoolClass? @relation(fields: [classId], references: [id])
 
   @@map("teacher_profiles_test")
 }
@@ -319,7 +332,7 @@ model StudentWork {
   likeCount        Int                 @default(0)
   commentCount     Int                 @default(0)
   /// 教师评分
-  teacherName      String?
+  teacherId        String?
   teacherScore     Decimal?            @db.Decimal(5, 2)
   teacherComment   String?             @db.Text
   /// 点赞详情（JSON 数组，存储点赞学生信息）
@@ -333,10 +346,12 @@ model StudentWork {
   updatedAt        DateTime            @updatedAt
   session          InteractionSession? @relation(fields: [sessionId], references: [id])
   studentNode      GraphNode           @relation(fields: [studentNodeId], references: [id], onDelete: Cascade)
+  teacher          GraphNode?          @relation("TeacherStudentWorks", fields: [teacherId], references: [id], onDelete: SetNull)
 
   @@index([studentNodeId])
   @@index([sessionId])
   @@index([externalWorkId])
+  @@index([teacherId])
   @@map("student_works_test")
 }
 

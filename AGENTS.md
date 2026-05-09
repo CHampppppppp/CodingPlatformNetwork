@@ -22,6 +22,7 @@
 - 如果指向清晰但有更优路径，**主动向用户提出建议**。
 
 ### 0.4安全性检查
+
 - 在执行不可逆的操作前，**必须确认用户意图**。
 - 例如，删除用户数据、删除数据库表等一系列执行了就无法通过git回滚的操作。
 
@@ -75,24 +76,6 @@
 
 ---
 
-## 关键文件位置
-
-- 数据模型: `backend/prisma/schema.prisma`
-- 后端入口: `backend/src/main.ts` (端口 3333)
-- 前端入口: `frontend/index.tsx`
-- 类型定义: `frontend/types.ts`
-- 图谱类型: `backend/src/shared/types/graph-data.type.ts`
-
----
-
-## 数据库注意事项
-
-- `graph_nodes` 表通过 `nodeType` 区分实体类型，用扩展表存储详情
-- `interactions` 表的复合唯一索引防止重复交互
-- `CognitiveDimensionDef` 是枚举表，关联 `StudentCognitiveDimensionScore`
-
----
-
 ## 环境配置
 
 - **开发环境**: 本地 MySQL
@@ -104,12 +87,13 @@
   - 连接字符串: `sqlserver://rm-bp10v29fkj305q3smfo.sqlserver.rds.aliyuncs.com:3433;...`
   - 使用 `npx prisma generate` 生成 SQL Server 客户端
 - **切换命令**:
+
   ```bash
   # 切换到本地 MySQL
   cp backend/.env backend/.env.production
   cp backend/.env.local backend/.env
   npx prisma generate
-  
+
   # 切换到 Aliyun SQL Server
   cp backend/.env backend/.env.local
   cp backend/.env.production backend/.env
@@ -126,3 +110,4 @@
 - only CRUD database tables when you have my permission.
 - only modify prisma schema when you have my permission.
 - when you create a script without I asking, DELETE it after finishing the task.
+- 项目中所有的数据应该都是从后端数据库中读取的，有据可依，可溯源，而不能直接硬编码。
