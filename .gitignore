@@ -41,3 +41,4 @@ dist-ssr
 
 # Backend generated data files
 backend/datas/
+*.sql
