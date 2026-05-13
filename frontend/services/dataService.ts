@@ -166,54 +166,6 @@ export const fetchGraphData = async (
 };
 
 /**
- * 生成学习资源（基于知识点节点的本地fallback逻辑）
- */
-export const generateResources = (knowledgeNodes: any[]): Resource[] => {
-  const resources: Resource[] = [];
-
-  if (!knowledgeNodes || knowledgeNodes.length === 0) {
-    console.warn("无知识点数据，无法生成资源");
-    return resources;
-  }
-
-  const templates = [
-    { suffix: "操作演示视频", type: "视频", url: "https://b23.tv/example1" },
-    { suffix: "基础教程文档", type: "文档", url: "course-doc.pdf" },
-    { suffix: "进阶技巧解析", type: "文章", url: "advanced-tips.html" },
-    { suffix: "练习题集", type: "练习题", url: "exercises.pdf" },
-    { suffix: "互动小测验", type: "互动游戏", url: "quiz.app" },
-    { suffix: "常见问题解答", type: "文章", url: "faq.html" },
-  ];
-
-  for (let i = 0; i < Math.min(6, knowledgeNodes.length); i++) {
-    const kCount = Math.min(2, knowledgeNodes.length);
-    const relatedKNodes = knowledgeNodes
-      .sort(() => 0.5 - Math.random())
-      .slice(0, kCount);
-
-    const kIds = relatedKNodes.map((n) => n.id);
-    const mainKNode = relatedKNodes[0];
-
-    const template = templates[i % templates.length];
-
-    resources.push({
-      id: `R${i}`,
-      title: `${mainKNode.name} - ${template.suffix}`,
-      type: template.type,
-      relatedKnowledgeIds: kIds,
-      accuracy: Math.floor(Math.random() * 20) + 80, // 80-99
-      description: `针对"${relatedKNodes.map((n) => n.name).join("、")}"的${
-        template.type
-      }资源，旨在帮助学生掌握核心概念与操作步骤。`,
-      url: template.url,
-    });
-  }
-
-  console.log("生成学习资源成功:", resources.length);
-  return resources;
-};
-
-/**
  * 从API获取学习资源
  */
 export const fetchResources = async (): Promise<Resource[]> => {
