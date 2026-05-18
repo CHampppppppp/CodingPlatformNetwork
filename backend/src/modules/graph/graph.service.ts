@@ -60,18 +60,7 @@ export class GraphService {
   constructor(private prisma: PrismaService) {}
 
   async getGraphData(params: GraphQuery) {
-    const where = await this.buildSessionWhere(params);
-
-    const sessions = await this.prisma.interactionSession.findMany({
-      where,
-      select: { id: true },
-    });
-
-    const schoolNames = await this.buildSchoolNameMap();
-    const gradeNames = await this.buildGradeNameMap();
-    const classNames = await this.buildClassNameMap();
-
-    // 从params中获取scenarioCode，用于后续的场景过滤
+    // 获取 scenarioId，用于后续的场景过滤
     let scenarioId: string | undefined;
     if (params.scenarioCode) {
       const scenario = await this.prisma.learningScenario.findUnique({
@@ -83,50 +72,76 @@ export class GraphService {
       }
     }
 
-    // 只有当有会话时才查询交互
-    let interactions = [];
-    if (sessions.length > 0) {
-      const sessionIds = sessions.map((session) => session.id);
-      interactions = await this.prisma.interaction.findMany({
-        where: {
-          sessionId: { in: sessionIds },
-        },
-        include: {
-          sourceNode: {
-            include: {
-              studentProfile: true,
-              teacherProfile: true,
-              knowledgeProfile: true,
-            },
+    const schoolNames = await this.buildSchoolNameMap();
+    const gradeNames = await this.buildGradeNameMap();
+    const classNames = await this.buildClassNameMap();
+
+    // 直接查询交互数据，school/grade/class 直接透传到 node 层面过滤
+    const interactionWhere: any = {
+      ...(scenarioId ? { sourceNode: { scenarioId } } : {}),
+    };
+
+    // 添加 school/grade/class 过滤到 sourceNode 条件
+    if (params.schoolId) {
+      interactionWhere.sourceNode = { ...interactionWhere.sourceNode, schoolId: params.schoolId };
+    }
+    if (params.gradeId) {
+      interactionWhere.sourceNode = { ...interactionWhere.sourceNode, gradeId: params.gradeId };
+    }
+    if (params.classId) {
+      interactionWhere.sourceNode = { ...interactionWhere.sourceNode, classId: params.classId };
+    }
+
+    const interactions = await this.prisma.interaction.findMany({
+      where: interactionWhere,
+      include: {
+        sourceNode: {
+          include: {
+            studentProfile: true,
+            teacherProfile: true,
+            knowledgeProfile: true,
           },
-          targetNode: {
-            include: {
-              studentProfile: true,
-              teacherProfile: true,
-              knowledgeProfile: true,
-            },
+        },
+        targetNode: {
+          include: {
+            studentProfile: true,
+            teacherProfile: true,
+            knowledgeProfile: true,
           },
         },
+      },
+    });
+
+    // 如果指定了 classId，还要过滤 targetNode
+    let filteredInteractions = interactions;
+    if (params.classId) {
+      filteredInteractions = interactions.filter((interaction) => {
+        if (interaction.targetNode.nodeType === "Student") {
+          return interaction.targetNode.classId === params.classId;
+        }
+        return true;
       });
     }
 
     const nodeMap = new Map<string, Node>();
 
-    for (const interaction of interactions) {
-      this.putNode(
-        nodeMap,
-        interaction.sourceNode,
-        schoolNames,
-        gradeNames,
-        classNames,
-      );
-      this.putNode(
-        nodeMap,
-        interaction.targetNode,
-        schoolNames,
-        gradeNames,
-        classNames,
-      );
+    for (const interaction of filteredInteractions) {
+      // 当指定 classId 时，跳过不在该班级的学生节点
+      if (params.classId) {
+        if (interaction.sourceNode.nodeType === "Student" && interaction.sourceNode.classId !== params.classId) {
+          // skip
+        } else {
+          this.putNode(nodeMap, interaction.sourceNode, schoolNames, gradeNames, classNames);
+        }
+        if (interaction.targetNode.nodeType === "Student" && interaction.targetNode.classId !== params.classId) {
+          // skip
+        } else {
+          this.putNode(nodeMap, interaction.targetNode, schoolNames, gradeNames, classNames);
+        }
+      } else {
+        this.putNode(nodeMap, interaction.sourceNode, schoolNames, gradeNames, classNames);
+        this.putNode(nodeMap, interaction.targetNode, schoolNames, gradeNames, classNames);
+      }
     }
 
     // 直接查询符合条件的所有节点（包括没有参与交互的教师节点）
@@ -162,20 +177,6 @@ export class GraphService {
     const mapInteractionType = (type: string): "PHYSICAL" | "PLATFORM" => {
       return type === "PHYSICAL" ? "PHYSICAL" : "PLATFORM";
     };
-
-    const TEACHER_STUDENT_ACTIONS = ["TEACHER_EVALUATION", "HELP_SEEKING"];
-    const filteredInteractions = interactions.filter((interaction) => {
-      const isTeacherStudent =
-        (interaction.sourceNode.nodeType === "Teacher" &&
-          interaction.targetNode.nodeType === "Student") ||
-        (interaction.sourceNode.nodeType === "Student" &&
-          interaction.targetNode.nodeType === "Teacher");
-      if (!isTeacherStudent) return true;
-      return (
-        interaction.actionType &&
-        TEACHER_STUDENT_ACTIONS.includes(interaction.actionType)
-      );
-    });
 
     const links: Link[] = filteredInteractions.map((interaction) => ({
       source: interaction.sourceNodeId,
@@ -575,38 +576,6 @@ export class GraphService {
     };
   }
 
-  private async buildSessionWhere(params: GraphQuery) {
-    let scenarioId: string | undefined;
-
-    if (params.scenarioCode) {
-      const scenario = await this.prisma.learningScenario.findUnique({
-        where: { code: params.scenarioCode },
-        select: { id: true },
-      });
-
-      if (!scenario) {
-        throw new BadRequestException("SCENARIO_CODE_INVALID");
-      }
-
-      scenarioId = scenario.id;
-    }
-
-    return {
-      ...(scenarioId ? { scenarioId } : {}),
-      ...(params.schoolId ? { schoolId: params.schoolId } : {}),
-      ...(params.gradeId ? { gradeId: params.gradeId } : {}),
-      ...(params.classId ? { classId: params.classId } : {}),
-      ...(params.from || params.to
-        ? {
-            occurredAt: {
-              ...(params.from ? { gte: new Date(params.from) } : {}),
-              ...(params.to ? { lte: new Date(params.to) } : {}),
-            },
-          }
-        : {}),
-    } as Prisma.InteractionSessionWhereInput;
-  }
-
   private putNode(
     nodeMap: Map<string, Node>,
     node: any,
@@ -715,149 +684,7 @@ export class GraphService {
     return classNames;
   }
 
-  private async buildWorkInteractionLinks(
-    nodeMap: Map<string, Node>,
-    scenarioId: string | undefined,
-  ): Promise<Link[]> {
-    if (nodeMap.size === 0) return [];
-
-    const studentIdSet = new Set<string>();
-    const nameMap = new Map<string, string>();
-
-    for (const [id, node] of nodeMap) {
-      if (node.type === "STUDENT") {
-        studentIdSet.add(id);
-        nameMap.set(node.name, id);
-      }
-    }
-
-    const studentIds = Array.from(studentIdSet);
-    if (studentIds.length === 0) return [];
-
-    const works = await this.prisma.studentWork.findMany({
-      where: { studentNodeId: { in: studentIds } },
-    });
-
-    const links: Link[] = [];
-    const seen = new Set<string>();
-
-    for (const work of works) {
-      const authorId = work.studentNodeId;
-
-      if (work.likeDetails) {
-        const likerIds = work.likeDetails.split(";").filter((s) => s.trim());
-        for (const likerId of likerIds) {
-          const trimmedId = likerId.trim();
-          if (studentIdSet.has(trimmedId) && trimmedId !== authorId) {
-            const key = `${trimmedId}_${authorId}_LIKE`;
-            if (!seen.has(key)) {
-              seen.add(key);
-              links.push({
-                source: trimmedId,
-                target: authorId,
-                value: 1.5,
-                type: "PLATFORM",
-                actionType: "LIKE",
-              });
-            }
-          }
-        }
-      }
-
-      if (work.commentDetails) {
-        const comments = work.commentDetails.split("|").filter((s) => s.trim());
-        for (const comment of comments) {
-          const colonIdx = comment.indexOf(":");
-          if (colonIdx <= 0) continue;
-          const commenterName = comment.substring(0, colonIdx).trim();
-          const commenterNodeId = nameMap.get(commenterName);
-          if (commenterNodeId && commenterNodeId !== authorId) {
-            const key = `${commenterNodeId}_${authorId}_COMMENT`;
-            if (!seen.has(key)) {
-              seen.add(key);
-              links.push({
-                source: commenterNodeId,
-                target: authorId,
-                value: 2.5,
-                type: "PLATFORM",
-                actionType: "COMMENT",
-              });
-            }
-          }
-        }
-      }
-    }
-
-    return links;
-  }
-
-  private async buildCollaborationLinksFromKnowledge(
-    nodeMap: Map<string, Node>,
-    scenarioId: string | undefined,
-  ): Promise<Link[]> {
-    if (nodeMap.size === 0) return [];
-
-    const studentIds: string[] = [];
-    for (const [id, node] of nodeMap) {
-      if (node.type === "STUDENT") {
-        studentIds.push(id);
-      }
-    }
-
-    if (studentIds.length === 0) return [];
-
-    const relations = await this.prisma.studentKnowledgeRelation.findMany({
-      where: { studentNodeId: { in: studentIds } },
-      select: { studentNodeId: true, knowledgeNodeId: true },
-    });
-
-    const knowledgeToStudents = new Map<string, Set<string>>();
-    for (const r of relations) {
-      const set = knowledgeToStudents.get(r.knowledgeNodeId) || new Set<string>();
-      set.add(r.studentNodeId);
-      knowledgeToStudents.set(r.knowledgeNodeId, set);
-    }
-
-    const pairStrength = new Map<string, number>();
-    for (const [, students] of knowledgeToStudents) {
-      const studentList = Array.from(students);
-      for (let i = 0; i < studentList.length; i++) {
-        for (let j = i + 1; j < studentList.length; j++) {
-          const s1 = studentList[i];
-          const s2 = studentList[j];
-          const key = s1 < s2 ? `${s1}#${s2}` : `${s2}#${s1}`;
-          pairStrength.set(key, (pairStrength.get(key) || 0) + 1);
-        }
-      }
-    }
-
-    const MIN_SHARED_KNOWLEDGE = studentIds.length < 50 ? 2 : 3;
-    const MAX_COLLABORATION_LINKS = studentIds.length < 50 ? 100 : 200;
-
-    const qualifiedPairs = Array.from(pairStrength.entries())
-      .filter(([, strength]) => strength >= MIN_SHARED_KNOWLEDGE)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, MAX_COLLABORATION_LINKS);
-
-    const links: Link[] = [];
-
-    for (const [key, strength] of qualifiedPairs) {
-      const [s1, s2] = key.split("#");
-
-      const value = Math.min(2, 1 + strength * 0.2);
-      links.push({
-        source: s1,
-        target: s2,
-        value,
-        type: "PLATFORM",
-        actionType: "COLLABORATION",
-      });
-    }
-
-    return links;
-  }
-
-  private async addMockTeacherNodes(
+      private async addMockTeacherNodes(
     nodeMap: Map<string, Node>,
     scenarioId: string | undefined,
     schoolNames: Map<string, string>,

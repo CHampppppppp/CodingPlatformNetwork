@@ -1,0 +1,230 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - img [ref=e7]
+      - generic [ref=e12]:
+        - heading "教育交互网络" [level=1] [ref=e13]
+        - paragraph [ref=e14]: 交互式学习网络可视化
+    - generic [ref=e15]:
+      - button "统计分析" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+        - generic [ref=e20]: 统计分析
+      - button "子图透视" [ref=e21] [cursor=pointer]:
+        - img [ref=e22]
+        - generic [ref=e27]: 子图透视
+  - generic [ref=e28]:
+    - complementary [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e31]:
+          - img [ref=e32]
+          - heading "控制面板" [level=2] [ref=e35]
+        - generic [ref=e36]:
+          - generic [ref=e37]:
+            - img [ref=e38]
+            - text: 学习场景
+          - generic [ref=e43]:
+            - button "展示场景" [ref=e44] [cursor=pointer]:
+              - generic [ref=e45]: 展示场景
+            - button "学科课程在线学习" [active] [ref=e48] [cursor=pointer]:
+              - generic [ref=e49]: 学科课程在线学习
+              - img [ref=e770]
+            - button "课后线上教师授课答疑" [ref=e50] [cursor=pointer]:
+              - generic [ref=e51]: 课后线上教师授课答疑
+            - button "家庭在线学习" [ref=e52] [cursor=pointer]:
+              - generic [ref=e53]: 家庭在线学习
+            - button "在线协作学习" [ref=e54] [cursor=pointer]:
+              - generic [ref=e55]: 在线协作学习
+            - button "社团课等非正式学习" [ref=e56] [cursor=pointer]:
+              - generic [ref=e57]: 社团课等非正式学习
+        - generic [ref=e58]:
+          - generic [ref=e59]:
+            - img [ref=e60]
+            - text: 班级设置
+          - generic [ref=e65]:
+            - generic [ref=e66]:
+              - combobox [ref=e67] [cursor=pointer]:
+                - option "cxxx" [selected]
+                - option "hczx"
+                - option "hnzx"
+                - option "hsdfszpsyxx"
+                - option "hzsfdxfszpsyxx"
+                - option "hzsyczx"
+                - option "sandun"
+                - option "sdxx"
+                - option "sxyz"
+                - option "tpxx"
+                - option "tzsynzx"
+                - option "tzzx"
+                - option "wczx"
+                - option "wzsx"
+                - option "xszx"
+                - option "xujie-school"
+                - option "xzxx"
+                - option "yhzx"
+                - option "zkzxx"
+                - option "未知学校"
+              - generic:
+                - img
+            - generic [ref=e68]:
+              - generic [ref=e69]:
+                - combobox [ref=e70] [cursor=pointer]:
+                  - option "6年级" [selected]
+                - generic:
+                  - img
+              - generic [ref=e71]:
+                - combobox [ref=e72] [cursor=pointer]:
+                  - option "1班" [selected]
+                  - option "2班"
+                  - option "3班"
+                  - option "4班"
+                  - option "6班"
+                  - option "7班"
+                  - option "8班"
+                  - option "9班"
+                - generic:
+                  - img
+      - button "重置筛选条件" [ref=e74] [cursor=pointer]:
+        - img [ref=e75]
+        - text: 重置筛选条件
+    - main [ref=e80]:
+      - generic [ref=e81]:
+        - generic:
+          - heading "cxxx 1班" [level=3]
+          - generic:
+            - paragraph: "场景: 学科课程在线学习"
+        - generic [ref=e82]:
+          - generic [ref=e773]:
+            - img [ref=e774]
+            - paragraph [ref=e776]: 加载数据中...
+          - generic [ref=e95]:
+            - img [ref=e96]:
+              - generic [ref=e132]:
+                - generic [ref=e657]:
+                  - generic "student_01" [ref=e658] [cursor=pointer]
+                  - generic "student_02" [ref=e659] [cursor=pointer]
+                  - generic "student_03" [ref=e660] [cursor=pointer]
+                  - generic "student_04" [ref=e661] [cursor=pointer]
+                  - generic "student_05" [ref=e662] [cursor=pointer]
+                  - generic "student_06" [ref=e663] [cursor=pointer]
+                  - generic "student_07" [ref=e664] [cursor=pointer]
+                  - generic "student_08" [ref=e665] [cursor=pointer]
+                  - generic "student_09" [ref=e666] [cursor=pointer]
+                  - generic "student_10" [ref=e667] [cursor=pointer]
+                  - generic "student_11" [ref=e668] [cursor=pointer]
+                  - generic "student_12" [ref=e669] [cursor=pointer]
+                  - generic "人机信任度" [ref=e670] [cursor=pointer]
+                  - generic "801班老师" [ref=e671] [cursor=pointer]
+                  - generic "student_13" [ref=e672] [cursor=pointer]
+                  - generic "切换幻灯片" [ref=e673] [cursor=pointer]
+                  - generic "分享市花数字名片" [ref=e674] [cursor=pointer]
+                  - generic "student_14" [ref=e675] [cursor=pointer]
+                  - generic "student_15" [ref=e676] [cursor=pointer]
+                  - generic "student_16" [ref=e677] [cursor=pointer]
+                  - generic "student_17" [ref=e678] [cursor=pointer]
+                  - generic "student_18" [ref=e679] [cursor=pointer]
+                  - generic "student_19" [ref=e680] [cursor=pointer]
+                  - generic "student_20" [ref=e681] [cursor=pointer]
+                  - generic "student_21" [ref=e682] [cursor=pointer]
+                  - generic "student_22" [ref=e683] [cursor=pointer]
+                  - generic "student_23" [ref=e684] [cursor=pointer]
+                  - generic "student_24" [ref=e685] [cursor=pointer]
+                  - generic "修改图表" [ref=e686] [cursor=pointer]
+                  - generic "student_25" [ref=e687] [cursor=pointer]
+                  - generic "设置过渡效果的速度和声音" [ref=e688] [cursor=pointer]
+                  - generic "student_26" [ref=e689] [cursor=pointer]
+                  - generic "student_27" [ref=e690] [cursor=pointer]
+                  - generic "student_28" [ref=e691] [cursor=pointer]
+                  - generic "阅读理解" [ref=e692] [cursor=pointer]
+                  - generic "student_29" [ref=e693] [cursor=pointer]
+                  - generic "student_30" [ref=e694] [cursor=pointer]
+                  - generic "student_31" [ref=e695] [cursor=pointer]
+                  - generic "student_32" [ref=e696] [cursor=pointer]
+                - generic [ref=e697]:
+                  - generic: 人机信任度
+                  - generic: 801班老师
+                  - generic: 切换幻灯片
+                  - generic: 分享市花数字名片
+                  - generic: 修改图表
+                  - generic: 设置过渡效果的速度和声音
+                  - generic: 阅读理解
+            - generic [ref=e97]:
+              - generic [ref=e98]:
+                - generic [ref=e99]: 节点类型
+                - generic [ref=e100]:
+                  - generic [ref=e103]: 教师 (Teacher)
+                  - generic [ref=e106]: 知识点 (Knowledge)
+                  - generic [ref=e109]: 学生 (Student)
+              - generic [ref=e110]:
+                - generic [ref=e111]: 交互类型
+                - generic [ref=e112]:
+                  - generic [ref=e115]: 物理空间采集
+                  - generic [ref=e121]: 平台采集
+    - complementary [ref=e122]:
+      - generic [ref=e124]:
+        - img [ref=e125]
+        - heading "资源中心" [level=2] [ref=e127]
+      - generic [ref=e131]:
+        - generic [ref=e698] [cursor=pointer]:
+          - generic [ref=e699]:
+            - generic [ref=e700]: VIDEO
+            - generic [ref=e701]:
+              - img [ref=e702]
+              - generic [ref=e704]: 接受度 85%
+          - heading "修改图表 - 学习资源" [level=3] [ref=e705]
+          - paragraph [ref=e706]: 关于"修改图表"的学习资源
+        - generic [ref=e707] [cursor=pointer]:
+          - generic [ref=e708]:
+            - generic [ref=e709]: DOCUMENT
+            - generic [ref=e710]:
+              - img [ref=e711]
+              - generic [ref=e713]: 接受度 90%
+          - heading "收集评价意见 - 学习资源" [level=3] [ref=e714]
+          - paragraph [ref=e715]: 关于"收集评价意见"的学习资源
+        - generic [ref=e716] [cursor=pointer]:
+          - generic [ref=e717]:
+            - generic [ref=e718]: VIDEO
+            - generic [ref=e719]:
+              - img [ref=e720]
+              - generic [ref=e722]: 接受度 76%
+          - heading "设置过渡效果的速度和声音 - 学习资源" [level=3] [ref=e723]
+          - paragraph [ref=e724]: 关于"设置过渡效果的速度和声音"的学习资源
+        - generic [ref=e725] [cursor=pointer]:
+          - generic [ref=e726]:
+            - generic [ref=e727]: VIDEO
+            - generic [ref=e728]:
+              - img [ref=e729]
+              - generic [ref=e731]: 接受度 62%
+          - heading "删除幻灯片 - 学习资源" [level=3] [ref=e732]
+          - paragraph [ref=e733]: 关于"删除幻灯片"的学习资源
+        - generic [ref=e734] [cursor=pointer]:
+          - generic [ref=e735]:
+            - generic [ref=e736]: DOCUMENT
+            - generic [ref=e737]:
+              - img [ref=e738]
+              - generic [ref=e740]: 接受度 76%
+          - heading "AI工具透明性与可解释性指南" [level=3] [ref=e741]
+          - paragraph [ref=e742]: 介绍主流AI工具的工作原理、局限性和使用边界，帮助学生理解AI的能力范围和不确定性。
+        - generic [ref=e743] [cursor=pointer]:
+          - generic [ref=e744]:
+            - generic [ref=e745]: ARTICLE
+            - generic [ref=e746]:
+              - img [ref=e747]
+              - generic [ref=e749]: 接受度 78%
+          - heading "AI伦理与批判性思维案例集" [level=3] [ref=e750]
+          - paragraph [ref=e751]: 精选AI应用中的伦理争议案例，引导学生批判性分析AI输出的可靠性，建立合理的人机信任边界。
+        - generic [ref=e752] [cursor=pointer]:
+          - generic [ref=e753]:
+            - generic [ref=e754]: DOCUMENT
+            - generic [ref=e755]:
+              - img [ref=e756]
+              - generic [ref=e758]: 接受度 84%
+          - heading "阅读理解进阶训练册" [level=3] [ref=e759]
+          - paragraph [ref=e760]: 从句子理解到段落分析的分层练习，配备详细的解题思路和答题模板，帮助夯实阅读基础。
+        - generic [ref=e761] [cursor=pointer]:
+          - generic [ref=e762]:
+            - generic [ref=e763]: DOCUMENT
+            - generic [ref=e764]:
+              - img [ref=e765]
+              - generic [ref=e767]: 接受度 39%
+          - heading "阅读理解基础训练册" [level=3] [ref=e768]
+          - paragraph [ref=e769]: 从句子理解到段落分析的分层练习，配备详细的解题思路和答题模板，帮助夯实阅读基础。
