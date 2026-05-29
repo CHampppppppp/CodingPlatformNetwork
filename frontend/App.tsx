@@ -957,7 +957,7 @@ const App: React.FC = () => {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {selectedNode.type === NodeType.STUDENT && (
+                      {selectedNode.type === NodeType.STUDENT && scenario === Scenario.SHOW_CASE && (
                         <button
                           onClick={handleOpenExpertIntervention}
                           className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg transition-colors text-xs font-medium backdrop-blur-sm"
