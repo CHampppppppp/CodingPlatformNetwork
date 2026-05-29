@@ -222,85 +222,96 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
   }, [data.meta]);
 
   // --- Subgraph Analysis Data ---
-
-  // A. Knowledge Heatmap (Hotspots)
-  const knowledgeHotspots = useMemo(() => {
-      const kNodes = data.nodes.filter(n => n.type === NodeType.KNOWLEDGE);
-      const degreeMap = new Map<string, number>();
-      
-      data.links.forEach(l => {
-          const target = typeof l.target === 'object' ? l.target : data.nodes.find(n => n.id === l.target);
-          const source = typeof l.source === 'object' ? l.source : data.nodes.find(n => n.id === l.source);
-          
-          if (target?.type === NodeType.KNOWLEDGE) degreeMap.set(target.id, (degreeMap.get(target.id) || 0) + 1);
-          if (source?.type === NodeType.KNOWLEDGE) degreeMap.set(source.id, (degreeMap.get(source.id) || 0) + 1);
-      });
-
-      return kNodes
-        .map(n => ({ label: n.name, value: degreeMap.get(n.id) || 0 }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 6);
-  }, [data]);
-
-  // B. Learning Mode (Interaction Types)
-  const interactionTypes = useMemo(() => {
-      let ts = 0, ss = 0, sk = 0;
-      data.links.forEach(l => {
-          const sNode = typeof l.source === 'object' ? l.source : data.nodes.find(n => n.id === l.source);
-          const tNode = typeof l.target === 'object' ? l.target : data.nodes.find(n => n.id === l.target);
-          const sType = sNode?.type;
-          const tType = tNode?.type;
-
-          if ((sType === NodeType.TEACHER && tType === NodeType.STUDENT) || (sType === NodeType.STUDENT && tType === NodeType.TEACHER)) ts++;
-          else if (sType === NodeType.STUDENT && tType === NodeType.STUDENT) ss++;
-          else if ((sType === NodeType.STUDENT && tType === NodeType.KNOWLEDGE) || (sType === NodeType.KNOWLEDGE && tType === NodeType.STUDENT)) sk++;
-      });
-      return [
-          { label: '师生互动 (指导)', value: ts, color: '#7c3aed' },
-          { label: '生生协作 (研讨)', value: ss, color: '#f59e0b' },
-          { label: '人机/自主 (探索)', value: sk, color: '#059669' }
-      ];
-  }, [data]);
-
-  // C. Group Attention (Student Degree Distribution)
-  const groupAttention = useMemo(() => {
-      const counts = { high: 0, medium: 0, low: 0 };
-      const sNodes = data.nodes.filter(n => n.type === NodeType.STUDENT);
-      
-      const degreeMap = new Map<string, number>();
-      data.links.forEach(l => {
-        const ids = [typeof l.source === 'object' ? l.source : data.nodes.find(n => n.id === l.source), typeof l.target === 'object' ? l.target : data.nodes.find(n => n.id === l.target)];
-        ids.forEach((node) => {
-            if (node?.type === NodeType.STUDENT) degreeMap.set(node.id, (degreeMap.get(node.id) || 0) + 1);
-        });
-      });
-
-      sNodes.forEach(n => {
-          const d = degreeMap.get(n.id) || 0;
-          if (d >= 8) counts.high++;
-          else if (d >= 5) counts.medium++;
-          else counts.low++;
-      });
-      
-      const total = sNodes.length || 1;
-      return [
-          { label: '高活跃核心圈', value: counts.high, max: total, color: 'bg-indigo-500' },
-          { label: '中活跃协作圈', value: counts.medium, max: total, color: 'bg-blue-400' },
-          { label: '低活跃边缘圈', value: counts.low, max: total, color: 'bg-gray-400' }
-      ];
-  }, [data]);
-
-  // D. Interaction Source (New for Interaction Type classification)
-  const interactionSources = useMemo(() => {
+  // 单次遍历 data.links 计算所有子图指标（避免多次遍历同一数据集）
+  const subgraphAnalysis = useMemo(() => {
+    let ts = 0, ss = 0, sk = 0, tk = 0;
     let physical = 0, platform = 0;
+    const kDegreeMap = new Map<string, number>();
+    const sDegreeMap = new Map<string, number>();
+
     data.links.forEach(l => {
-        if (l.type === InteractionType.PHYSICAL) physical++;
-        else platform++;
+      const sNode = typeof l.source === 'object' ? l.source : data.nodes.find(n => n.id === l.source);
+      const tNode = typeof l.target === 'object' ? l.target : data.nodes.find(n => n.id === l.target);
+      const sType = sNode?.type;
+      const tType = tNode?.type;
+      const sId = typeof l.source === 'object' ? l.source.id : l.source;
+      const tId = typeof l.target === 'object' ? l.target.id : l.target;
+
+      // 交互模式分类（含教师-知识点）
+      if ((sType === NodeType.TEACHER && tType === NodeType.STUDENT) ||
+          (sType === NodeType.STUDENT && tType === NodeType.TEACHER)) {
+        ts++;
+      } else if (sType === NodeType.STUDENT && tType === NodeType.STUDENT) {
+        ss++;
+      } else if ((sType === NodeType.STUDENT && tType === NodeType.KNOWLEDGE) ||
+                 (sType === NodeType.KNOWLEDGE && tType === NodeType.STUDENT)) {
+        sk++;
+      } else if ((sType === NodeType.TEACHER && tType === NodeType.KNOWLEDGE) ||
+                 (sType === NodeType.KNOWLEDGE && tType === NodeType.TEACHER)) {
+        tk++;
+      }
+
+      // 数据来源
+      if (l.type === InteractionType.PHYSICAL) physical++;
+      else platform++;
+
+      // 学生节点度
+      if (sNode?.type === NodeType.STUDENT) sDegreeMap.set(sId, (sDegreeMap.get(sId) || 0) + 1);
+      if (tNode?.type === NodeType.STUDENT) sDegreeMap.set(tId, (sDegreeMap.get(tId) || 0) + 1);
+
+      // 知识点节点度
+      if (sNode?.type === NodeType.KNOWLEDGE) kDegreeMap.set(sId, (kDegreeMap.get(sId) || 0) + 1);
+      if (tNode?.type === NodeType.KNOWLEDGE) kDegreeMap.set(tId, (kDegreeMap.get(tId) || 0) + 1);
     });
-    return [
-        { label: '物理空间采集', value: physical, color: '#475569' },
-        { label: '平台数据采集', value: platform, color: '#3b82f6' }
+
+    // A. 知识热点图
+    const kNodes = data.nodes.filter(n => n.type === NodeType.KNOWLEDGE);
+    const knowledgeHotspots = kNodes
+      .map(n => ({ label: n.name, value: kDegreeMap.get(n.id) || 0 }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+
+    // B. 交互模式
+    const interactionTypes = [
+      { label: '师生互动 (指导)', value: ts, color: '#7c3aed' },
+      { label: '生生协作 (研讨)', value: ss, color: '#f59e0b' },
+      { label: '人机/自主 (探索)', value: sk, color: '#059669' },
+      { label: '教师-知识点 (讲授)', value: tk, color: '#ef4444' },
     ];
+
+    // C. 群体关注度（百分位数动态阈值）
+    const sNodes = data.nodes.filter(n => n.type === NodeType.STUDENT);
+    const degrees = sNodes.map(n => sDegreeMap.get(n.id) || 0).sort((a, b) => a - b);
+    const total = sNodes.length || 1;
+
+    let highThreshold = 8;
+    let mediumThreshold = 5;
+    if (degrees.length > 0) {
+      highThreshold = degrees[Math.floor(degrees.length * 0.75)] ?? 0;
+      mediumThreshold = degrees[Math.floor(degrees.length * 0.5)] ?? 0;
+    }
+
+    const counts = { high: 0, medium: 0, low: 0 };
+    sNodes.forEach(n => {
+      const d = sDegreeMap.get(n.id) || 0;
+      if (d >= highThreshold) counts.high++;
+      else if (d >= mediumThreshold) counts.medium++;
+      else counts.low++;
+    });
+
+    const groupAttention = [
+      { label: '高活跃核心圈', value: counts.high, max: total, color: 'bg-indigo-500' },
+      { label: '中活跃协作圈', value: counts.medium, max: total, color: 'bg-blue-400' },
+      { label: '低活跃边缘圈', value: counts.low, max: total, color: 'bg-gray-400' }
+    ];
+
+    // D. 数据来源
+    const interactionSources = [
+      { label: '物理空间采集', value: physical, color: '#475569' },
+      { label: '平台数据采集', value: platform, color: '#3b82f6' }
+    ];
+
+    return { knowledgeHotspots, interactionTypes, groupAttention, interactionSources };
   }, [data]);
 
   const timelineData = useMemo(() => {
@@ -528,10 +539,10 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
                              <Target className="w-4 h-4 text-rose-500" /> 知识热点图 (高频交互节点)
                         </h3>
                         <div className="space-y-2">
-                            {knowledgeHotspots.map((k, i) => (
-                                <BarRow key={i} label={k.label} value={k.value} max={knowledgeHotspots[0]?.value || 1} color="bg-rose-500" />
+                            {subgraphAnalysis.knowledgeHotspots.map((k, i) => (
+                                <BarRow key={i} label={k.label} value={k.value} max={subgraphAnalysis.knowledgeHotspots[0]?.value || 1} color="bg-rose-500" />
                             ))}
-                            {knowledgeHotspots.length === 0 && <p className="text-xs text-gray-400">暂无交互数据</p>}
+                            {subgraphAnalysis.knowledgeHotspots.length === 0 && <p className="text-xs text-gray-400">暂无交互数据</p>}
                         </div>
                         <p className="text-[10px] text-gray-400 mt-4 text-center">基于网络度中心性 (Degree Centrality) 计算</p>
                     </div>
@@ -547,21 +558,22 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
                         <div className="grid grid-cols-2 gap-4">
                             <div className="flex flex-col items-center">
                                 <span className="text-[10px] font-semibold text-gray-400 mb-2 uppercase">模式结构</span>
-                                <DonutChart data={interactionTypes} size={100} />
+                                <DonutChart data={subgraphAnalysis.interactionTypes} size={100} />
                             </div>
                             <div className="flex flex-col items-center border-l border-gray-100">
                                 <span className="text-[10px] font-semibold text-gray-400 mb-2 uppercase">数据来源</span>
-                                <DonutChart data={interactionSources} size={100} />
+                                <DonutChart data={subgraphAnalysis.interactionSources} size={100} />
                             </div>
                         </div>
 
                         <div className="mt-4 p-2 bg-gray-50 rounded text-[10px] text-gray-500 leading-relaxed border border-gray-100">
-                            <strong>分析：</strong> 
-                            {interactionSources[0].value > interactionSources[1].value 
-                                ? "网络数据主要来源于物理空间中的师生/生生互动，体现了课堂现场的高频交流。" 
+                            <strong>分析：</strong>
+                            {subgraphAnalysis.interactionSources[0].value > subgraphAnalysis.interactionSources[1].value
+                                ? "网络数据主要来源于物理空间中的师生/生生互动，体现了课堂现场的高频交流。"
                                 : "网络交互高度依赖线上平台，体现了混合式或远程学习的特征。"
                             }
                         </div>
+
                     </div>
 
                     {/* Group Attention */}
@@ -570,7 +582,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
                              <Layers className="w-4 h-4 text-blue-500" /> 群体关注度分布
                         </h3>
                         <div className="space-y-3">
-                             {groupAttention.map((g, i) => (
+                             {subgraphAnalysis.groupAttention.map((g, i) => (
                                 <BarRow key={i} label={g.label} value={g.value} max={g.max} color={g.color} />
                              ))}
                         </div>

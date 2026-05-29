@@ -1,7 +1,8 @@
 export const API_BASE_URL =
-  process.env.NODE_ENV === "production"
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.MODE === "production"
     ? "http://interaction-network.mgsai.cn/api/v1"
-    : "http://localhost:3334/api/v1";
+    : "http://localhost:3334/api/v1");
 
 export const SCENARIO_CODE_MAP: Record<string, string> = {
   展示场景: "SHOW_CASE",
