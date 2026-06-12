@@ -1,113 +1,99 @@
-# Agent 约束文件
+# AGENTS.md
 
-## 0. 元原则（行动前必读）
+## 项目定位
 
-每次响应用户之前，强制过一遍以下检查：
+教育交互网络可视化平台：把不同教育平台的数据统一映射为三元交互网络（学生-教师-知识点），再通过后端 API 提供给 React + D3 前端展示。
 
-### 0.1 目标清晰度检查
+技术栈：NestJS + Prisma + MySQL/SQL Server + React + TypeScript + Vite + D3。
 
-- 用户的要求是否具体、可执行？
-- 如果含糊、有多重解释、或缺少关键信息，**必须停下来询问**，不要猜测。
+## 工作原则
 
-### 0.2 简洁度检查
+- 默认中文沟通，代码、命令、变量名用英文。
+- 先判断根因，再改代码；不要为了“能跑”绕过问题。
+- 大改动先给方案，确认后再动手。
+- 不要新增无关文档；用户明确要求写文档时才写。
+- 不要删除、覆盖、回滚用户已有改动。
 
-- 是否有更简单的方法实现相同效果？
-- 是否能用更少的代码完成？
-- **禁止**为了炫技而使用过度复杂的方案。
+## 红线
 
-### 0.3 根因检查（第一性原理）
+以下操作必须先问用户：
 
-- 用户说的问题是真正的根因，还是表象？
-- 我的方案是在解决根因，还是只在 symptoms 上打补丁？
-- 如果指向清晰但有更优路径，**主动向用户提出建议**。
+- 删除文件、目录、数据库数据或 git 历史。
+- 修改 `.env`、密钥、token、CI/CD 配置。
+- 修改 Prisma schema、执行迁移、执行 `db push --accept-data-loss`。
+- 执行真实数据导入、清理、覆盖、批量 CRUD 数据库。
+- `git push`、`git rebase`、`git reset --hard`、强制推送。
+- 安装全局依赖、修改系统配置、生产发布。
 
-### 0.4安全性检查
+## 项目结构约定
 
-- 在执行不可逆的操作前，**必须确认用户意图**。
-- 例如，删除用户数据、删除数据库表等一系列执行了就无法通过git回滚的操作。
+- 后端源码：`backend/src`
+- 后端模块：`backend/src/modules/{module-name}`
+- Prisma schema：`backend/prisma/schema.prisma`
+- 脚本：`backend/scripts`
+- 原始/生成数据：`backend/datas/script_filterd`
+- 前端源码：`frontend`
 
-## 项目背景
+新增目录前先明确：放什么、不放什么、命名规则。
 
-教育交互网络可视化系统，基于三元交互模型（学生-教师-知识点）。技术栈：NestJS + Prisma ORM + React + D3.js。
+## 数据导入约定
 
----
+不同平台原始数据格式可以不同，但进入系统前必须转为统一中间模型。
 
-## 技术约束
+```text
+Excel/CSV/JSON
+  -> platform adapter
+  -> NormalizedPlatformData
+  -> IngestionService
+  -> database
+```
 
-- **数据库**: 双数据库支持
-  - **生产环境**: SQL Server (Aliyun RDS) + `@prisma/adapter-mssql`
-  - **开发环境**: MySQL (本地) + `@prisma/adapter-mariadb`
-  - **自动切换**: `PrismaService` 根据 `DATABASE_URL` 前缀自动选择 adapter
-- **后端框架**: NestJS，使用模块化架构（每个实体一个 module）
-- **前端框架**: React + TypeScript + Vite
-- **验证**: 统一使用 `zod` 进行请求校验（DTO schema）
-- **API 风格**: RESTful，路径 `/api/v1/{resource}`，返回格式 `{ data, meta, error }`
+- 平台解析逻辑放：`backend/src/modules/ingestion/adapters`
+- 统一中间类型放：`backend/src/modules/ingestion/types`
+- 统一入库逻辑放：`backend/src/modules/ingestion/services`
+- `backend/scripts/import-{platform}.ts` 只能做薄入口：加载 adapter、调用 `IngestionService`、打印结果。
+- 不要在平台脚本里直接写大量 `prisma.*.create()` 入库逻辑。
+- Excel/CSV 都应由 adapter 读取并转成 `NormalizedPlatformData`。
 
----
+## 场景约定
 
-## 命名规范
+- 场景以数据库 `LearningScenario.code` 为准。
+- 前端不要硬编码真实场景数据；可展示后端返回的 `nameZh`。
+- `SHOW_CASE` 视为演示/展示场景；正式平台场景独立处理。
 
-| 类型        | 规范                   | 示例                                 |
-| ----------- | ---------------------- | ------------------------------------ |
-| 后端文件    | kebab-case             | `student-controller.ts`              |
-| 后端类/方法 | PascalCase / camelCase | `StudentService.findAll()`           |
-| 数据库表    | snake_case 复数        | `interaction_sessions`               |
-| API 路径    | snake_case             | `/api/v1/student-cognitive-template` |
-| 请求参数    | camelCase              | `scenarioCode`                       |
+## 学生个人
 
----
+- **个人维度分析**是 10 个聚合维度：知识储备、学习投入、认知负荷、学习动机、计算思维、人机信任度、学习方法倾向、学习态度、自我调节学习、人工智能素养。
+- **个人学情画像**是 14 个原始/细分维度：阅读理解、语言表达、科学知识、科学探究、计算思维、技术素养、焦虑倾向、抑郁倾向、兴趣稳定性、学业压力、创新能力、问题解决能力、实践能力、协作能力。
+- 不要混用两者：10维的个人维度分析用于维度分析展示和班级群体认知模版分析；14维的个人学情画像用于学情画像明细、专家干预策略。
 
 ## 代码规范
 
-- **禁止**: `as any`、`@ts-ignore`、空 catch、删除测试掩盖问题
-- **Controller**: 只做参数解析和响应转换，业务逻辑在 Service
-- **Service**: 使用 `PrismaService` 操作数据库，返回统一格式 `{ data, meta, error }`
-- **DTO**: 使用 `zod` schema 定义，Controller 层用 `.parse()` 验证
-- **Prisma**: 用 `Decimal` 处理浮点数，用 `$transaction` 保证原子性
+- 禁止：`as any`、`@ts-ignore`、空 `catch`、注释掉报错代码、删除测试掩盖问题。
+- Controller 只做参数解析和响应转换；业务逻辑放 Service。
+- DTO 请求校验使用 `zod`。
+- API 返回保持 `{ data, meta, error }`。
+- Prisma 金额/分数/强度等小数用 `Decimal`。
+- 前端使用函数组件 + Hooks；D3 图谱节点保持 `id/type/name/group/val` 基础结构。
 
----
+## 验证命令
 
-## 前端规范
+改后端后至少运行：
 
-- **组件**: 函数组件 + Hooks，不使用 class 组件
-- **状态管理**: 组件内部 `useState`，服务层处理数据逻辑
-- **D3 图谱**: 节点数据结构含 `val`(半径)、`group`(分组)、`type`(类型)
-- **样式**: Tailwind CSS，按需引入，不做全局覆盖
+```bash
+cd backend && npm run build
+```
 
----
+改前端后至少运行：
 
-## 环境配置
+```bash
+cd frontend && npm run build
+```
 
-- **开发环境**: 本地 MySQL
-  - 配置文件: `backend/.env`
-  - 连接字符串: `mysql://root@localhost:3306/interaction_network_test`
-  - 使用 `npx prisma db push --accept-data-loss` 推送 schema
-- **生产环境**: Aliyun SQL Server
-  - 配置文件: `backend/.env.production`
-  - 连接字符串: `sqlserver://rm-bp10v29fkj305q3smfo.sqlserver.rds.aliyuncs.com:3433;...`
-  - 使用 `npx prisma generate` 生成 SQL Server 客户端
-- **切换命令**:
+改导入脚本但不执行真实导入时，优先做只编译检查。
 
-  ```bash
-  # 切换到本地 MySQL
-  cp backend/.env backend/.env.production
-  cp backend/.env.local backend/.env
-  npx prisma generate
+## Git 纪律
 
-  # 切换到 Aliyun SQL Server
-  cp backend/.env backend/.env.local
-  cp backend/.env.production backend/.env
-  npx prisma generate
-  ```
-
----
-
-## MUST
-
-- don't make docs unless I told you so
-- 生成的data文件放在`backend/datas/script_filterd`目录下。
-- script文件统一放在`backend/scripts`目录下。
-- only CRUD database tables when you have my permission.
-- only modify prisma schema when you have my permission.
-- when you create a script without I asking, DELETE it after finishing the task.
-- 项目中所有的数据应该都是从后端数据库中读取的，有据可依，可溯源，而不能直接硬编码。
+- 工作区可能已有用户改动；只处理本任务相关文件。
+- 改完小单元后要验证并commit，方便rollback。
+- 最终说明要列出改了什么、验证了什么、哪些事情没有做。

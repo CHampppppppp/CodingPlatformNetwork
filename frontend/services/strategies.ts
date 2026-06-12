@@ -3,14 +3,23 @@ import { Scenario, CognitiveAttributes } from '../types';
 type StrategyLevel = 'high' | 'medium' | 'low';
 type StrategyMap = Record<string, Record<keyof CognitiveAttributes, Record<StrategyLevel, string>>>;
 
+const SCENARIO_CODE_TO_STRATEGY_KEY: Record<string, Scenario> = {
+  SHOW_CASE: Scenario.SHOW_CASE,
+  ONLINE_COURSE: Scenario.ONLINE_COURSE,
+  TEACHER_QA: Scenario.TEACHER_QA,
+  HOME_LEARNING: Scenario.HOME_LEARNING,
+  COLLABORATIVE_LEARNING: Scenario.COLLABORATIVE_LEARNING,
+  INFORMAL_LEARNING: Scenario.INFORMAL_LEARNING,
+};
+
 // Helper to get strategy based on score (1-5)
-export const getStrategy = (scenario: Scenario, attribute: keyof CognitiveAttributes, score: number): string => {
+export const getStrategy = (scenario: string, attribute: keyof CognitiveAttributes, score: number): string => {
   let level: StrategyLevel = 'medium';
   if (score <= 2) level = 'low';
   else if (score >= 4) level = 'high';
 
-  // Map the enum Scenario to the keys used in STRATEGIES
-  const scenarioData = STRATEGIES[scenario];
+  const strategyKey = SCENARIO_CODE_TO_STRATEGY_KEY[scenario] ?? scenario;
+  const scenarioData = STRATEGIES[strategyKey];
   if (!scenarioData) return "该场景暂无具体干预策略数据。";
 
   const attributeData = scenarioData[attribute];

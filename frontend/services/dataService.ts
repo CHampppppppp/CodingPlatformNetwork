@@ -1,14 +1,15 @@
 import {
   GraphData,
-  Scenario,
   Resource,
   ClassInfo,
   StudentProfile,
   StudentCognitiveTemplate,
   ClassroomAnalysis,
   NodeType,
+  LearningScenarioOption,
 } from "../types";
 import {
+  fetchScenarios as fetchScenariosFromApi,
   fetchGraphData as fetchGraphDataFromApi,
   fetchSchools,
   fetchGradesBySchool,
@@ -18,7 +19,7 @@ import {
   fetchResourceStudentRates,
   fetchClassroomAnalysis as fetchClassroomAnalysisFromApi,
 } from "./apiService";
-import { SCENARIO_CODE_MAP } from "../constants";
+import { FALLBACK_SCENARIOS } from "../constants";
 import {
   transformGraphData,
   validateClassInfo,
@@ -52,12 +53,22 @@ function anonymizeStudentNames(data: GraphData): GraphData {
   };
 }
 
+export const getScenarios = async (): Promise<LearningScenarioOption[]> => {
+  try {
+    const scenarios = await fetchScenariosFromApi();
+    return scenarios.length > 0 ? scenarios : [...FALLBACK_SCENARIOS];
+  } catch (error) {
+    console.error("获取场景列表失败，使用本地兜底场景:", error);
+    return [...FALLBACK_SCENARIOS];
+  }
+};
+
 /**
  * 获取可用的学校列表
  */
-export const getSchools = async (scenario?: string): Promise<string[]> => {
+export const getSchools = async (scenarioCode?: string): Promise<string[]> => {
   try {
-    return await fetchSchools(scenario);
+    return await fetchSchools(scenarioCode);
   } catch (error) {
     console.error("获取学校列表失败:", error);
     return [];
@@ -67,9 +78,9 @@ export const getSchools = async (scenario?: string): Promise<string[]> => {
 /**
  * 根据学校获取年级列表
  */
-export const getGradesBySchool = async (school: string, scenario?: string): Promise<string[]> => {
+export const getGradesBySchool = async (school: string, scenarioCode?: string): Promise<string[]> => {
   try {
-    return await fetchGradesBySchool(school, scenario);
+    return await fetchGradesBySchool(school, scenarioCode);
   } catch (error) {
     console.error("获取年级列表失败:", error);
     return [];
@@ -82,10 +93,10 @@ export const getGradesBySchool = async (school: string, scenario?: string): Prom
 export const getClassesBySchoolAndGrade = async (
   school: string,
   grade: string,
-  scenario?: string,
+  scenarioCode?: string,
 ): Promise<string[]> => {
   try {
-    return await fetchClassesBySchoolAndGrade(school, grade, scenario);
+    return await fetchClassesBySchoolAndGrade(school, grade, scenarioCode);
   } catch (error) {
     console.error("获取班级列表失败:", error);
     return [];
@@ -96,19 +107,19 @@ export const getClassesBySchoolAndGrade = async (
  * 从API获取图谱数据
  */
 export const fetchGraphData = async (
-  scenario: Scenario,
+  scenarioCode: string,
   classInfo: ClassInfo,
 ): Promise<GraphData> => {
-  console.log("从API获取图谱数据...", { scenario, classInfo });
+  console.log("从API获取图谱数据...", { scenarioCode, classInfo });
 
   try {
     // 验证输入参数
-    validateScenario(scenario);
+    validateScenario(scenarioCode);
     validateClassInfo(classInfo);
 
     // 生成缓存键
     const cacheKey = generateCacheKey("graphData", {
-      scenario,
+      scenarioCode,
       school: classInfo.school,
       grade: classInfo.grade,
       classId: classInfo.classId,
@@ -118,7 +129,7 @@ export const fetchGraphData = async (
     const data = await withCache(cacheKey, async () => {
       // 调用API服务获取数据
       const rawData = await fetchGraphDataFromApi({
-        scenario,
+        scenarioCode,
         school: classInfo.school,
         grade: classInfo.grade,
         classId: classInfo.classId,
@@ -194,12 +205,10 @@ export const fetchResources = async (): Promise<Resource[]> => {
 export { fetchResourceStudentRates };
 
 export const fetchClassroomAnalysis = async (
-  scenario: Scenario,
+  scenarioCode: string,
   classInfo: ClassInfo,
 ): Promise<ClassroomAnalysis | null> => {
   try {
-        const scenarioCode = SCENARIO_CODE_MAP[scenario] || scenario;
-
     const data = await fetchClassroomAnalysisFromApi({
       scenarioCode,
     });

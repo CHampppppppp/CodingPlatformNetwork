@@ -1,5 +1,5 @@
-import { GraphData } from "../types";
-import { API_BASE_URL, SCENARIO_CODE_MAP } from "../constants";
+import { GraphData, LearningScenarioOption } from "../types";
+import { API_BASE_URL } from "../constants";
 
 export interface StudentCognitiveTemplateApiResponse {
   student: {
@@ -29,6 +29,40 @@ const gradeKeyToId = new Map<string, string>();
 const classKeyToId = new Map<string, string>();
 const gradeDisplayToRaw = new Map<string, string>();
 const classDisplayToRaw = new Map<string, string>();
+
+export const fetchScenarios = async (): Promise<LearningScenarioOption[]> => {
+  const url = `${API_BASE_URL}/scenarios`;
+  console.log("请求场景列表:", url);
+
+  const response = await fetchWithRetry(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`API请求失败: ${response.status}`);
+  }
+
+  const payload = await response.json();
+  const list = Array.isArray(payload?.data) ? payload.data : [];
+
+  return list
+    .filter(
+      (item: Partial<LearningScenarioOption>) =>
+        typeof item.code === "string" &&
+        item.code.trim() !== "" &&
+        typeof item.nameZh === "string" &&
+        item.nameZh.trim() !== "",
+    )
+    .map((item: LearningScenarioOption) => ({
+      code: item.code,
+      nameZh: item.nameZh,
+      sortOrder: item.sortOrder,
+      isActive: item.isActive,
+    }));
+};
 
 type OrgOptionLike =
   | string
@@ -139,7 +173,7 @@ export const fetchWithRetry = async (
 
 // 获取图谱数据
 export const fetchGraphData = async (params: {
-  scenario?: string;
+  scenarioCode?: string;
   school?: string;
   grade?: string;
   classId?: string;
@@ -147,10 +181,9 @@ export const fetchGraphData = async (params: {
   try {
     // 构建查询参数
     const queryParams = new URLSearchParams();
-    const scenarioCode = params.scenario
-      ? SCENARIO_CODE_MAP[params.scenario] || params.scenario
-      : undefined;
-    if (scenarioCode) queryParams.append("scenario_code", scenarioCode);
+    if (params.scenarioCode) {
+      queryParams.append("scenario_code", params.scenarioCode);
+    }
 
     // 优先使用ID参数兼容v2后端；找不到映射时回退到旧参数名。
     const schoolId = params.school
@@ -463,9 +496,8 @@ export const fetchInteractions = async (params: {
 };
 
 // 获取学校列表
-export const fetchSchools = async (scenario?: string): Promise<string[]> => {
+export const fetchSchools = async (scenarioCode?: string): Promise<string[]> => {
   try {
-    const scenarioCode = scenario ? SCENARIO_CODE_MAP[scenario] || scenario : undefined;
     const queryParams = new URLSearchParams();
     if (scenarioCode) queryParams.append("scenario_code", scenarioCode);
     const url = `${API_BASE_URL}/org/schools${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
@@ -505,7 +537,7 @@ export const fetchSchools = async (scenario?: string): Promise<string[]> => {
 // 根据学校获取年级列表
 export const fetchGradesBySchool = async (
   school: string,
-  scenario?: string,
+  scenarioCode?: string,
 ): Promise<string[]> => {
   try {
     const schoolId = schoolNameToId.get(school);
@@ -513,7 +545,6 @@ export const fetchGradesBySchool = async (
       return [];
     }
 
-    const scenarioCode = scenario ? SCENARIO_CODE_MAP[scenario] || scenario : undefined;
     const queryParams = new URLSearchParams();
     queryParams.append("school_id", schoolId);
     if (scenarioCode) queryParams.append("scenario_code", scenarioCode);
@@ -558,7 +589,7 @@ export const fetchGradesBySchool = async (
 export const fetchClassesBySchoolAndGrade = async (
   school: string,
   grade: string,
-  scenario?: string,
+  scenarioCode?: string,
 ): Promise<string[]> => {
   try {
     const schoolId = schoolNameToId.get(school);
@@ -579,7 +610,6 @@ export const fetchClassesBySchoolAndGrade = async (
       return [];
     }
 
-    const scenarioCode = scenario ? SCENARIO_CODE_MAP[scenario] || scenario : undefined;
     const queryParams = new URLSearchParams();
     queryParams.append("grade_id", gradeId);
     if (scenarioCode) queryParams.append("scenario_code", scenarioCode);

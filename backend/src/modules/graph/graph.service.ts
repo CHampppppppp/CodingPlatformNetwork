@@ -172,8 +172,6 @@ export class GraphService {
       this.putNode(nodeMap, node, schoolNames, gradeNames, classNames);
     }
 
-    await this.addMockTeacherNodes(nodeMap, scenarioId, schoolNames, gradeNames, classNames);
-
     const mapInteractionType = (type: string): "PHYSICAL" | "PLATFORM" => {
       return type === "PHYSICAL" ? "PHYSICAL" : "PLATFORM";
     };
@@ -376,88 +374,62 @@ export class GraphService {
       }
     }
 
-    const seededRandom = (seed: string) => {
-      let hash = 0;
-      for (let i = 0; i < seed.length; i++) {
-        hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
-      }
-      return ((hash >>> 0) % 1000) / 1000;
-    };
-
     for (const node of studentNodes) {
       const profile = latestProfileMap.get(node.id);
 
-      if (profile && profile.dimensionScores.length > 0) {
-        const dimMap = new Map(
-          profile.dimensionScores.map((ds) => [ds.dimensionCode, Number(ds.scoreValue)]),
-        );
-
-        const precomputedKeys = [
-          'knowledgeReserve',
-          'learningEngagement',
-          'cognitiveLoad',
-          'learningMotivation',
-          'computationalThinking',
-          'humanAiTrust',
-          'learningMethod',
-          'learningAttitude',
-          'selfRegulatedLearning',
-          'aiLiteracy',
-        ];
-        const hasPrecomputedDimensions = precomputedKeys.some(
-          (key) => dimMap.has(key) && (dimMap.get(key) ?? 0) > 0,
-        );
-
-        if (hasPrecomputedDimensions) {
-          node.studentProfile = {
-            ...node.studentProfile,
-            knowledgeReserve: dimMap.get('knowledgeReserve') ?? 0,
-            learningEngagement: dimMap.get('learningEngagement') ?? 0,
-            cognitiveLoad: dimMap.get('cognitiveLoad') ?? 0,
-            learningMotivation: dimMap.get('learningMotivation') ?? 0,
-            computationalThinking: dimMap.get('computationalThinking') ?? 0,
-            humanAiTrust: dimMap.get('humanAiTrust') ?? 0,
-            learningMethod: dimMap.get('learningMethod') ?? 0,
-            learningAttitude: dimMap.get('learningAttitude') ?? 0,
-            selfRegulatedLearning: dimMap.get('selfRegulatedLearning') ?? 0,
-            aiLiteracy: dimMap.get('aiLiteracy') ?? 0,
-          };
-        } else {
-          node.studentProfile = {
-            ...node.studentProfile,
-            knowledgeReserve: computeDimension(dimMap, dimCodes.knowledgeReserve, multipliers.knowledgeReserve),
-            learningEngagement: computeDimension(dimMap, dimCodes.learningEngagement, multipliers.learningEngagement),
-            cognitiveLoad: computeDimension(dimMap, dimCodes.cognitiveLoad, multipliers.cognitiveLoad),
-            learningMotivation: computeDimension(dimMap, dimCodes.learningMotivation, multipliers.learningMotivation),
-            computationalThinking: computeDimension(dimMap, dimCodes.computationalThinking, multipliers.computationalThinking),
-            humanAiTrust: computeDimension(dimMap, dimCodes.humanAiTrust, multipliers.humanAiTrust),
-            learningMethod: computeDimension(dimMap, dimCodes.learningMethod, multipliers.learningMethod),
-            learningAttitude: computeDimension(dimMap, dimCodes.learningAttitude, multipliers.learningAttitude),
-            selfRegulatedLearning: computeDimension(dimMap, dimCodes.selfRegulatedLearning, multipliers.selfRegulatedLearning),
-            aiLiteracy: computeDimension(dimMap, dimCodes.aiLiteracy, multipliers.aiLiteracy),
-          };
-        }
+      if (!profile || profile.dimensionScores.length === 0) {
         continue;
       }
 
-      const seed = node.id;
-      const mockValue = (min: number, max: number, offset: number) => {
-        const raw = seededRandom(seed + offset);
-        return Number((min + raw * (max - min)).toFixed(1));
-      };
+      const dimMap = new Map(
+        profile.dimensionScores.map((ds) => [ds.dimensionCode, Number(ds.scoreValue)]),
+      );
+
+      const precomputedKeys = [
+        'knowledgeReserve',
+        'learningEngagement',
+        'cognitiveLoad',
+        'learningMotivation',
+        'computationalThinking',
+        'humanAiTrust',
+        'learningMethod',
+        'learningAttitude',
+        'selfRegulatedLearning',
+        'aiLiteracy',
+      ];
+      const hasPrecomputedDimensions = precomputedKeys.some(
+        (key) => dimMap.has(key) && (dimMap.get(key) ?? 0) > 0,
+      );
+
+      if (hasPrecomputedDimensions) {
+        node.studentProfile = {
+          ...node.studentProfile,
+          knowledgeReserve: dimMap.get('knowledgeReserve'),
+          learningEngagement: dimMap.get('learningEngagement'),
+          cognitiveLoad: dimMap.get('cognitiveLoad'),
+          learningMotivation: dimMap.get('learningMotivation'),
+          computationalThinking: dimMap.get('computationalThinking'),
+          humanAiTrust: dimMap.get('humanAiTrust'),
+          learningMethod: dimMap.get('learningMethod'),
+          learningAttitude: dimMap.get('learningAttitude'),
+          selfRegulatedLearning: dimMap.get('selfRegulatedLearning'),
+          aiLiteracy: dimMap.get('aiLiteracy'),
+        };
+        continue;
+      }
 
       node.studentProfile = {
         ...node.studentProfile,
-        knowledgeReserve: mockValue(1.5, 3.5, 1),
-        learningEngagement: mockValue(1.5, 3.5, 2),
-        cognitiveLoad: mockValue(2.0, 4.0, 3),
-        learningMotivation: mockValue(1.5, 3.5, 4),
-        computationalThinking: mockValue(1.5, 3.5, 5),
-        humanAiTrust: mockValue(1.5, 3.5, 6),
-        learningMethod: mockValue(1.5, 3.5, 7),
-        learningAttitude: mockValue(1.5, 3.5, 8),
-        selfRegulatedLearning: mockValue(1.5, 3.5, 9),
-        aiLiteracy: mockValue(1.5, 3.5, 10),
+        knowledgeReserve: computeDimension(dimMap, dimCodes.knowledgeReserve, multipliers.knowledgeReserve),
+        learningEngagement: computeDimension(dimMap, dimCodes.learningEngagement, multipliers.learningEngagement),
+        cognitiveLoad: computeDimension(dimMap, dimCodes.cognitiveLoad, multipliers.cognitiveLoad),
+        learningMotivation: computeDimension(dimMap, dimCodes.learningMotivation, multipliers.learningMotivation),
+        computationalThinking: computeDimension(dimMap, dimCodes.computationalThinking, multipliers.computationalThinking),
+        humanAiTrust: computeDimension(dimMap, dimCodes.humanAiTrust, multipliers.humanAiTrust),
+        learningMethod: computeDimension(dimMap, dimCodes.learningMethod, multipliers.learningMethod),
+        learningAttitude: computeDimension(dimMap, dimCodes.learningAttitude, multipliers.learningAttitude),
+        selfRegulatedLearning: computeDimension(dimMap, dimCodes.selfRegulatedLearning, multipliers.selfRegulatedLearning),
+        aiLiteracy: computeDimension(dimMap, dimCodes.aiLiteracy, multipliers.aiLiteracy),
       };
     }
   }
@@ -684,60 +656,4 @@ export class GraphService {
     return classNames;
   }
 
-      private async addMockTeacherNodes(
-    nodeMap: Map<string, Node>,
-    scenarioId: string | undefined,
-    schoolNames: Map<string, string>,
-    gradeNames: Map<string, string>,
-    classNames: Map<string, string>,
-  ): Promise<void> {
-    if (!scenarioId) return;
-
-    // 如果已经存在任何教师节点，不再创建 mock 教师
-    const hasAnyTeacher = Array.from(nodeMap.values()).some(
-      (n) => n.type === "TEACHER",
-    );
-    if (hasAnyTeacher) return;
-
-    const classStudentMap = new Map<string, Node[]>();
-    for (const node of nodeMap.values()) {
-      if (node.type === "STUDENT" && node.studentProfile?.classId) {
-        const list = classStudentMap.get(node.studentProfile.classId) || [];
-        list.push(node);
-        classStudentMap.set(node.studentProfile.classId, list);
-      }
-    }
-
-    for (const [classId, students] of classStudentMap) {
-      const hasTeacher = Array.from(nodeMap.values()).some(
-        (n) => n.type === "TEACHER" && n.teacherProfile?.teachingClass === classId,
-      );
-
-      if (hasTeacher) continue;
-
-      const firstStudent = students[0];
-      const schoolId =
-        firstStudent.studentProfile?.school ||
-        Object.keys(schoolNames).find((k) => schoolNames.get(k) === firstStudent.studentProfile?.school) ||
-        "";
-      const gradeId =
-        Object.keys(gradeNames).find((k) => gradeNames.get(k) === firstStudent.studentProfile?.grade) || "";
-      const className = classNames.get(classId) || classId;
-
-      const mockTeacherId = `mock-teacher-${classId}`;
-      nodeMap.set(mockTeacherId, {
-        id: mockTeacherId,
-        type: "TEACHER",
-        name: `${className}教师`,
-        group: 1,
-        val: 25,
-        teacherProfile: {
-          school: firstStudent.studentProfile?.school || null,
-          teachingGrade: firstStudent.studentProfile?.grade || null,
-          teachingClass: className,
-          subject: "社团课",
-        },
-      });
-    }
-  }
 }

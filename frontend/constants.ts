@@ -4,14 +4,14 @@ export const API_BASE_URL =
     ? "http://interaction-network.mgsai.cn/api/v1"
     : "http://localhost:3334/api/v1");
 
-export const SCENARIO_CODE_MAP: Record<string, string> = {
-  展示场景: "SHOW_CASE",
-  学科课程在线学习: "ONLINE_COURSE",
-  课后线上教师授课答疑: "TEACHER_QA",
-  家庭在线学习: "HOME_LEARNING",
-  在线协作学习: "COLLABORATIVE_LEARNING",
-  社团课等非正式学习: "INFORMAL_LEARNING",
-};
+export const FALLBACK_SCENARIOS = [
+  { code: "SHOW_CASE", nameZh: "展示场景", sortOrder: 0, isActive: true },
+  { code: "ONLINE_COURSE", nameZh: "学科课程在线学习", sortOrder: 1, isActive: true },
+  { code: "TEACHER_QA", nameZh: "课后线上教师授课答疑", sortOrder: 2, isActive: true },
+  { code: "HOME_LEARNING", nameZh: "家庭在线学习", sortOrder: 3, isActive: true },
+  { code: "COLLABORATIVE_LEARNING", nameZh: "在线协作学习", sortOrder: 4, isActive: true },
+  { code: "INFORMAL_LEARNING", nameZh: "社团课等非正式学习", sortOrder: 5, isActive: true },
+] as const;
 
 export const LIKERT_SCALE_MAP: Record<string, number> = {
   非常同意: 5,

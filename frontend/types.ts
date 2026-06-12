@@ -20,6 +20,13 @@ export enum Scenario {
   INFORMAL_LEARNING = "社团课等非正式学习",
 }
 
+export interface LearningScenarioOption {
+  code: string;
+  nameZh: string;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
 export interface CognitiveAttributes {
   knowledgeReserve: number; // 知识储备
   learningEngagement: number; // 学习投入

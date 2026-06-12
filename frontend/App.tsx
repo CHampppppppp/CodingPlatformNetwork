@@ -29,6 +29,7 @@ import AnalysisPanel from "./components/AnalysisPanel";
 import {
   fetchGraphData,
   fetchResources,
+  getScenarios,
   getSchools,
   getGradesBySchool,
   getClassesBySchoolAndGrade,
@@ -37,7 +38,6 @@ import {
 import { fetchStudentCognitiveTemplate as fetchStudentCognitiveTemplateRaw, fetchStudentExpertIntervention } from "./services/apiService";
 import { getStrategy } from "./services/strategies";
 import {
-  Scenario,
   GraphData,
   Resource,
   ClassInfo,
@@ -47,11 +47,13 @@ import {
   InteractionType,
   GraphLink,
   StudentProfile,
+  LearningScenarioOption,
 } from "./types";
 import {
   COGNITIVE_DIMENSION_LABELS,
   LIKERT_SCALE_MAP,
   buildSearchUrl,
+  FALLBACK_SCENARIOS,
 } from "./constants";
 
 const dimensionCodeToStrategyKey: Record<string, keyof CognitiveAttributes> = {
@@ -75,9 +77,22 @@ function isRealUrl(url: string | undefined): boolean {
   return url.startsWith('http') && !url.includes('example.com');
 }
 
+function hasCognitiveProfileValues(profile: Partial<StudentProfile> | undefined): boolean {
+  if (!profile) return false;
+  return Object.keys(COGNITIVE_DIMENSION_LABELS).some((key) => {
+    const value = profile[key as keyof CognitiveAttributes];
+    return typeof value === "number" && value > 0;
+  });
+}
+
 const App: React.FC = () => {
   // State
-  const [scenario, setScenario] = useState<Scenario>(Object.values(Scenario)[0]);
+  const [scenarioOptions, setScenarioOptions] = useState<LearningScenarioOption[]>(
+    [...FALLBACK_SCENARIOS],
+  );
+  const [scenarioCode, setScenarioCode] = useState<string>(
+    FALLBACK_SCENARIOS[0].code,
+  );
   const [classInfo, setClassInfo] = useState<ClassInfo>({
     school: "",
     grade: "",
@@ -144,8 +159,27 @@ const App: React.FC = () => {
     classes: false,
   });
 
-  // Constants
-  const scenarios = Object.values(Scenario);
+  const selectedScenarioOption = useMemo(
+    () => scenarioOptions.find((item) => item.code === scenarioCode),
+    [scenarioOptions, scenarioCode],
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getScenarios().then((items) => {
+      if (!isMounted) return;
+      setScenarioOptions(items);
+      setScenarioCode((prev) => {
+        const exists = items.some((item) => item.code === prev);
+        return exists ? prev : items[0]?.code ?? FALLBACK_SCENARIOS[0].code;
+      });
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const formatProfileValue = (val?: string | null): string => {
     if (!val) return "未知";
@@ -162,14 +196,14 @@ const App: React.FC = () => {
         classId: "",
       });
     }
-    setScenario(Object.values(Scenario)[0]);
-  }, [classOptions.schools]);
+    setScenarioCode(scenarioOptions[0]?.code ?? FALLBACK_SCENARIOS[0].code);
+  }, [classOptions.schools, scenarioOptions]);
 
   useEffect(() => {
     const loadSchools = async () => {
       setOptionsLoading((prev) => ({ ...prev, schools: true }));
       try {
-        const schools = await getSchools(scenario);
+        const schools = await getSchools(scenarioCode);
         setClassOptions((prev) => ({ ...prev, schools }));
 
         if (schools.length > 0) {
@@ -195,7 +229,7 @@ const App: React.FC = () => {
     };
 
     loadSchools();
-  }, [scenario]);
+  }, [scenarioCode]);
 
   // Load grades when school changes
   useEffect(() => {
@@ -204,7 +238,7 @@ const App: React.FC = () => {
     const loadGrades = async () => {
       setOptionsLoading((prev) => ({ ...prev, grades: true }));
       try {
-        const grades = await getGradesBySchool(classInfo.school, scenario);
+        const grades = await getGradesBySchool(classInfo.school, scenarioCode);
         setClassOptions((prev) => ({ ...prev, grades }));
 
         setClassInfo((prev) => ({
@@ -221,7 +255,7 @@ const App: React.FC = () => {
     };
 
     loadGrades();
-  }, [classInfo.school, scenario]);
+  }, [classInfo.school, scenarioCode]);
 
   // Load classes when school or grade changes
   useEffect(() => {
@@ -240,7 +274,7 @@ const App: React.FC = () => {
         const classes = await getClassesBySchoolAndGrade(
           classInfo.school,
           classInfo.grade,
-          scenario,
+          scenarioCode,
         );
         setClassOptions((prev) => ({ ...prev, classes }));
 
@@ -265,7 +299,7 @@ const App: React.FC = () => {
     };
 
     loadClasses();
-  }, [classInfo.school, classInfo.grade, scenario]);
+  }, [classInfo.school, classInfo.grade, scenarioCode]);
 
   const requestIdRef = useRef(0);
   const loadDataTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -284,7 +318,7 @@ const App: React.FC = () => {
     setHoveredAttribute(null);
 
     try {
-      const data = await fetchGraphData(scenario, classInfo);
+      const data = await fetchGraphData(scenarioCode, classInfo);
 
       setGraphData(data);
 
@@ -306,7 +340,7 @@ const App: React.FC = () => {
         setLoading(false);
       }
     }
-  }, [scenario, classInfo]);
+  }, [scenarioCode, classInfo]);
 
   useEffect(() => {
     if (loadDataTimeoutRef.current) {
@@ -328,7 +362,7 @@ const App: React.FC = () => {
         loadDataTimeoutRef.current = null;
       }
     };
-  }, [classInfo.school, classInfo.grade, classInfo.classId, scenario]);
+  }, [classInfo.school, classInfo.grade, classInfo.classId, scenarioCode]);
 
   const openAnalysis = (tab: "overview" | "subgraph") => {
     setAnalysisDefaultTab(tab);
@@ -671,18 +705,18 @@ const App: React.FC = () => {
                 <LayoutDashboard className="w-3 h-3" /> 学习场景
               </label>
               <div className="space-y-1">
-                {scenarios.map((s) => (
+                {scenarioOptions.map((item) => (
                   <button
-                    key={s}
-                    onClick={() => setScenario(s)}
+                    key={item.code}
+                    onClick={() => setScenarioCode(item.code)}
                     className={`w-full text-left px-3 py-2.5 rounded-lg text-xs transition-all duration-200 flex items-center justify-between group ${
-                      scenario === s
+                      scenarioCode === item.code
                         ? "bg-indigo-50 text-indigo-700 font-medium ring-1 ring-indigo-200"
                         : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
                     }`}
                   >
-                    <span>{s}</span>
-                    {scenario === s && (
+                    <span>{item.nameZh}</span>
+                    {scenarioCode === item.code && (
                       <ChevronRight className="w-3 h-3 text-indigo-500" />
                     )}
                   </button>
@@ -828,7 +862,7 @@ const App: React.FC = () => {
               <div className="flex items-center gap-2 mt-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                 <p className="text-xs font-medium text-slate-500">
-                  场景: <span className="text-indigo-600">{scenario}</span>
+                  场景: <span className="text-indigo-600">{selectedScenarioOption?.nameZh ?? scenarioCode}</span>
                 </p>
               </div>
             </div>
@@ -957,7 +991,7 @@ const App: React.FC = () => {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {selectedNode.type === NodeType.STUDENT && scenario === Scenario.SHOW_CASE && (
+                      {selectedNode.type === NodeType.STUDENT && scenarioCode === "SHOW_CASE" && (
                         <button
                           onClick={handleOpenExpertIntervention}
                           className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg transition-colors text-xs font-medium backdrop-blur-sm"
@@ -986,69 +1020,77 @@ const App: React.FC = () => {
                               个人维度分析
                             </h5>
                           </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            {Object.entries(COGNITIVE_DIMENSION_LABELS).map(
-                              ([key, label]) => {
-                                const attributeKey =
-                                  key as keyof CognitiveAttributes;
-                                const valueRaw =
-                                  selectedNode.studentProfile![attributeKey];
-                                const value =
-                                  typeof valueRaw === "number" ? valueRaw : 0;
-                                const canShowStrategy =
-                                  typeof dimensionCodeToStrategyKey[key] !==
-                                  "undefined";
-                                return (
-                                  <div
-                                    key={key}
-                                    className={`space-y-1 group relative p-2 bg-slate-50 rounded-lg border border-slate-100 ${
-                                      canShowStrategy
-                                        ? "cursor-help"
-                                        : "cursor-default"
-                                    }`}
-                                    onMouseEnter={(e) => {
-                                      if (dimensionCodeToStrategyKey[key]) {
-                                        handleAttributeEnter(
-                                          e,
-                                          label,
-                                          value,
-                                          dimensionCodeToStrategyKey[key],
-                                        );
-                                      }
-                                    }}
-                                    onMouseLeave={() => {
-                                      if (canShowStrategy) {
-                                        handleAttributeLeave();
-                                      }
-                                    }}
-                                  >
-                                    <div className="flex justify-between text-[11px] text-slate-600">
-                                      <span className="font-medium">{label}</span>
-                                      <span className="font-bold text-slate-800">
-                                        {value.toFixed(1)}/5
-                                      </span>
+                          {hasCognitiveProfileValues(selectedNode.studentProfile) ? (
+                            <div className="grid grid-cols-2 gap-3">
+                              {Object.entries(COGNITIVE_DIMENSION_LABELS).map(
+                                ([key, label]) => {
+                                  const attributeKey =
+                                    key as keyof CognitiveAttributes;
+                                  const valueRaw =
+                                    selectedNode.studentProfile![attributeKey];
+                                  if (typeof valueRaw !== "number" || valueRaw <= 0) {
+                                    return null;
+                                  }
+                                  const value = valueRaw;
+                                  const canShowStrategy =
+                                    typeof dimensionCodeToStrategyKey[key] !==
+                                    "undefined";
+                                  return (
+                                    <div
+                                      key={key}
+                                      className={`space-y-1 group relative p-2 bg-slate-50 rounded-lg border border-slate-100 ${
+                                        canShowStrategy
+                                          ? "cursor-help"
+                                          : "cursor-default"
+                                      }`}
+                                      onMouseEnter={(e) => {
+                                        if (dimensionCodeToStrategyKey[key]) {
+                                          handleAttributeEnter(
+                                            e,
+                                            label,
+                                            value,
+                                            dimensionCodeToStrategyKey[key],
+                                          );
+                                        }
+                                      }}
+                                      onMouseLeave={() => {
+                                        if (canShowStrategy) {
+                                          handleAttributeLeave();
+                                        }
+                                      }}
+                                    >
+                                      <div className="flex justify-between text-[11px] text-slate-600">
+                                        <span className="font-medium">{label}</span>
+                                        <span className="font-bold text-slate-800">
+                                          {value.toFixed(1)}/5
+                                        </span>
+                                      </div>
+                                      <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                                        <div
+                                          className={`h-full rounded-full transition-all duration-500 ease-out ${
+                                            value >= 4
+                                              ? "bg-emerald-500"
+                                              : value >= 3
+                                              ? "bg-indigo-500"
+                                              : "bg-amber-500"
+                                          } group-hover:brightness-95`}
+                                          style={{
+                                            width: `${(value / 5) * 100}%`,
+                                          }}
+                                        ></div>
+                                      </div>
                                     </div>
-                                    <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
-                                      <div
-                                        className={`h-full rounded-full transition-all duration-500 ease-out ${
-                                          value >= 4
-                                            ? "bg-emerald-500"
-                                            : value >= 3
-                                            ? "bg-indigo-500"
-                                            : "bg-amber-500"
-                                        } group-hover:brightness-95`}
-                                        style={{
-                                          width: `${(value / 5) * 100}%`,
-                                        }}
-                                      ></div>
-                                    </div>
-                                  </div>
-                                );
-                              },
-                            )}
-                          </div>
+                                  );
+                                },
+                              )}
+                            </div>
+                          ) : (
+                            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-xs text-slate-400">
+                              暂无认知画像数据
+                            </div>
+                          )}
 
-                          {scenario === Scenario.SHOW_CASE &&
+                          {scenarioCode === "SHOW_CASE" &&
                             selectedNode.studentProfile.template?.dimensions
                             ?.length > 0 && (
                             <>
@@ -1276,7 +1318,7 @@ const App: React.FC = () => {
             <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">
               {hoveredAttribute.key
                 ? getStrategy(
-                    scenario,
+                    scenarioCode,
                     hoveredAttribute.key,
                     hoveredAttribute.score,
                   )
@@ -1361,7 +1403,7 @@ const App: React.FC = () => {
         onClose={() => setIsAnalysisOpen(false)}
         data={graphData}
         resources={resources}
-        scenario={scenario}
+        scenarioCode={scenarioCode}
         classInfo={classInfo}
         defaultTab={analysisDefaultTab}
       />
@@ -1437,7 +1479,7 @@ const App: React.FC = () => {
                       <div className="space-y-3">
                         {expertInterventionData.weakDimensions.map((dim) => {
                           const suggestion = dim.strategyKey
-                            ? getStrategy(scenario, dim.strategyKey as keyof CognitiveAttributes, dim.scoreValue)
+                            ? getStrategy(scenarioCode, dim.strategyKey as keyof CognitiveAttributes, dim.scoreValue)
                             : "该维度暂无具体干预策略数据。";
                           return (
                             <div

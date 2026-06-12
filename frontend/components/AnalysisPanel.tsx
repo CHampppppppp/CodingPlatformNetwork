@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { GraphData, NodeType, Resource, CognitiveAttributes, GraphNode, InteractionType, ClassroomAnalysis, Scenario } from '../types';
+import { GraphData, NodeType, Resource, CognitiveAttributes, GraphNode, InteractionType, ClassroomAnalysis } from '../types';
 import { COGNITIVE_DIMENSION_LABELS } from '../constants';
 import { PieChart, Users, Book, Activity, ThumbsUp, Send, CheckCircle, BarChart3, X, GitGraph, Share2, Target, TrendingUp, Layers, Video } from 'lucide-react';
 import { ClassroomAnalysisView } from './ClassroomAnalysisView';
@@ -10,7 +10,7 @@ interface AnalysisPanelProps {
   onClose: () => void;
   data: GraphData;
   resources: Resource[];
-  scenario: Scenario;
+  scenarioCode: string;
   classInfo: { school: string; grade: string; classId: string };
   defaultTab?: 'overview' | 'subgraph' | 'classroom-analysis';
 }
@@ -142,12 +142,12 @@ const TrendChart: React.FC<{ points: TrendPoint[] }> = ({ points }) => {
   );
 }
 
-const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, resources, scenario, classInfo, defaultTab = 'overview' }) => {
+const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, resources, scenarioCode, classInfo, defaultTab = 'overview' }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'subgraph' | 'classroom-analysis'>('overview');
   const [classroomAnalysis, setClassroomAnalysis] = useState<ClassroomAnalysis | null>(null);
   const [classroomAnalysisLoading, setClassroomAnalysisLoading] = useState(false);
 
-  const isShowCase = scenario === '展示场景';
+  const isShowCase = scenarioCode === 'SHOW_CASE';
 
   // Sync activeTab with defaultTab when panel opens
   useEffect(() => {
@@ -159,7 +159,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
   useEffect(() => {
     if (activeTab === 'classroom-analysis' && isShowCase && !classroomAnalysis && !classroomAnalysisLoading) {
       setClassroomAnalysisLoading(true);
-      fetchClassroomAnalysis(scenario, classInfo)
+      fetchClassroomAnalysis(scenarioCode, classInfo)
         .then((analysis) => {
           setClassroomAnalysis(analysis);
         })
@@ -170,7 +170,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
           setClassroomAnalysisLoading(false);
         });
     }
-  }, [activeTab, isShowCase, scenario, classInfo, classroomAnalysis, classroomAnalysisLoading]);
+  }, [activeTab, isShowCase, scenarioCode, classInfo, classroomAnalysis, classroomAnalysisLoading]);
 
   // --- Data Calculations ---
   
