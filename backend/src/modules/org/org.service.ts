@@ -1,6 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../shared/utils/prisma.service";
 
+async function resolveScenarioId(prisma: PrismaService, code?: string): Promise<string | undefined> {
+  if (!code) return undefined;
+  const scenario = await prisma.learningScenario.findUnique({
+    where: { code },
+    select: { id: true },
+  });
+  return scenario?.id;
+}
+
 interface CacheItem {
   data: any;
   timestamp: number;
@@ -46,36 +55,17 @@ export class OrgService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async getSchools() {
-    const cacheKey = 'schools';
+  async getSchools(scenarioCode?: string) {
+    const cacheKey = scenarioCode ? `schools:${scenarioCode}` : 'schools';
     const cachedData = this.cache.get(cacheKey);
     if (cachedData) {
       return cachedData;
     }
 
-    const validClassIds = await this.prisma.graphNode.findMany({
-      where: {
-        OR: [
-          { nodeType: "Student" },
-          { nodeType: "Teacher" }
-        ],
-        classId: { not: null }
-      },
-      select: { classId: true }
-    }).then(nodes => nodes.map(node => node.classId).filter(Boolean) as string[]);
+    const scenarioId = await resolveScenarioId(this.prisma, scenarioCode);
 
     const schools = await this.prisma.school.findMany({
-      where: {
-        grades: {
-          some: {
-            classes: {
-              some: {
-                id: { in: validClassIds }
-              }
-            }
-          }
-        }
-      },
+      where: scenarioId ? { scenarioId } : {},
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     });
@@ -90,33 +80,17 @@ export class OrgService {
     return result;
   }
 
-  async getGrades(schoolId: string) {
-    const cacheKey = `grades:${schoolId}`;
+  async getGrades(schoolId: string, scenarioCode?: string) {
+    const cacheKey = scenarioCode
+      ? `grades:${schoolId}:${scenarioCode}`
+      : `grades:${schoolId}`;
     const cachedData = this.cache.get(cacheKey);
     if (cachedData) {
       return cachedData;
     }
 
-    const validClassIds = await this.prisma.graphNode.findMany({
-      where: {
-        OR: [
-          { nodeType: "Student" },
-          { nodeType: "Teacher" }
-        ],
-        classId: { not: null }
-      },
-      select: { classId: true }
-    }).then(nodes => nodes.map(node => node.classId).filter(Boolean) as string[]);
-
     const grades = await this.prisma.grade.findMany({
-      where: {
-        schoolId,
-        classes: {
-          some: {
-            id: { in: validClassIds }
-          }
-        }
-      },
+      where: { schoolId },
       select: {
         id: true,
         gradeName: true,
@@ -134,29 +108,17 @@ export class OrgService {
     return result;
   }
 
-  async getClasses(gradeId: string) {
-    const cacheKey = `classes:${gradeId}`;
+  async getClasses(gradeId: string, scenarioCode?: string) {
+    const cacheKey = scenarioCode
+      ? `classes:${gradeId}:${scenarioCode}`
+      : `classes:${gradeId}`;
     const cachedData = this.cache.get(cacheKey);
     if (cachedData) {
       return cachedData;
     }
 
-    const validClassIds = await this.prisma.graphNode.findMany({
-      where: {
-        OR: [
-          { nodeType: "Student" },
-          { nodeType: "Teacher" }
-        ],
-        classId: { not: null }
-      },
-      select: { classId: true }
-    }).then(nodes => nodes.map(node => node.classId).filter(Boolean) as string[]);
-
-    const classes = await this.prisma.schoolClass.findMany({
-      where: {
-        gradeId,
-        id: { in: validClassIds }
-      },
+    const classes = await this.prisma.class.findMany({
+      where: { gradeId },
       select: {
         id: true,
         className: true,
@@ -174,54 +136,27 @@ export class OrgService {
     return result;
   }
 
-  async getOrgHierarchy() {
-    const cacheKey = 'org:hierarchy';
+  async getOrgHierarchy(scenarioCode?: string) {
+    const cacheKey = scenarioCode
+      ? `org:hierarchy:${scenarioCode}`
+      : 'org:hierarchy';
     const cachedData = this.cache.get(cacheKey);
     if (cachedData) {
       return cachedData;
     }
 
-    const validClassIds = await this.prisma.graphNode.findMany({
-      where: {
-        OR: [
-          { nodeType: "Student" },
-          { nodeType: "Teacher" }
-        ],
-        classId: { not: null }
-      },
-      select: { classId: true }
-    }).then(nodes => nodes.map(node => node.classId).filter(Boolean) as string[]);
+    const scenarioId = await resolveScenarioId(this.prisma, scenarioCode);
 
     const schools = await this.prisma.school.findMany({
-      where: {
-        grades: {
-          some: {
-            classes: {
-              some: {
-                id: { in: validClassIds }
-              }
-            }
-          }
-        }
-      },
+      where: scenarioId ? { scenarioId } : {},
       select: {
         id: true,
         name: true,
         grades: {
-          where: {
-            classes: {
-              some: {
-                id: { in: validClassIds }
-              }
-            }
-          },
           select: {
             id: true,
             gradeName: true,
             classes: {
-              where: {
-                id: { in: validClassIds }
-              },
               select: {
                 id: true,
                 className: true

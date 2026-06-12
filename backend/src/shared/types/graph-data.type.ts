@@ -2,9 +2,17 @@ export interface StudentProfile {
   school: string | null;
   grade: string | null;
   classId: string | null;
-  learningStylePreference?: string | null;
-  personality?: string | null;
-  groupBehavior?: string | null;
+  externalUserId?: string | null;
+  knowledgeReserve?: number;
+  learningEngagement?: number;
+  cognitiveLoad?: number;
+  learningMotivation?: number;
+  computationalThinking?: number;
+  humanAiTrust?: number;
+  learningMethod?: number;
+  learningAttitude?: number;
+  selfRegulatedLearning?: number;
+  aiLiteracy?: number;
 }
 
 export interface TeacherProfile {
@@ -39,12 +47,29 @@ export interface Link {
   value: number;
   type: "PHYSICAL" | "PLATFORM";
   actionType?: string | null;
+  createdAt?: string | null;
 }
 
 export interface GraphMeta {
   nodeCount: number;
   linkCount: number;
   scenarioCode: string;
+  surveyStats?: {
+    pushed: number;
+    filled: number;
+    score: number;
+    percentage: number;
+    knowledgeReserve: number;
+    learningEngagement: number;
+    cognitiveLoad: number;
+    learningMotivation: number;
+    computationalThinking: number;
+    humanAiTrust: number;
+    learningMethod: number;
+    learningAttitude: number;
+    selfRegulatedLearning: number;
+    aiLiteracy: number;
+  } | null;
 }
 
 export interface GraphData {

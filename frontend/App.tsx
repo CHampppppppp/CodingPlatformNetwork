@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Settings,
   Users,
@@ -21,28 +21,40 @@ import {
   Activity,
   Loader2,
   AlertCircle,
+  Stethoscope,
+  Sparkles,
 } from "lucide-react";
 import NetworkGraph from "./components/NetworkGraph";
 import AnalysisPanel from "./components/AnalysisPanel";
 import {
   fetchGraphData,
-  generateResources,
+  fetchResources,
+  getScenarios,
   getSchools,
   getGradesBySchool,
   getClassesBySchoolAndGrade,
-  fetchStudentCognitiveTemplate,
+  fetchResourceStudentRates,
 } from "./services/dataService";
+import { fetchStudentCognitiveTemplate as fetchStudentCognitiveTemplateRaw, fetchStudentExpertIntervention } from "./services/apiService";
 import { getStrategy } from "./services/strategies";
 import {
-  Scenario,
   GraphData,
   Resource,
   ClassInfo,
   NodeType,
   GraphNode,
   CognitiveAttributes,
+  InteractionType,
+  GraphLink,
+  StudentProfile,
+  LearningScenarioOption,
 } from "./types";
-import { debounce } from "./services/performanceUtils";
+import {
+  COGNITIVE_DIMENSION_LABELS,
+  LIKERT_SCALE_MAP,
+  buildSearchUrl,
+  FALLBACK_SCENARIOS,
+} from "./constants";
 
 const dimensionCodeToStrategyKey: Record<string, keyof CognitiveAttributes> = {
   knowledgeReserve: "knowledgeReserve",
@@ -56,11 +68,31 @@ const dimensionCodeToStrategyKey: Record<string, keyof CognitiveAttributes> = {
   learningMethod: "learningMethod",
   learningApproach: "learningMethod",
   learningAttitude: "learningAttitude",
+  selfRegulatedLearning: "selfRegulatedLearning",
+  aiLiteracy: "aiLiteracy",
 };
+
+function isRealUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  return url.startsWith('http') && !url.includes('example.com');
+}
+
+function hasCognitiveProfileValues(profile: Partial<StudentProfile> | undefined): boolean {
+  if (!profile) return false;
+  return Object.keys(COGNITIVE_DIMENSION_LABELS).some((key) => {
+    const value = profile[key as keyof CognitiveAttributes];
+    return typeof value === "number" && value > 0;
+  });
+}
 
 const App: React.FC = () => {
   // State
-  const [scenario, setScenario] = useState<Scenario>(Object.values(Scenario)[0]);
+  const [scenarioOptions, setScenarioOptions] = useState<LearningScenarioOption[]>(
+    [...FALLBACK_SCENARIOS],
+  );
+  const [scenarioCode, setScenarioCode] = useState<string>(
+    FALLBACK_SCENARIOS[0].code,
+  );
   const [classInfo, setClassInfo] = useState<ClassInfo>({
     school: "",
     grade: "",
@@ -75,8 +107,8 @@ const App: React.FC = () => {
   const [selectedResource, setSelectedResource] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [highlightedNodeIds, setHighlightedNodeIds] = useState<string[]>([]);
-  const [studentAcceptance, setStudentAcceptance] = useState<
-    Record<string, "accept" | "reject">
+  const [studentRates, setStudentRates] = useState<
+    Record<string, number>
   >({});
 
   // Loading and Error State
@@ -103,6 +135,12 @@ const App: React.FC = () => {
     string | null
   >(null);
 
+  const [isExpertInterventionOpen, setIsExpertInterventionOpen] = useState(false);
+  const [expertInterventionData, setExpertInterventionData] = useState<
+    Awaited<ReturnType<typeof fetchStudentExpertIntervention>> | null
+  >(null);
+  const [expertInterventionLoading, setExpertInterventionLoading] = useState(false);
+
   // Class options state (loaded async)
   const [classOptions, setClassOptions] = useState<{
     schools: string[];
@@ -121,19 +159,32 @@ const App: React.FC = () => {
     classes: false,
   });
 
-  // Constants
-  const scenarios = Object.values(Scenario);
+  const selectedScenarioOption = useMemo(
+    () => scenarioOptions.find((item) => item.code === scenarioCode),
+    [scenarioOptions, scenarioCode],
+  );
 
-  // Cognitive attribute labels
-  const cognitiveLabels: Record<keyof CognitiveAttributes, string> = {
-    knowledgeReserve: "知识储备",
-    learningEngagement: "学习投入",
-    cognitiveLoad: "认知负荷",
-    learningMotivation: "学习动机",
-    computationalThinking: "计算思维",
-    humanAiTrust: "人机信任度",
-    learningMethod: "学习方法倾向",
-    learningAttitude: "学习态度",
+  useEffect(() => {
+    let isMounted = true;
+
+    getScenarios().then((items) => {
+      if (!isMounted) return;
+      setScenarioOptions(items);
+      setScenarioCode((prev) => {
+        const exists = items.some((item) => item.code === prev);
+        return exists ? prev : items[0]?.code ?? FALLBACK_SCENARIOS[0].code;
+      });
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const formatProfileValue = (val?: string | null): string => {
+    if (!val) return "未知";
+    const score = LIKERT_SCALE_MAP[val];
+    return score !== undefined ? `${val} (${score}/5)` : val;
   };
 
   // Reset filters function - clears all selection states
@@ -145,22 +196,27 @@ const App: React.FC = () => {
         classId: "",
       });
     }
-    setScenario(Object.values(Scenario)[0]);
-  }, [classOptions.schools]);
+    setScenarioCode(scenarioOptions[0]?.code ?? FALLBACK_SCENARIOS[0].code);
+  }, [classOptions.schools, scenarioOptions]);
 
-  // Load schools on mount
   useEffect(() => {
     const loadSchools = async () => {
       setOptionsLoading((prev) => ({ ...prev, schools: true }));
       try {
-        const schools = await getSchools();
+        const schools = await getSchools(scenarioCode);
         setClassOptions((prev) => ({ ...prev, schools }));
 
-        // Set initial school if available
         if (schools.length > 0) {
           setClassInfo((prev) => ({
             ...prev,
             school: schools[0],
+            grade: "",
+            classId: "",
+          }));
+        } else {
+          setClassInfo((prev) => ({
+            ...prev,
+            school: "",
             grade: "",
             classId: "",
           }));
@@ -173,7 +229,7 @@ const App: React.FC = () => {
     };
 
     loadSchools();
-  }, []);
+  }, [scenarioCode]);
 
   // Load grades when school changes
   useEffect(() => {
@@ -182,10 +238,9 @@ const App: React.FC = () => {
     const loadGrades = async () => {
       setOptionsLoading((prev) => ({ ...prev, grades: true }));
       try {
-        const grades = await getGradesBySchool(classInfo.school);
+        const grades = await getGradesBySchool(classInfo.school, scenarioCode);
         setClassOptions((prev) => ({ ...prev, grades }));
 
-        // Reset grade and classId when school changes
         setClassInfo((prev) => ({
           ...prev,
           grade: grades.length > 0 ? grades[0] : "",
@@ -200,7 +255,7 @@ const App: React.FC = () => {
     };
 
     loadGrades();
-  }, [classInfo.school]);
+  }, [classInfo.school, scenarioCode]);
 
   // Load classes when school or grade changes
   useEffect(() => {
@@ -219,6 +274,7 @@ const App: React.FC = () => {
         const classes = await getClassesBySchoolAndGrade(
           classInfo.school,
           classInfo.grade,
+          scenarioCode,
         );
         setClassOptions((prev) => ({ ...prev, classes }));
 
@@ -243,67 +299,92 @@ const App: React.FC = () => {
     };
 
     loadClasses();
-  }, [classInfo.school, classInfo.grade]);
+  }, [classInfo.school, classInfo.grade, scenarioCode]);
 
-  // Load Data Effect with debounce
+  const requestIdRef = useRef(0);
+  const loadDataTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const loadData = useCallback(async () => {
-    // Skip if classInfo is not complete
     if (!classInfo.school || !classInfo.grade || !classInfo.classId) return;
+
+    const currentRequestId = ++requestIdRef.current;
 
     setLoading(true);
     setError(null);
     setSelectedResource(null);
     setSelectedNode(null);
     setHighlightedNodeIds([]);
-    setStudentAcceptance({});
+    setStudentRates({});
+    setHoveredAttribute(null);
 
     try {
-      // 从API获取数据
-      const data = await fetchGraphData(scenario, classInfo);
+      const data = await fetchGraphData(scenarioCode, classInfo);
+
       setGraphData(data);
 
-      // 生成资源基于新的知识点
-      const kNodes = data.nodes.filter((n) => n.type === NodeType.KNOWLEDGE);
-      const newResources = generateResources(kNodes);
-      setResources(newResources);
+      const allResources = await fetchResources();
+      const knowledgeNodeIds = new Set(
+        data.nodes.filter((n) => n.type === NodeType.KNOWLEDGE).map((n) => n.id),
+      );
+      const connectedResources = allResources.filter((r) =>
+        r.relatedKnowledgeIds.some((id) => knowledgeNodeIds.has(id)),
+      );
+      setResources(connectedResources);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "加载数据失败，请重试";
       setError(errorMessage);
       console.error("加载数据失败:", err);
     } finally {
-      setLoading(false);
+      if (currentRequestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
-  }, [scenario, classInfo]);
-
-  // 防抖处理的loadData函数
-  const debouncedLoadData = useMemo(() => {
-    return debounce(loadData, 300); // 300ms防抖
-  }, [loadData]);
+  }, [scenarioCode, classInfo]);
 
   useEffect(() => {
-    debouncedLoadData();
-  }, [debouncedLoadData]);
+    if (loadDataTimeoutRef.current) {
+      clearTimeout(loadDataTimeoutRef.current);
+      loadDataTimeoutRef.current = null;
+    }
 
-  // Handlers
+    if (!classInfo.school || !classInfo.grade || !classInfo.classId) {
+      return;
+    }
+
+    loadDataTimeoutRef.current = setTimeout(() => {
+      loadData();
+    }, 300);
+
+    return () => {
+      if (loadDataTimeoutRef.current) {
+        clearTimeout(loadDataTimeoutRef.current);
+        loadDataTimeoutRef.current = null;
+      }
+    };
+  }, [classInfo.school, classInfo.grade, classInfo.classId, scenarioCode]);
+
   const openAnalysis = (tab: "overview" | "subgraph") => {
     setAnalysisDefaultTab(tab);
     setIsAnalysisOpen(true);
   };
 
-  const handleResourceClick = (resource: Resource) => {
-    // If clicking the same resource, toggle off
+  const handleResourceClick = async (resource: Resource) => {
     if (selectedResource === resource.id) {
       setSelectedResource(null);
       setHighlightedNodeIds([]);
-      setStudentAcceptance({});
+      setStudentRates({});
     } else {
       setSelectedResource(resource.id);
-      setSelectedNode(null); // Clear specific node selection to show network effect
+      setSelectedNode(null);
 
-      // Calculate highlighting
       const kIds = resource.relatedKnowledgeIds;
       const connectedStudentIds: string[] = [];
+      const studentIdSet = new Set(
+        graphData.nodes
+          .filter((n) => n.type === NodeType.STUDENT)
+          .map((n) => n.id),
+      );
 
       graphData.links.forEach((link) => {
         const sourceId =
@@ -316,30 +397,87 @@ const App: React.FC = () => {
             : link.target;
 
         if (kIds.includes(sourceId)) {
-          if (targetId.startsWith("S")) connectedStudentIds.push(targetId);
+          if (studentIdSet.has(targetId)) connectedStudentIds.push(targetId);
         } else if (kIds.includes(targetId)) {
-          if (sourceId.startsWith("S")) connectedStudentIds.push(sourceId);
+          if (studentIdSet.has(sourceId)) connectedStudentIds.push(sourceId);
         }
       });
 
-      // Calculate acceptance for connected students based on resource accuracy
-      const newAcceptance: Record<string, "accept" | "reject"> = {};
-      connectedStudentIds.forEach((sid) => {
-        // Probability based on accuracy (e.g., 90% accuracy = 0.9 chance of acceptance)
-        const isAccepted = Math.random() * 100 <= resource.accuracy;
-        newAcceptance[sid] = isAccepted ? "accept" : "reject";
-      });
-      setStudentAcceptance(newAcceptance);
-
-      setHighlightedNodeIds([...kIds, ...connectedStudentIds]);
+      try {
+        const studentIdsInGraph = Array.from(studentIdSet);
+        const rawRates = await fetchResourceStudentRates(resource.id, studentIdsInGraph);
+        const ratedStudentIds = Object.keys(rawRates).filter((id) =>
+          studentIdSet.has(id),
+        );
+        const highlightSet = new Set([...kIds, ...connectedStudentIds, ...ratedStudentIds]);
+        setHighlightedNodeIds(Array.from(highlightSet));
+        setStudentRates(rawRates);
+      } catch {
+        setHighlightedNodeIds([...kIds, ...connectedStudentIds]);
+        setStudentRates({});
+      }
     }
   };
 
   const handleNodeClick = async (node: GraphNode) => {
     setSelectedNode(node);
     setSelectedResource(null);
-    setHighlightedNodeIds([node.id]);
-    setStudentAcceptance({});
+    setStudentRates({});
+
+    if (node.type === NodeType.KNOWLEDGE) {
+      const connectedStudentIds: string[] = [];
+      const studentIdSet = new Set(
+        graphData.nodes.filter((n) => n.type === NodeType.STUDENT).map((n) => n.id),
+      );
+
+      graphData.links.forEach((link) => {
+        const sourceId =
+          typeof link.source === "object"
+            ? (link.source as any).id
+            : link.source;
+        const targetId =
+          typeof link.target === "object"
+            ? (link.target as any).id
+            : link.target;
+
+        if (sourceId === node.id && studentIdSet.has(targetId)) {
+          connectedStudentIds.push(targetId);
+        } else if (targetId === node.id && studentIdSet.has(sourceId)) {
+          connectedStudentIds.push(sourceId);
+        }
+      });
+
+      setHighlightedNodeIds([node.id, ...connectedStudentIds]);
+      return;
+    }
+
+    if (node.type === NodeType.STUDENT) {
+      const connectedKnowledgeIds: string[] = [];
+      const knowledgeIdSet = new Set(
+        graphData.nodes.filter((n) => n.type === NodeType.KNOWLEDGE).map((n) => n.id),
+      );
+
+      graphData.links.forEach((link) => {
+        const sourceId =
+          typeof link.source === "object"
+            ? (link.source as any).id
+            : link.source;
+        const targetId =
+          typeof link.target === "object"
+            ? (link.target as any).id
+            : link.target;
+
+        if (sourceId === node.id && knowledgeIdSet.has(targetId)) {
+          connectedKnowledgeIds.push(targetId);
+        } else if (targetId === node.id && knowledgeIdSet.has(sourceId)) {
+          connectedKnowledgeIds.push(sourceId);
+        }
+      });
+
+      setHighlightedNodeIds([node.id, ...connectedKnowledgeIds]);
+    } else {
+      setHighlightedNodeIds([node.id]);
+    }
 
     if (node.type !== NodeType.STUDENT) {
       return;
@@ -347,29 +485,118 @@ const App: React.FC = () => {
 
     try {
       setTemplateLoadingStudentId(node.id);
-      const templateProfile = await fetchStudentCognitiveTemplate(node.id);
+      const templateProfile = await fetchStudentCognitiveTemplateRaw(node.id);
+
+      const dimMap = new Map<string, number>(
+        templateProfile.dimensions.map((d) => [d.dimensionCode, d.scoreValue]),
+      );
+
+      const getDim = (code: string): number => dimMap.get(code) ?? 0;
+
+      const precomputedKeys = [
+        'knowledgeReserve',
+        'learningEngagement',
+        'cognitiveLoad',
+        'learningMotivation',
+        'computationalThinking',
+        'humanAiTrust',
+        'learningMethod',
+        'learningAttitude',
+        'selfRegulatedLearning',
+        'aiLiteracy',
+      ];
+      const hasPrecomputedDimensions = precomputedKeys.some(
+        (key) => dimMap.has(key) && (dimMap.get(key) ?? 0) > 0,
+      );
+
+      let newProfileData: Partial<StudentProfile>;
+
+      if (hasPrecomputedDimensions) {
+        newProfileData = {
+          knowledgeReserve: getDim('knowledgeReserve'),
+          learningEngagement: getDim('learningEngagement'),
+          cognitiveLoad: getDim('cognitiveLoad'),
+          learningMotivation: getDim('learningMotivation'),
+          computationalThinking: getDim('computationalThinking'),
+          humanAiTrust: getDim('humanAiTrust'),
+          learningMethod: getDim('learningMethod'),
+          learningAttitude: getDim('learningAttitude'),
+          selfRegulatedLearning: getDim('selfRegulatedLearning'),
+          aiLiteracy: getDim('aiLiteracy'),
+        };
+      } else {
+        const knowledgeReserve =
+          ((getDim("COG_READING") + getDim("COG_LANGUAGE") + getDim("COG_SCIENCE_KNOWLEDGE")) / 3) / 2;
+        const learningEngagement =
+          ((getDim("COG_SCIENCE_INQUIRY") + getDim("PRAC_PRACTICE") + getDim("PRAC_COLLABORATION")) / 3) / 2;
+        const cognitiveLoad =
+          ((getDim("PSY_ANXIETY") + getDim("PSY_DEPRESSION") + getDim("PSY_PRESSURE")) / 3) * 0.5;
+        const learningMotivation = getDim("PSY_RESILIENCE") / 2;
+        const computationalThinking = getDim("COG_COMPUTATIONAL") / 2;
+        const humanAiTrust = getDim("COG_TECH_LITERACY") / 2;
+        const learningMethod =
+          ((getDim("PRAC_PROBLEM_SOLVING") + getDim("PRAC_COLLABORATION")) / 2) / 2;
+        const learningAttitude = getDim("PRAC_INNOVATION") / 2;
+        const selfRegulatedLearning = getDim("PRAC_PROBLEM_SOLVING") / 2;
+        const aiLiteracy = getDim("COG_TECH_LITERACY") / 2;
+
+        newProfileData = {
+          knowledgeReserve,
+          learningEngagement,
+          cognitiveLoad,
+          learningMotivation,
+          computationalThinking,
+          humanAiTrust,
+          learningMethod,
+          learningAttitude,
+          selfRegulatedLearning,
+          aiLiteracy,
+        };
+      }
+
+      newProfileData.template = {
+        profileMeta: templateProfile.profile
+          ? {
+              version: templateProfile.profile.version,
+              generatedAt: templateProfile.profile.generatedAt,
+              totalScore: templateProfile.profile.totalScore,
+            }
+          : undefined,
+        dimensions: templateProfile.dimensions.map((d) => ({
+          code: d.dimensionCode,
+          name: d.dimensionNameZh,
+          category: d.category,
+          score: d.scoreValue,
+          level: d.scoreLevel,
+        })),
+      };
+
       setSelectedNode((prev) => {
         if (!prev || prev.id !== node.id || prev.type !== NodeType.STUDENT) {
           return prev;
         }
 
+        const baseProfile = prev.studentProfile || {
+          school: "",
+          grade: "",
+          classId: "",
+          knowledgeReserve: 0,
+          learningEngagement: 0,
+          cognitiveLoad: 0,
+          learningMotivation: 0,
+          computationalThinking: 0,
+          humanAiTrust: 0,
+          learningMethod: 0,
+          learningAttitude: 0,
+          selfRegulatedLearning: 0,
+          aiLiteracy: 0,
+        };
+
         return {
           ...prev,
           studentProfile: {
-            ...(prev.studentProfile || {
-              school: "",
-              grade: "",
-              classId: "",
-              knowledgeReserve: 0,
-              learningEngagement: 0,
-              cognitiveLoad: 0,
-              learningMotivation: 0,
-              computationalThinking: 0,
-              humanAiTrust: 0,
-              learningMethod: 0,
-              learningAttitude: 0,
-            }),
-            ...templateProfile,
+            ...baseProfile,
+            ...newProfileData,
           },
         };
       });
@@ -383,8 +610,30 @@ const App: React.FC = () => {
   const closeNodeDetail = () => {
     setSelectedNode(null);
     setHighlightedNodeIds([]);
-    setStudentAcceptance({});
-    setHoveredAttribute(null); // Clear tooltip
+    setStudentRates({});
+    setHoveredAttribute(null);
+    setIsExpertInterventionOpen(false);
+    setExpertInterventionData(null);
+  };
+
+  const handleOpenExpertIntervention = async () => {
+    if (!selectedNode || selectedNode.type !== NodeType.STUDENT) return;
+
+    setIsExpertInterventionOpen(true);
+    setExpertInterventionLoading(true);
+    try {
+      const data = await fetchStudentExpertIntervention(selectedNode.id);
+      setExpertInterventionData(data);
+    } catch (err) {
+      console.error("加载专家干预数据失败:", err);
+    } finally {
+      setExpertInterventionLoading(false);
+    }
+  };
+
+  const handleCloseExpertIntervention = () => {
+    setIsExpertInterventionOpen(false);
+    setExpertInterventionData(null);
   };
 
   const handleAttributeEnter = (
@@ -456,18 +705,18 @@ const App: React.FC = () => {
                 <LayoutDashboard className="w-3 h-3" /> 学习场景
               </label>
               <div className="space-y-1">
-                {scenarios.map((s) => (
+                {scenarioOptions.map((item) => (
                   <button
-                    key={s}
-                    onClick={() => setScenario(s)}
+                    key={item.code}
+                    onClick={() => setScenarioCode(item.code)}
                     className={`w-full text-left px-3 py-2.5 rounded-lg text-xs transition-all duration-200 flex items-center justify-between group ${
-                      scenario === s
+                      scenarioCode === item.code
                         ? "bg-indigo-50 text-indigo-700 font-medium ring-1 ring-indigo-200"
                         : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
                     }`}
                   >
-                    <span>{s}</span>
-                    {scenario === s && (
+                    <span>{item.nameZh}</span>
+                    {scenarioCode === item.code && (
                       <ChevronRight className="w-3 h-3 text-indigo-500" />
                     )}
                   </button>
@@ -608,13 +857,12 @@ const App: React.FC = () => {
             {/* Canvas Header overlay */}
             <div className="absolute top-5 left-5 z-10 pointer-events-none">
               <h3 className="text-xl font-bold text-slate-800 tracking-tight">
-                {classInfo.school} {classInfo.grade}
-                {classInfo.classId}
+                {classInfo.school} {classInfo.classId}
               </h3>
               <div className="flex items-center gap-2 mt-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                 <p className="text-xs font-medium text-slate-500">
-                  场景: <span className="text-indigo-600">{scenario}</span>
+                  场景: <span className="text-indigo-600">{selectedScenarioOption?.nameZh ?? scenarioCode}</span>
                 </p>
               </div>
             </div>
@@ -683,7 +931,9 @@ const App: React.FC = () => {
               <NetworkGraph
                 data={graphData}
                 highlightedNodeIds={highlightedNodeIds}
-                studentAcceptance={studentAcceptance}
+                studentRates={studentRates}
+                selectedNode={selectedNode}
+                selectedResource={selectedResource}
                 onNodeClick={handleNodeClick}
               />
 
@@ -724,18 +974,39 @@ const App: React.FC = () => {
                       </h4>
                       <p className="text-white/80 text-xs mt-1 font-medium">
                         {selectedNode.type === NodeType.STUDENT &&
-                          `${selectedNode.studentProfile?.school} ${selectedNode.studentProfile?.grade}${selectedNode.studentProfile?.classId}`}
+                          (() => {
+                            const profile = selectedNode.studentProfile;
+                            if (!profile) return "学生";
+                            const isIdLike = (val?: string) =>
+                              !val || val.length > 15 || /[a-z0-9]{10,}/i.test(val);
+                            const parts: string[] = [];
+                            if (!isIdLike(profile.school)) parts.push(profile.school);
+                            if (!isIdLike(profile.grade)) parts.push(profile.grade);
+                            if (!isIdLike(profile.classId)) parts.push(profile.classId);
+                            return parts.join(" · ") || "学生";
+                          })()}
                         {selectedNode.type === NodeType.KNOWLEDGE &&
                           selectedNode.knowledgeProfile?.category}
                         {selectedNode.type === NodeType.TEACHER && "授课教师"}
                       </p>
                     </div>
-                    <button
-                      onClick={closeNodeDetail}
-                      className="absolute top-4 right-4 text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-1 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {selectedNode.type === NodeType.STUDENT && scenarioCode === "SHOW_CASE" && (
+                        <button
+                          onClick={handleOpenExpertIntervention}
+                          className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg transition-colors text-xs font-medium backdrop-blur-sm"
+                        >
+                          <Stethoscope className="w-3.5 h-3.5" />
+                          <span>专家干预</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={closeNodeDetail}
+                        className="text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-1 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="p-5 max-h-[calc(100vh-280px)] overflow-y-auto custom-scrollbar">
@@ -743,165 +1014,170 @@ const App: React.FC = () => {
                     {selectedNode.type === NodeType.STUDENT &&
                       selectedNode.studentProfile && (
                         <>
-                          <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
+                          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
                             <Activity className="w-4 h-4 text-indigo-500" />
                             <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                              认知维度分析
+                              个人维度分析
                             </h5>
                           </div>
-                          {templateLoadingStudentId === selectedNode.id && (
-                            <div className="mb-4 flex items-center gap-2 text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              正在加载认知模板...
-                            </div>
-                          )}
-                          {!!selectedNode.studentProfile.template
-                            ?.profileMeta && (
-                            <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50/60 p-3 text-xs text-slate-700">
-                              <div className="font-semibold text-indigo-700 mb-2">
-                                模板概览
-                              </div>
-                              <div className="space-y-1">
-                                <div>
-                                  版本:{" "}
-                                  {selectedNode.studentProfile.template
-                                    .profileMeta.version || "未知"}
-                                </div>
-                                <div>
-                                  总分:{" "}
-                                  {typeof selectedNode.studentProfile.template
-                                    .profileMeta.totalScore === "number"
-                                    ? selectedNode.studentProfile.template.profileMeta.totalScore.toFixed(
-                                        2,
-                                      )
-                                    : "未知"}
-                                </div>
-                                <div>
-                                  生成时间:{" "}
-                                  {selectedNode.studentProfile.template
-                                    .profileMeta.generatedAt
-                                    ? new Date(
-                                        selectedNode.studentProfile.template.profileMeta.generatedAt,
-                                      ).toLocaleString()
-                                    : "未知"}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
-                            <div className="font-semibold text-slate-600 mb-2">
-                              1. 基本信息
-                            </div>
-                            <div className="space-y-1">
-                              <div>
-                                学习方式:{" "}
-                                {selectedNode.studentProfile
-                                  .learningStylePreference || "未知"}
-                              </div>
-                              <div>
-                                性格倾向:{" "}
-                                {selectedNode.studentProfile.personality ||
-                                  "未知"}
-                              </div>
-                              <div>
-                                小组行为:{" "}
-                                {selectedNode.studentProfile.groupBehavior ||
-                                  "未知"}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="space-y-4">
-                            {(selectedNode.studentProfile.template
-                              ?.dimensions &&
-                            selectedNode.studentProfile.template.dimensions
-                              .length > 0
-                              ? selectedNode.studentProfile.template.dimensions.map(
-                                  (item) => ({
-                                    renderKey: item.code,
-                                    label: item.name,
-                                    category: item.category,
-                                    score: item.score,
-                                    strategyKey:
-                                      dimensionCodeToStrategyKey[item.code],
-                                  }),
-                                )
-                              : Object.entries(cognitiveLabels).map(
-                                  ([key, label]) => {
-                                    const attributeKey =
-                                      key as keyof CognitiveAttributes;
-                                    const valueRaw =
-                                      selectedNode.studentProfile![
-                                        attributeKey
-                                      ];
-                                    const value =
-                                      typeof valueRaw === "number"
-                                        ? valueRaw
-                                        : 0;
-                                    return {
-                                      renderKey: key,
-                                      label,
-                                      category: "核心维度",
-                                      score: value,
-                                      strategyKey: attributeKey,
-                                    };
-                                  },
-                                )
-                            ).map((dimension) => {
-                              const value =
-                                typeof dimension.score === "number"
-                                  ? dimension.score
-                                  : 0;
-                              const canShowStrategy =
-                                typeof dimension.strategyKey !== "undefined";
-                              return (
-                                <div
-                                  key={dimension.renderKey}
-                                  className={`space-y-1.5 group relative ${
-                                    canShowStrategy
-                                      ? "cursor-help"
-                                      : "cursor-default"
-                                  }`}
-                                  onMouseEnter={(e) => {
-                                    if (dimension.strategyKey) {
-                                      handleAttributeEnter(
-                                        e,
-                                        dimension.label,
-                                        value,
-                                        dimension.strategyKey,
-                                      );
-                                    }
-                                  }}
-                                  onMouseLeave={() => {
-                                    if (canShowStrategy) {
-                                      handleAttributeLeave();
-                                    }
-                                  }}
-                                >
-                                  <div className="flex justify-between text-xs text-slate-600">
-                                    <span>{dimension.label}</span>
-                                    <span className="font-bold text-slate-800">
-                                      {value}/5
-                                    </span>
-                                  </div>
-                                  <div className="text-[10px] text-slate-400">
-                                    {dimension.category}
-                                  </div>
-                                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                          {hasCognitiveProfileValues(selectedNode.studentProfile) ? (
+                            <div className="grid grid-cols-2 gap-3">
+                              {Object.entries(COGNITIVE_DIMENSION_LABELS).map(
+                                ([key, label]) => {
+                                  const attributeKey =
+                                    key as keyof CognitiveAttributes;
+                                  const valueRaw =
+                                    selectedNode.studentProfile![attributeKey];
+                                  if (typeof valueRaw !== "number" || valueRaw <= 0) {
+                                    return null;
+                                  }
+                                  const value = valueRaw;
+                                  const canShowStrategy =
+                                    typeof dimensionCodeToStrategyKey[key] !==
+                                    "undefined";
+                                  return (
                                     <div
-                                      className={`h-full rounded-full transition-all duration-500 ease-out ${
-                                        value >= 4
-                                          ? "bg-emerald-500"
-                                          : value >= 3
-                                          ? "bg-indigo-500"
-                                          : "bg-amber-500"
-                                      } group-hover:brightness-95`}
-                                      style={{ width: `${(value / 5) * 100}%` }}
-                                    ></div>
-                                  </div>
+                                      key={key}
+                                      className={`space-y-1 group relative p-2 bg-slate-50 rounded-lg border border-slate-100 ${
+                                        canShowStrategy
+                                          ? "cursor-help"
+                                          : "cursor-default"
+                                      }`}
+                                      onMouseEnter={(e) => {
+                                        if (dimensionCodeToStrategyKey[key]) {
+                                          handleAttributeEnter(
+                                            e,
+                                            label,
+                                            value,
+                                            dimensionCodeToStrategyKey[key],
+                                          );
+                                        }
+                                      }}
+                                      onMouseLeave={() => {
+                                        if (canShowStrategy) {
+                                          handleAttributeLeave();
+                                        }
+                                      }}
+                                    >
+                                      <div className="flex justify-between text-[11px] text-slate-600">
+                                        <span className="font-medium">{label}</span>
+                                        <span className="font-bold text-slate-800">
+                                          {value.toFixed(1)}/5
+                                        </span>
+                                      </div>
+                                      <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                                        <div
+                                          className={`h-full rounded-full transition-all duration-500 ease-out ${
+                                            value >= 4
+                                              ? "bg-emerald-500"
+                                              : value >= 3
+                                              ? "bg-indigo-500"
+                                              : "bg-amber-500"
+                                          } group-hover:brightness-95`}
+                                          style={{
+                                            width: `${(value / 5) * 100}%`,
+                                          }}
+                                        ></div>
+                                      </div>
+                                    </div>
+                                  );
+                                },
+                              )}
+                            </div>
+                          ) : (
+                            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-xs text-slate-400">
+                              暂无认知画像数据
+                            </div>
+                          )}
+
+                          {scenarioCode === "SHOW_CASE" &&
+                            selectedNode.studentProfile.template?.dimensions
+                            ?.length > 0 && (
+                            <>
+                              <div className="flex items-center gap-2 mt-5 mb-3 pb-2 border-b border-slate-100">
+                                <Activity className="w-4 h-4 text-indigo-500" />
+                                <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                  个人学情画像
+                                </h5>
+                              </div>
+                              {templateLoadingStudentId === selectedNode.id && (
+                                <div className="mb-4 flex items-center gap-2 text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  正在加载认知模板...
                                 </div>
-                              );
-                            })}
-                          </div>
+                              )}
+                              <div className="grid grid-cols-2 gap-3">
+                                {selectedNode.studentProfile.template.dimensions.map(
+                                  (item) => {
+                                    const rawValue =
+                                      typeof item.score === "number"
+                                        ? item.score
+                                        : 0;
+                                    const value = rawValue;
+                                    const canShowStrategy =
+                                      typeof dimensionCodeToStrategyKey[
+                                        item.code
+                                      ] !== "undefined";
+                                    return (
+                                      <div
+                                        key={item.code}
+                                        className={`space-y-1 group relative p-2 bg-slate-50 rounded-lg border border-slate-100 ${
+                                          canShowStrategy
+                                            ? "cursor-help"
+                                            : "cursor-default"
+                                        }`}
+                                        onMouseEnter={(e) => {
+                                          if (
+                                            dimensionCodeToStrategyKey[item.code]
+                                          ) {
+                                            handleAttributeEnter(
+                                              e,
+                                              item.name,
+                                              value,
+                                              dimensionCodeToStrategyKey[
+                                                item.code
+                                              ],
+                                            );
+                                          }
+                                        }}
+                                        onMouseLeave={() => {
+                                          if (canShowStrategy) {
+                                            handleAttributeLeave();
+                                          }
+                                        }}
+                                      >
+                                        <div className="flex justify-between text-[11px] text-slate-600">
+                                          <span className="font-medium">
+                                            {item.name}
+                                          </span>
+                                          <span className="font-bold text-slate-800">
+                                            {value.toFixed(1)}/10
+                                          </span>
+                                        </div>
+                                        <div className="text-[9px] text-slate-400 truncate">
+                                          {item.category}
+                                        </div>
+                                        <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                                          <div
+                                            className={`h-full rounded-full transition-all duration-500 ease-out ${
+                                              value >= 8
+                                                ? "bg-emerald-500"
+                                                : value >= 6
+                                                ? "bg-indigo-500"
+                                                : "bg-amber-500"
+                                            } group-hover:brightness-95`}
+                                            style={{
+                                              width: `${Math.min((value / 10) * 100, 100)}%`,
+                                            }}
+                                          ></div>
+                                        </div>
+                                      </div>
+                                    );
+                                  },
+                                )}
+                              </div>
+                            </>
+                          )}
                           <div className="mt-5 p-3 bg-indigo-50 rounded-lg border border-indigo-100 flex gap-2 items-start">
                             <Lightbulb className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
                             <p className="text-[10px] text-indigo-700 leading-relaxed">
@@ -940,7 +1216,8 @@ const App: React.FC = () => {
                                     key={res.id}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleResourceClick(res);
+                                      const url = isRealUrl(res.url) ? res.url : buildSearchUrl(res.title, res.type);
+                                      window.open(url, '_blank', 'noopener,noreferrer');
                                     }}
                                     className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/50 cursor-pointer transition-all group shadow-sm hover:shadow-md bg-white"
                                   >
@@ -950,9 +1227,7 @@ const App: React.FC = () => {
                                     <span className="text-xs font-medium text-slate-700 group-hover:text-emerald-800 truncate flex-1">
                                       {res.title}
                                     </span>
-                                    {res.url && (
-                                      <ExternalLink className="w-3 h-3 text-slate-300" />
-                                    )}
+                                    <ExternalLink className="w-3 h-3 text-slate-300" />
                                   </div>
                                 ))}
                               {resources.filter((r) =>
@@ -1043,7 +1318,7 @@ const App: React.FC = () => {
             <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">
               {hoveredAttribute.key
                 ? getStrategy(
-                    scenario,
+                    scenarioCode,
                     hoveredAttribute.key,
                     hoveredAttribute.score,
                   )
@@ -1087,15 +1362,19 @@ const App: React.FC = () => {
                   </span>
                   <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
                     <BarChart3 className="w-3 h-3" />
-                    <span
-                      className={
-                        res.accuracy > 90
-                          ? "text-emerald-600"
-                          : "text-amber-600"
-                      }
-                    >
-                      接受度 {res.accuracy}%
-                    </span>
+                    {res.accuracy != null ? (
+                      <span
+                        className={
+                          res.accuracy > 90
+                            ? "text-emerald-600"
+                            : "text-amber-600"
+                        }
+                      >
+                        接受度 {res.accuracy}%
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">暂无数据</span>
+                    )}
                   </div>
                 </div>
                 <h3 className="text-sm font-bold text-slate-800 group-hover:text-indigo-600 mb-1.5 leading-tight transition-colors">
@@ -1124,8 +1403,196 @@ const App: React.FC = () => {
         onClose={() => setIsAnalysisOpen(false)}
         data={graphData}
         resources={resources}
+        scenarioCode={scenarioCode}
+        classInfo={classInfo}
         defaultTab={analysisDefaultTab}
       />
+
+      {/* Expert Intervention Modal */}
+      {isExpertInterventionOpen && selectedNode?.type === NodeType.STUDENT && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-[800px] max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-indigo-50 to-blue-50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-500 rounded-lg">
+                  <Stethoscope className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800">专家干预方案</h2>
+                  <p className="text-xs text-slate-500">
+                    {selectedNode.name} · 基于认知维度分析与学情画像的个性化建议
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseExpertIntervention}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full p-2 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+              {expertInterventionLoading ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-3" />
+                  <p className="text-sm text-slate-500">正在生成专家干预方案...</p>
+                </div>
+              ) : expertInterventionData ? (
+                <>
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Sparkles className="w-5 h-5 text-amber-500" />
+                      <h3 className="text-base font-bold text-slate-800">专家诊断与建议</h3>
+                    </div>
+
+                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 mb-4">
+                      <h4 className="text-sm font-semibold text-slate-700 mb-2">学情综合诊断</h4>
+                      {expertInterventionData.weakDimensions.length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-sm text-slate-600 leading-relaxed">
+                            该学生在
+                            <span className="font-semibold text-amber-600">
+                              {expertInterventionData.weakDimensions.map(d => d.dimensionNameZh).join("、")}
+                            </span>
+                            等维度表现较弱，需要重点关注和干预。建议根据以下针对性策略进行辅导：
+                          </p>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {expertInterventionData.weakDimensions.map((dim) => (
+                              <span
+                                key={dim.dimensionCode}
+                                className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200"
+                              >
+                                {dim.dimensionNameZh} · {dim.scoreValue.toFixed(1)}分
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-600 leading-relaxed">
+                          该学生各维度表现良好，无明显薄弱环节。建议继续保持，可适当挑战更高难度的学习任务。
+                        </p>
+                      )}
+                    </div>
+
+                    {expertInterventionData.weakDimensions.length > 0 && (
+                      <div className="space-y-3">
+                        {expertInterventionData.weakDimensions.map((dim) => {
+                          const suggestion = dim.strategyKey
+                            ? getStrategy(scenarioCode, dim.strategyKey as keyof CognitiveAttributes, dim.scoreValue)
+                            : "该维度暂无具体干预策略数据。";
+                          return (
+                            <div
+                              key={dim.dimensionCode}
+                              className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <h5 className="text-sm font-bold text-slate-800">
+                                  {dim.dimensionNameZh}
+                                </h5>
+                                <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                                  dim.scoreValue <= 2
+                                    ? "bg-red-50 text-red-600"
+                                    : dim.scoreValue <= 3
+                                    ? "bg-amber-50 text-amber-600"
+                                    : "bg-emerald-50 text-emerald-600"
+                                }`}>
+                                  {dim.scoreValue.toFixed(1)}/5
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-500 mb-2">{dim.category}</p>
+                              <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-slate-50 rounded-lg p-3">
+                                {suggestion}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {expertInterventionData.resources.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-4">
+                        <BookOpen className="w-5 h-5 text-emerald-500" />
+                        <h3 className="text-base font-bold text-slate-800">专家推荐资源</h3>
+                        <span className="text-xs text-slate-400">
+                          共 {expertInterventionData.resources.length} 个
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        {expertInterventionData.resources.map((resource) => (
+                          <div
+                            key={resource.id}
+                            className="bg-white rounded-xl border border-slate-200 p-4 hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer group"
+                            onClick={() => {
+                              const url = isRealUrl(resource.url) ? resource.url : buildSearchUrl(resource.title, resource.resourceType);
+                              window.open(url, '_blank', 'noopener,noreferrer');
+                            }}
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                                {resource.resourceType}
+                              </span>
+                              {resource.acceptanceRate != null && (
+                                <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                  接受度 {Math.round(resource.acceptanceRate)}%
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="text-sm font-bold text-slate-800 group-hover:text-indigo-600 mb-1 transition-colors line-clamp-1">
+                              {resource.title}
+                            </h4>
+                            {resource.recommendReason && (
+                              <p className="text-[10px] text-indigo-600 font-medium bg-indigo-50 px-2 py-1 rounded mb-2">
+                                {resource.recommendReason}
+                              </p>
+                            )}
+                            {resource.description && (
+                              <p className="text-xs text-slate-500 line-clamp-2 mb-2">
+                                {resource.description}
+                              </p>
+                            )}
+                            {resource.knowledgeNodes.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {resource.knowledgeNodes.slice(0, 2).map((node) => (
+                                  <span
+                                    key={node.id}
+                                    className="text-[10px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100"
+                                  >
+                                    {node.name}
+                                  </span>
+                                ))}
+                                {resource.knowledgeNodes.length > 2 && (
+                                  <span className="text-[10px] text-slate-400 px-1.5 py-0.5">
+                                    +{resource.knowledgeNodes.length - 2}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {expertInterventionData.resources.length === 0 && (
+                    <div className="bg-slate-50 rounded-xl p-6 text-center border border-dashed border-slate-200">
+                      <BookOpen className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="text-sm text-slate-500">暂无针对该学生的推荐资源</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <AlertCircle className="w-8 h-8 text-red-400 mb-3" />
+                  <p className="text-sm text-slate-500">加载专家干预数据失败，请重试</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

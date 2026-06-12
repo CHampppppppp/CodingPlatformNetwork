@@ -1,18 +1,25 @@
 import {
   GraphData,
-  Scenario,
   Resource,
   ClassInfo,
   StudentProfile,
   StudentCognitiveTemplate,
+  ClassroomAnalysis,
+  NodeType,
+  LearningScenarioOption,
 } from "../types";
 import {
+  fetchScenarios as fetchScenariosFromApi,
   fetchGraphData as fetchGraphDataFromApi,
   fetchSchools,
   fetchGradesBySchool,
   fetchClassesBySchoolAndGrade,
   fetchStudentCognitiveTemplate as fetchStudentCognitiveTemplateFromApi,
+  fetchResources as fetchResourcesFromApi,
+  fetchResourceStudentRates,
+  fetchClassroomAnalysis as fetchClassroomAnalysisFromApi,
 } from "./apiService";
+import { FALLBACK_SCENARIOS } from "../constants";
 import {
   transformGraphData,
   validateClassInfo,
@@ -25,12 +32,43 @@ import {
   graphDataCache,
 } from "./performanceUtils";
 
+function anonymizeStudentNames(data: GraphData): GraphData {
+  let studentIndex = 0;
+
+  const nodes = data.nodes.map((node) => {
+    if (node.type === NodeType.STUDENT) {
+      studentIndex++;
+      const anonymousName = `student_${String(studentIndex).padStart(2, "0")}`;
+      return {
+        ...node,
+        name: anonymousName,
+      };
+    }
+    return node;
+  });
+
+  return {
+    ...data,
+    nodes,
+  };
+}
+
+export const getScenarios = async (): Promise<LearningScenarioOption[]> => {
+  try {
+    const scenarios = await fetchScenariosFromApi();
+    return scenarios.length > 0 ? scenarios : [...FALLBACK_SCENARIOS];
+  } catch (error) {
+    console.error("获取场景列表失败，使用本地兜底场景:", error);
+    return [...FALLBACK_SCENARIOS];
+  }
+};
+
 /**
  * 获取可用的学校列表
  */
-export const getSchools = async (): Promise<string[]> => {
+export const getSchools = async (scenarioCode?: string): Promise<string[]> => {
   try {
-    return await fetchSchools();
+    return await fetchSchools(scenarioCode);
   } catch (error) {
     console.error("获取学校列表失败:", error);
     return [];
@@ -40,9 +78,9 @@ export const getSchools = async (): Promise<string[]> => {
 /**
  * 根据学校获取年级列表
  */
-export const getGradesBySchool = async (school: string): Promise<string[]> => {
+export const getGradesBySchool = async (school: string, scenarioCode?: string): Promise<string[]> => {
   try {
-    return await fetchGradesBySchool(school);
+    return await fetchGradesBySchool(school, scenarioCode);
   } catch (error) {
     console.error("获取年级列表失败:", error);
     return [];
@@ -55,9 +93,10 @@ export const getGradesBySchool = async (school: string): Promise<string[]> => {
 export const getClassesBySchoolAndGrade = async (
   school: string,
   grade: string,
+  scenarioCode?: string,
 ): Promise<string[]> => {
   try {
-    return await fetchClassesBySchoolAndGrade(school, grade);
+    return await fetchClassesBySchoolAndGrade(school, grade, scenarioCode);
   } catch (error) {
     console.error("获取班级列表失败:", error);
     return [];
@@ -68,19 +107,19 @@ export const getClassesBySchoolAndGrade = async (
  * 从API获取图谱数据
  */
 export const fetchGraphData = async (
-  scenario: Scenario,
+  scenarioCode: string,
   classInfo: ClassInfo,
 ): Promise<GraphData> => {
-  console.log("从API获取图谱数据...", { scenario, classInfo });
+  console.log("从API获取图谱数据...", { scenarioCode, classInfo });
 
   try {
     // 验证输入参数
-    validateScenario(scenario);
+    validateScenario(scenarioCode);
     validateClassInfo(classInfo);
 
     // 生成缓存键
     const cacheKey = generateCacheKey("graphData", {
-      scenario,
+      scenarioCode,
       school: classInfo.school,
       grade: classInfo.grade,
       classId: classInfo.classId,
@@ -90,7 +129,7 @@ export const fetchGraphData = async (
     const data = await withCache(cacheKey, async () => {
       // 调用API服务获取数据
       const rawData = await fetchGraphDataFromApi({
-        scenario,
+        scenarioCode,
         school: classInfo.school,
         grade: classInfo.grade,
         classId: classInfo.classId,
@@ -102,7 +141,9 @@ export const fetchGraphData = async (
       // 清理和规范化数据
       const sanitizedData = sanitizeGraphData(transformedData);
 
-      return sanitizedData;
+      const anonymizedData = anonymizeStudentNames(sanitizedData);
+
+      return anonymizedData;
     });
 
     // 验证数据内容
@@ -136,51 +177,47 @@ export const fetchGraphData = async (
 };
 
 /**
- * 生成学习资源（暂时保留，后续可从API获取）
+ * 从API获取学习资源
  */
-export const generateResources = (knowledgeNodes: any[]): Resource[] => {
-  const resources: Resource[] = [];
+export const fetchResources = async (): Promise<Resource[]> => {
+  try {
+    const rawResources = await fetchResourcesFromApi();
 
-  if (!knowledgeNodes || knowledgeNodes.length === 0) {
-    console.warn("无知识点数据，无法生成资源");
+    const resources: Resource[] = rawResources.map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      type: r.resourceType,
+      relatedKnowledgeIds:
+        r.knowledgeRelations?.map((rel: any) => rel.knowledgeNode?.id).filter(Boolean) || [],
+      accuracy: r.acceptanceRate != null ? Math.round(r.acceptanceRate) : null,
+      description: r.description || "",
+      url: r.url || undefined,
+    }));
+
+    console.log("从API获取学习资源成功:", resources.length);
     return resources;
+  } catch (error) {
+    console.error("获取学习资源失败:", error);
+    return [];
   }
+};
 
-  const templates = [
-    { suffix: "操作演示视频", type: "视频", url: "https://b23.tv/example1" },
-    { suffix: "基础教程文档", type: "文档", url: "course-doc.pdf" },
-    { suffix: "进阶技巧解析", type: "文章", url: "advanced-tips.html" },
-    { suffix: "练习题集", type: "练习题", url: "exercises.pdf" },
-    { suffix: "互动小测验", type: "互动游戏", url: "quiz.app" },
-    { suffix: "常见问题解答", type: "文章", url: "faq.html" },
-  ];
+export { fetchResourceStudentRates };
 
-  for (let i = 0; i < Math.min(6, knowledgeNodes.length); i++) {
-    const kCount = Math.min(2, knowledgeNodes.length);
-    const relatedKNodes = knowledgeNodes
-      .sort(() => 0.5 - Math.random())
-      .slice(0, kCount);
-
-    const kIds = relatedKNodes.map((n) => n.id);
-    const mainKNode = relatedKNodes[0];
-
-    const template = templates[i % templates.length];
-
-    resources.push({
-      id: `R${i}`,
-      title: `${mainKNode.name} - ${template.suffix}`,
-      type: template.type,
-      relatedKnowledgeIds: kIds,
-      accuracy: Math.floor(Math.random() * 20) + 80, // 80-99
-      description: `针对"${relatedKNodes.map((n) => n.name).join("、")}"的${
-        template.type
-      }资源，旨在帮助学生掌握核心概念与操作步骤。`,
-      url: template.url,
+export const fetchClassroomAnalysis = async (
+  scenarioCode: string,
+  classInfo: ClassInfo,
+): Promise<ClassroomAnalysis | null> => {
+  try {
+    const data = await fetchClassroomAnalysisFromApi({
+      scenarioCode,
     });
-  }
 
-  console.log("生成学习资源成功:", resources.length);
-  return resources;
+    return data as ClassroomAnalysis | null;
+  } catch (error) {
+    console.error("获取课堂视频分析数据失败:", error);
+    return null;
+  }
 };
 
 const dimensionCodeToKey: Record<string, keyof StudentProfile> = {
@@ -208,10 +245,6 @@ export const fetchStudentCognitiveTemplate = async (
     school: result.student.school || "",
     grade: result.student.grade || "",
     classId: result.student.classId || "",
-    learningStylePreference:
-      result.student.learningStylePreference || undefined,
-    personality: result.student.personality || undefined,
-    groupBehavior: result.student.groupBehavior || undefined,
   };
 
   result.dimensions.forEach((dimension) => {
@@ -264,9 +297,9 @@ export const fetchStudentCognitiveTemplate = async (
       level: dimension.scoreLevel,
     })),
     learningStyle: {
-      preference: result.student.learningStylePreference || undefined,
-      personality: result.student.personality || undefined,
-      groupBehavior: result.student.groupBehavior || undefined,
+      preference: undefined,
+      personality: undefined,
+      groupBehavior: undefined,
     },
     learningMotivation:
       typeof learningMotivationScore === "number"

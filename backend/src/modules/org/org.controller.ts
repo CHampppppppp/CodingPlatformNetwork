@@ -6,14 +6,15 @@ export class OrgController {
   constructor(private readonly orgService: OrgService) {}
 
   @Get("schools")
-  async getSchools() {
-    return this.orgService.getSchools();
+  async getSchools(@Query("scenario_code") scenarioCode?: string) {
+    return this.orgService.getSchools(scenarioCode);
   }
 
   @Get("grades")
   async getGrades(
     @Query("school_id") schoolId?: string,
     @Query("school") school?: string,
+    @Query("scenario_code") scenarioCode?: string,
   ) {
     if (!schoolId) {
       if (school) {
@@ -22,13 +23,14 @@ export class OrgController {
       throw new BadRequestException("school_id 为必填参数");
     }
 
-    return this.orgService.getGrades(schoolId);
+    return this.orgService.getGrades(schoolId, scenarioCode);
   }
 
   @Get("classes")
   async getClasses(
     @Query("grade_id") gradeId?: string,
     @Query("grade") grade?: string,
+    @Query("scenario_code") scenarioCode?: string,
   ) {
     if (!gradeId) {
       if (grade) {
@@ -37,11 +39,11 @@ export class OrgController {
       throw new BadRequestException("grade_id 为必填参数");
     }
 
-    return this.orgService.getClasses(gradeId);
+    return this.orgService.getClasses(gradeId, scenarioCode);
   }
 
   @Get("hierarchy")
-  async getOrgHierarchy() {
-    return this.orgService.getOrgHierarchy();
+  async getOrgHierarchy(@Query("scenario_code") scenarioCode?: string) {
+    return this.orgService.getOrgHierarchy(scenarioCode);
   }
 }

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据概况统计报告</title>
+<style>
+  :root {
+    --bg: #f0f2f5;
+    --card: #fff;
+    --text: #1a1a2e;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --accent: #4f46e5;
+    --accent-light: #eef2ff;
+    --stage-bg: #f1f5f9;
+    --stage-active: #4f46e5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --border: #334155;
+      --accent: #818cf8;
+      --accent-light: #1e1b4b;
+      --stage-bg: #1e293b;
+      --stage-active: #818cf8;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 32px 24px;
+    line-height: 1.5;
+  }
+  .container { max-width: 1080px; margin: 0 auto; }
+
+  /* Header */
+  .header { margin-bottom: 40px; }
+  h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; }
+  .meta { color: var(--muted); font-size: 13px; }
+
+  /* Stat grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 24px;
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+  }
+  .card:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+  }
+  .card .label {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+  .card .value {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -1px;
+  }
+
+  /* Stage coverage — SVG step chart */
+  .card--stage {
+    grid-column: 1 / -1;
+    padding: 20px 24px;
+  }
+  .card--stage .label { margin-bottom: 12px; }
+  .stage-chart {
+    width: 100%;
+    max-width: 560px;
+  }
+
+  /* Highlight cards — school/student/teacher */
+  .card--highlight {
+    grid-column: span 1;
+    border-color: var(--accent);
+    border-width: 2px;
+    background: linear-gradient(135deg, var(--accent-light) 0%, var(--card) 100%);
+    padding: 32px 24px;
+  }
+  .card--highlight .value {
+    font-size: 44px;
+    letter-spacing: -1.5px;
+  }
+  .card--highlight .unit {
+    font-size: 14px;
+    color: var(--muted);
+    font-weight: 400;
+    margin-left: 4px;
+  }
+
+  /* Tables */
+  h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--accent);
+    display: inline-block;
+  }
+  .table-section { margin-bottom: 40px; }
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  th {
+    background: var(--bg);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  th, td { padding: 14px 20px; text-align: left; }
+  td {
+    font-size: 14px;
+    border-top: 1px solid var(--border);
+  }
+  tr:hover td { background: var(--accent-light); }
+  tr:first-child td { border-top: none; }
+
+  @media (max-width: 600px) {
+    .grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .card { padding: 20px 16px; }
+    .card .value { font-size: 28px; }
+    .card--highlight .value { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>数据概况统计报告</h1>
+    <div class="meta">生成时间: 2026/5/14 12:30:29 · 数据来源: mysql://root@localhost:3306/interaction_network_test</div>
+  </div>
+
+  <div class="grid">
+    <div class="card card--stage">
+      <div class="label">学段覆盖 <span style="font-weight:400;text-transform:none;letter-spacing:0">3 / 4</span></div>
+      <svg class="stage-chart" viewBox="0 0 560 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Track line -->
+        <line x1="70" y1="36" x2="490" y2="36" stroke="var(--border)" stroke-width="4" stroke-linecap="round"/>
+        <!-- Active line -->
+        <line x1="70" y1="36" x2="350" y2="36" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/>
+        <!-- Node: 小学 (active) -->
+        <circle cx="70" cy="36" r="16" fill="var(--accent)"/>
+        <text x="70" y="40" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">小</text>
+        <text x="70" y="72" text-anchor="middle" fill="var(--text)" font-size="13" font-weight="600">小学</text>
+        <text x="70" y="90" text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="500">已覆盖</text>
+        <!-- Node: 初中 (active) -->
+        <circle cx="210" cy="36" r="16" fill="var(--accent)"/>
+        <text x="210" y="40" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">初</text>
+        <text x="210" y="72" text-anchor="middle" fill="var(--text)" font-size="13" font-weight="600">初中</text>
+        <text x="210" y="90" text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="500">已覆盖</text>
+        <!-- Node: 高中 (active) -->
+        <circle cx="350" cy="36" r="16" fill="var(--accent)"/>
+        <text x="350" y="40" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">高</text>
+        <text x="350" y="72" text-anchor="middle" fill="var(--text)" font-size="13" font-weight="600">高中</text>
+        <text x="350" y="90" text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="500">已覆盖</text>
+        <!-- Node: 大学 (inactive) -->
+        <circle cx="490" cy="36" r="16" stroke="var(--border)" stroke-width="2" fill="var(--card)"/>
+        <text x="490" y="40" text-anchor="middle" fill="var(--muted)" font-size="12" font-weight="700">大</text>
+        <text x="490" y="72" text-anchor="middle" fill="var(--muted)" font-size="13" font-weight="600">大学</text>
+        <text x="490" y="90" text-anchor="middle" fill="var(--muted)" font-size="11">未覆盖</text>
+      </svg>
+    </div>
+
+    <div class="card card--highlight"><div class="label">学校数量</div><div class="value">379<span class="unit">所</span></div></div>
+    <div class="card card--highlight"><div class="label">学生数量</div><div class="value">99,469<span class="unit">人</span></div></div>
+    <div class="card card--highlight"><div class="label">教师数量</div><div class="value">15,673<span class="unit">人</span></div></div>
+    <div class="card"><div class="label">网络节点总数</div><div class="value">115,292</div></div>
+    <div class="card"><div class="label">交互记录数量</div><div class="value">225,702</div></div>
+    <div class="card"><div class="label">会话数量</div><div class="value">6,173</div></div>
+    <div class="card"><div class="label">学生作品数量</div><div class="value">16,144</div></div>
+    <div class="card"><div class="label">学生认知画像数量</div><div class="value">199,230</div></div>
+    <div class="card"><div class="label">学生资源评分数量</div><div class="value">1,676,646</div></div>
+    <div class="card"><div class="label">学生知识点关联数量</div><div class="value">18,217</div></div>
+  </div>
+
+  <div class="table-section">
+    <h2>节点类型分布</h2>
+    <table>
+      <thead><tr><th>节点类型</th><th>数量</th></tr></thead>
+      <tbody>
+        <tr><td>Knowledge</td><td>150</td></tr>
+        <tr><td>Student</td><td>99,469</td></tr>
+        <tr><td>Teacher</td><td>15,673</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-section">
+    <h2>学习场景分布</h2>
+    <table>
+      <thead><tr><th>场景名称</th><th>代码</th><th>节点数</th><th>会话数</th></tr></thead>
+      <tbody>
+        <tr><td>展示场景</td><td>SHOW_CASE</td><td>13,575</td><td>4</td></tr>
+        <tr><td>学科课程在线学习</td><td>ONLINE_COURSE</td><td>0</td><td>0</td></tr>
+        <tr><td>课后线上教师授课答疑</td><td>TEACHER_QA</td><td>0</td><td>0</td></tr>
+        <tr><td>家庭在线学习</td><td>HOME_LEARNING</td><td>0</td><td>0</td></tr>
+        <tr><td>在线协作学习</td><td>COLLABORATIVE_LEARNING</td><td>253</td><td>19</td></tr>
+        <tr><td>社团课等非正式学习</td><td>INFORMAL_LEARNING</td><td>101,464</td><td>6,150</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-section">
+    <h2>交互类型分布</h2>
+    <table>
+      <thead><tr><th>交互类型</th><th>数量</th></tr></thead>
+      <tbody>
+        <tr><td>PLATFORM</td><td>225,702</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-section">
+    <h2>学校 Top 10（按年级数）</h2>
+    <table>
+      <thead><tr><th>学校名称</th><th>年级数</th><th>教师数</th><th>学生数</th></tr></thead>
+      <tbody>
+        <tr><td>舟山第一小学</td><td>7</td><td>50</td><td>181</td></tr>
+        <tr><td>龙游县樾园小学</td><td>6</td><td>51</td><td>170</td></tr>
+        <tr><td>三门县浦坝港镇沿江初级中学</td><td>6</td><td>45</td><td>134</td></tr>
+        <tr><td>上海外国语大学秀洲外国语学校</td><td>6</td><td>35</td><td>107</td></tr>
+        <tr><td>上海尚阳外国语学校桐乡实验学校</td><td>6</td><td>47</td><td>122</td></tr>
+        <tr><td>下陈中心小学</td><td>6</td><td>38</td><td>299</td></tr>
+        <tr><td>东阳市南马实验小学</td><td>6</td><td>41</td><td>128</td></tr>
+        <tr><td>东阳市南马镇中心小学</td><td>6</td><td>55</td><td>120</td></tr>
+        <tr><td>东阳市横店镇第二小学</td><td>6</td><td>56</td><td>205</td></tr>
+        <tr><td>临海市回浦实验中学</td><td>6</td><td>42</td><td>149</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

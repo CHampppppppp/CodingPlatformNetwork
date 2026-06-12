@@ -1,0 +1,40 @@
+{
+  "schools": [
+    {
+      "name": "杭州市学军小学云栖校区",
+      "gradeName": 5,
+      "className": "五年级1班",
+      "csvPath": "./datas/script_filterd/学军云栖学生_完整.csv",
+      "csvFormat": "complex",
+      "sessionName": "AI协作海报制作活动",
+      "sessionDate": "2026-01-13T14:00:00Z"
+    },
+    {
+      "name": "杭州市学军小学紫金港校区",
+      "gradeName": 5,
+      "className": "五年级1班",
+      "csvPath": "./datas/script_filterd/学军紫金港学生_完整.csv",
+      "csvFormat": "complex",
+      "sessionName": "AI协作海报制作活动",
+      "sessionDate": "2026-01-13T14:00:00Z"
+    },
+    {
+      "name": "杭州市星洲小学",
+      "gradeName": 5,
+      "className": "五年级5班",
+      "csvPath": "./datas/script_filterd/星洲小学学生.csv",
+      "csvFormat": "simple",
+      "sessionName": "在线协作学习活动",
+      "sessionDate": "2026-01-13T14:50:00Z"
+    },
+    {
+      "name": "杭州市钱塘区前进小学",
+      "gradeName": 5,
+      "className": "五年级5班",
+      "csvPath": "./datas/script_filterd/前进小学学生.csv",
+      "csvFormat": "simple",
+      "sessionName": "在线协作学习活动",
+      "sessionDate": "2026-01-14T14:00:00Z"
+    }
+  ]
+}

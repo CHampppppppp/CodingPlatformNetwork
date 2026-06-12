@@ -13,6 +13,8 @@ export const createStudentSchema = z.object({
   humanAiTrust: z.number().min(1).max(5),
   learningMethod: z.number().min(1).max(5),
   learningAttitude: z.number().min(1).max(5),
+  selfRegulatedLearning: z.number().min(1).max(5),
+  aiLiteracy: z.number().min(1).max(5),
 });
 
 export const updateStudentSchema = z.object({
@@ -28,6 +30,8 @@ export const updateStudentSchema = z.object({
   humanAiTrust: z.number().min(1).max(5).optional(),
   learningMethod: z.number().min(1).max(5).optional(),
   learningAttitude: z.number().min(1).max(5).optional(),
+  selfRegulatedLearning: z.number().min(1).max(5).optional(),
+  aiLiteracy: z.number().min(1).max(5).optional(),
 });
 
 export type CreateStudentDto = z.infer<typeof createStudentSchema>;

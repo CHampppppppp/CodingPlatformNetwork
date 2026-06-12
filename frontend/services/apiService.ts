@@ -1,4 +1,5 @@
-import { GraphData } from "../types";
+import { GraphData, LearningScenarioOption } from "../types";
+import { API_BASE_URL } from "../constants";
 
 export interface StudentCognitiveTemplateApiResponse {
   student: {
@@ -7,9 +8,7 @@ export interface StudentCognitiveTemplateApiResponse {
     school: string | null;
     grade: string | null;
     classId: string | null;
-    learningStylePreference?: string | null;
-    personality?: string | null;
-    groupBehavior?: string | null;
+
   };
   profile: {
     version: string;
@@ -25,26 +24,53 @@ export interface StudentCognitiveTemplateApiResponse {
   }>;
 }
 
-// API基础URL
-const API_BASE_URL =
-  process.env.NODE_ENV === "production"
-    ? "http://interaction-network.mgsai.cn/api/v1"
-    : "http://localhost:3333/api/v1";
-
-const scenarioCodeMap: Record<string, string> = {
-  展示场景: "SHOW_CASE",
-  学科课程在线学习: "ONLINE_COURSE",
-  课后线上教师授课答疑: "TEACHER_QA",
-  家庭在线学习: "HOME_LEARNING",
-  在线协作学习: "COLLABORATIVE_LEARNING",
-  社团课等非正式学习: "INFORMAL_LEARNING",
-};
-
 const schoolNameToId = new Map<string, string>();
 const gradeKeyToId = new Map<string, string>();
 const classKeyToId = new Map<string, string>();
 const gradeDisplayToRaw = new Map<string, string>();
 const classDisplayToRaw = new Map<string, string>();
+
+function clearOrgMappings(): void {
+  schoolNameToId.clear();
+  gradeKeyToId.clear();
+  classKeyToId.clear();
+  gradeDisplayToRaw.clear();
+  classDisplayToRaw.clear();
+}
+
+export const fetchScenarios = async (): Promise<LearningScenarioOption[]> => {
+  const url = `${API_BASE_URL}/scenarios`;
+  console.log("请求场景列表:", url);
+
+  const response = await fetchWithRetry(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`API请求失败: ${response.status}`);
+  }
+
+  const payload = await response.json();
+  const list = Array.isArray(payload?.data) ? payload.data : [];
+
+  return list
+    .filter(
+      (item: Partial<LearningScenarioOption>) =>
+        typeof item.code === "string" &&
+        item.code.trim() !== "" &&
+        typeof item.nameZh === "string" &&
+        item.nameZh.trim() !== "",
+    )
+    .map((item: LearningScenarioOption) => ({
+      code: item.code,
+      nameZh: item.nameZh,
+      sortOrder: item.sortOrder,
+      isActive: item.isActive,
+    }));
+};
 
 type OrgOptionLike =
   | string
@@ -73,9 +99,9 @@ const normalizeOrgOption = (
   let rawLabel = typeof labelRaw === "string" ? labelRaw.trim() : String(labelRaw);
   
   let label = rawLabel;
-  if (item.gradeName !== undefined) {
+  if (item.gradeName !== undefined && !rawLabel.endsWith('年级')) {
     label = `${rawLabel}年级`;
-  } else if (item.className !== undefined) {
+  } else if (item.className !== undefined && !rawLabel.endsWith('班')) {
     label = `${rawLabel}班`;
   }
   
@@ -155,7 +181,7 @@ export const fetchWithRetry = async (
 
 // 获取图谱数据
 export const fetchGraphData = async (params: {
-  scenario?: string;
+  scenarioCode?: string;
   school?: string;
   grade?: string;
   classId?: string;
@@ -163,10 +189,9 @@ export const fetchGraphData = async (params: {
   try {
     // 构建查询参数
     const queryParams = new URLSearchParams();
-    const scenarioCode = params.scenario
-      ? scenarioCodeMap[params.scenario] || params.scenario
-      : undefined;
-    if (scenarioCode) queryParams.append("scenario_code", scenarioCode);
+    if (params.scenarioCode) {
+      queryParams.append("scenario_code", params.scenarioCode);
+    }
 
     // 优先使用ID参数兼容v2后端；找不到映射时回退到旧参数名。
     const schoolId = params.school
@@ -411,6 +436,32 @@ export const fetchKnowledgePoints = async (params: {
   }
 };
 
+export const fetchResources = async (): Promise<any[]> => {
+  try {
+    const url = `${API_BASE_URL}/resources?page_size=200`;
+    console.log("请求资源数据:", url);
+
+    const response = await fetchWithRetry(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API请求失败: ${response.status}`);
+    }
+
+    const payload = await response.json();
+    const data = payload?.data ?? payload;
+    console.log("获取资源数据成功:", data.length);
+    return data || [];
+  } catch (error) {
+    console.error("获取资源数据失败:", error);
+    throw error;
+  }
+};
+
 // 获取交互列表
 export const fetchInteractions = async (params: {
   sourceId?: string;
@@ -453,9 +504,11 @@ export const fetchInteractions = async (params: {
 };
 
 // 获取学校列表
-export const fetchSchools = async (): Promise<string[]> => {
+export const fetchSchools = async (scenarioCode?: string): Promise<string[]> => {
   try {
-    const url = `${API_BASE_URL}/org/schools`;
+    const queryParams = new URLSearchParams();
+    if (scenarioCode) queryParams.append("scenario_code", scenarioCode);
+    const url = `${API_BASE_URL}/org/schools${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
     console.log("请求学校列表:", url);
 
     const response = await fetchWithRetry(url, {
@@ -472,7 +525,7 @@ export const fetchSchools = async (): Promise<string[]> => {
     const payload = await response.json();
     const list = Array.isArray(payload?.data) ? payload.data : [];
 
-    schoolNameToId.clear();
+    clearOrgMappings();
     const names: string[] = [];
     list.forEach((item: OrgOptionLike) => {
       const normalized = normalizeOrgOption(item);
@@ -492,6 +545,7 @@ export const fetchSchools = async (): Promise<string[]> => {
 // 根据学校获取年级列表
 export const fetchGradesBySchool = async (
   school: string,
+  scenarioCode?: string,
 ): Promise<string[]> => {
   try {
     const schoolId = schoolNameToId.get(school);
@@ -499,9 +553,11 @@ export const fetchGradesBySchool = async (
       return [];
     }
 
-    const url = `${API_BASE_URL}/org/grades?school_id=${encodeURIComponent(
-      schoolId,
-    )}`;
+    const queryParams = new URLSearchParams();
+    queryParams.append("school_id", schoolId);
+    if (scenarioCode) queryParams.append("scenario_code", scenarioCode);
+
+    const url = `${API_BASE_URL}/org/grades?${queryParams.toString()}`;
     console.log("请求年级列表:", url);
 
     const response = await fetchWithRetry(url, {
@@ -541,6 +597,7 @@ export const fetchGradesBySchool = async (
 export const fetchClassesBySchoolAndGrade = async (
   school: string,
   grade: string,
+  scenarioCode?: string,
 ): Promise<string[]> => {
   try {
     const schoolId = schoolNameToId.get(school);
@@ -561,9 +618,11 @@ export const fetchClassesBySchoolAndGrade = async (
       return [];
     }
 
-    const url = `${API_BASE_URL}/org/classes?grade_id=${encodeURIComponent(
-      gradeId,
-    )}`;
+    const queryParams = new URLSearchParams();
+    queryParams.append("grade_id", gradeId);
+    if (scenarioCode) queryParams.append("scenario_code", scenarioCode);
+
+    const url = `${API_BASE_URL}/org/classes?${queryParams.toString()}`;
     console.log("请求班级列表:", url);
 
     const response = await fetchWithRetry(url, {
@@ -596,6 +655,169 @@ export const fetchClassesBySchoolAndGrade = async (
     return classNames;
   } catch (error) {
     console.error("获取班级列表失败:", error);
+    throw error;
+  }
+};
+
+export const fetchResourceStudentRates = async (
+  resourceId: string,
+  studentIds?: string[],
+): Promise<Record<string, number>> => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (studentIds && studentIds.length > 0) {
+      queryParams.append("student_ids", studentIds.join(","));
+    }
+    const queryString = queryParams.toString();
+    const url = `${API_BASE_URL}/resources/${encodeURIComponent(
+      resourceId,
+    )}/student-rates${queryString ? `?${queryString}` : ""}`;
+    console.log("请求资源学生评分:", url);
+
+    const response = await fetchWithRetry(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API请求失败: ${response.status}`);
+    }
+
+    const payload = await response.json();
+    const data = payload?.data ?? payload;
+    console.log("获取资源学生评分成功:", Object.keys(data || {}).length);
+    return data || {};
+  } catch (error) {
+    console.error("获取资源学生评分失败:", error);
+    throw error;
+  }
+};
+
+export const fetchClassroomAnalysis = async (params: {
+  scenarioCode?: string;
+  schoolId?: string;
+  gradeId?: string;
+  classId?: string;
+}): Promise<any> => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params.scenarioCode) queryParams.append("scenario_code", params.scenarioCode);
+    if (params.schoolId) queryParams.append("school_id", params.schoolId);
+    if (params.gradeId) queryParams.append("grade_id", params.gradeId);
+    if (params.classId) queryParams.append("class_id", params.classId);
+
+    const url = `${API_BASE_URL}/classroom-analysis${
+      queryParams.toString() ? `?${queryParams.toString()}` : ""
+    }`;
+    console.log("请求课堂视频分析数据:", url);
+
+    const response = await fetchWithRetry(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API请求失败: ${response.status}`);
+    }
+
+    const payload = await response.json();
+    
+    if (payload.error) {
+      console.log("课堂视频分析数据未找到:", payload.error);
+      return null;
+    }
+    
+    const data = payload?.data ?? null;
+    console.log("获取课堂视频分析数据成功:", data ? "有数据" : "无数据");
+    return data;
+  } catch (error) {
+    console.error("获取课堂视频分析数据失败:", error);
+    return null;
+  }
+};
+
+export interface ExpertInterventionApiResponse {
+  student: {
+    id: string;
+    name: string;
+    school: string | null;
+    grade: string | null;
+    classId: string | null;
+  };
+  profile: {
+    version: string;
+    generatedAt: string;
+    totalScore: number;
+  } | null;
+  dimensions: Array<{
+    dimensionCode: string;
+    dimensionNameZh: string;
+    category: string;
+    scoreValue: number;
+    scoreLevel: string;
+  }>;
+  weakDimensions: Array<{
+    dimensionCode: string;
+    dimensionNameZh: string;
+    category: string;
+    scoreValue: number;
+    scoreLevel: string;
+    strategyKey: string | null;
+  }>;
+  connectedKnowledgeNodes: Array<{
+    id: string;
+    name: string;
+    category: string;
+  }>;
+  resources: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    url: string | null;
+    resourceType: string;
+    acceptanceRate: number | null;
+    knowledgeNodes: Array<{
+      id: string;
+      name: string;
+    }>;
+    recommendReason: string;
+  }>;
+}
+
+export const fetchStudentExpertIntervention = async (
+  studentNodeId: string,
+): Promise<ExpertInterventionApiResponse> => {
+  try {
+    const url = `${API_BASE_URL}/students/${encodeURIComponent(
+      studentNodeId,
+    )}/expert-intervention`;
+    console.log("请求学生专家干预数据:", url);
+
+    const response = await fetchWithRetry(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API请求失败: ${response.status}`);
+    }
+
+    const payload = await response.json();
+    const data = payload?.data ?? payload;
+    if (!data || !data.student) {
+      throw new Error("专家干预数据返回结构无效");
+    }
+
+    console.log("获取学生专家干预数据成功");
+    return data as ExpertInterventionApiResponse;
+  } catch (error) {
+    console.error("获取学生专家干预数据失败:", error);
     throw error;
   }
 };

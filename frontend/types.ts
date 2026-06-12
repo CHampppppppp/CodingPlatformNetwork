@@ -20,6 +20,13 @@ export enum Scenario {
   INFORMAL_LEARNING = "社团课等非正式学习",
 }
 
+export interface LearningScenarioOption {
+  code: string;
+  nameZh: string;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
 export interface CognitiveAttributes {
   knowledgeReserve: number; // 知识储备
   learningEngagement: number; // 学习投入
@@ -29,6 +36,8 @@ export interface CognitiveAttributes {
   humanAiTrust: number; // 人机信任度
   learningMethod: number; // 学习方法倾向
   learningAttitude: number; // 学习态度
+  selfRegulatedLearning: number; // 自我调节学习
+  aiLiteracy: number; // 人工智能素养
 }
 
 export interface LearningStyleProfile {
@@ -93,13 +102,7 @@ export interface StudentProfile extends CognitiveAttributes {
   school: string;
   grade: string;
   classId: string;
-
-  // 认知模板文档中的非8维核心字段
-  learningStylePreference?: LearningStyleProfile["preference"];
-  personality?: LearningStyleProfile["personality"];
-  groupBehavior?: LearningStyleProfile["groupBehavior"];
-  selfRegulatedLearning?: number;
-  aiLiteracy?: number;
+  externalUserId?: string;
 
   // 文档命名兼容别名
   humanMachineTrust?: number; // = humanAiTrust
@@ -142,11 +145,35 @@ export interface GraphLink extends SimulationLinkDatum<GraphNode> {
   target: string | GraphNode;
   value: number; // For stroke width
   type: InteractionType; // Interaction classification
+  createdAt?: string;
+}
+
+export interface GraphMeta {
+  nodeCount: number;
+  linkCount: number;
+  scenarioCode: string;
+  surveyStats?: {
+    pushed: number;
+    filled: number;
+    score: number;
+    percentage: number;
+    knowledgeReserve: number;
+    learningEngagement: number;
+    cognitiveLoad: number;
+    learningMotivation: number;
+    computationalThinking: number;
+    humanAiTrust: number;
+    learningMethod: number;
+    learningAttitude: number;
+    selfRegulatedLearning: number;
+    aiLiteracy: number;
+  } | null;
 }
 
 export interface GraphData {
   nodes: GraphNode[];
   links: GraphLink[];
+  meta?: GraphMeta;
 }
 
 export interface Resource {
@@ -154,7 +181,7 @@ export interface Resource {
   title: string;
   type: string;
   relatedKnowledgeIds: string[]; // IDs of K-nodes this resource covers
-  accuracy: number; // 0-100%
+  accuracy: number | null; // 0-100%, null 表示暂无数据
   description: string;
   url?: string; // Optional URL for display
 }
@@ -163,4 +190,40 @@ export interface ClassInfo {
   school: string;
   grade: string;
   classId: string;
+}
+
+export interface ClassroomAnalysis {
+  id: string;
+  sessionId: string;
+  knowledgeActivationRate: number | null;
+  activatedKnowledgeCount: number | null;
+  totalKnowledgeCount: number | null;
+  behavioralEngagementLevel: string | null;
+  teacherStudentInteractionCount: number | null;
+  peerCollaborationCount: number | null;
+  cognitiveEngagementLevel: string | null;
+  constructiveUtteranceCount: number | null;
+  hasBurnout: boolean | null;
+  hasFrustration: boolean | null;
+  conceptDevelopmentLevel: string | null;
+  feedbackQualityLevel: string | null;
+  academicExpectationLevel: string | null;
+  closedQuestionCount: number | null;
+  applicationQuestionCount: number | null;
+  openQuestionCount: number | null;
+  acceptFeedbackCount: number | null;
+  praiseFeedbackCount: number | null;
+  extendFeedbackCount: number | null;
+  correctFeedbackCount: number | null;
+  studentUtteranceCount: number | null;
+  teacherFluencyLevel: string | null;
+  toolVarietyCount: number | null;
+  selfAwarenessLevel: string | null;
+  selfManagementLevel: string | null;
+  collectiveManagementLevel: string | null;
+  ruleClarityLevel: string | null;
+  positiveReinforcementLevel: string | null;
+  negativeReductionLevel: string | null;
+  createdAt: string;
+  updatedAt: string;
 }

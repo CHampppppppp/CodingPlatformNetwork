@@ -1,13 +1,18 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { GraphData, NodeType, Resource, CognitiveAttributes, GraphNode, InteractionType } from '../types';
-import { PieChart, Users, Book, Activity, ThumbsUp, Send, CheckCircle, BarChart3, X, GitGraph, Share2, Target, TrendingUp, Layers } from 'lucide-react';
+import { GraphData, NodeType, Resource, CognitiveAttributes, GraphNode, InteractionType, ClassroomAnalysis } from '../types';
+import { COGNITIVE_DIMENSION_LABELS } from '../constants';
+import { PieChart, Users, Book, Activity, ThumbsUp, Send, CheckCircle, BarChart3, X, GitGraph, Share2, Target, TrendingUp, Layers, Video } from 'lucide-react';
+import { ClassroomAnalysisView } from './ClassroomAnalysisView';
+import { fetchClassroomAnalysis } from '../services/dataService';
 
 interface AnalysisPanelProps {
   isOpen: boolean;
   onClose: () => void;
   data: GraphData;
   resources: Resource[];
-  defaultTab?: 'overview' | 'subgraph';
+  scenarioCode: string;
+  classInfo: { school: string; grade: string; classId: string };
+  defaultTab?: 'overview' | 'subgraph' | 'classroom-analysis';
 }
 
 // Simple SVG Donut Chart
@@ -81,17 +86,29 @@ const BarRow: React.FC<BarRowProps> = ({ label, value, max, color }) => (
     </div>
 );
 
-// Simulated Line Chart
-const TrendChart = () => {
-  const points = [20, 35, 30, 45, 60, 55, 75, 80, 70, 85];
-  const max = Math.max(...points);
-  const min = Math.min(...points);
+interface TrendPoint {
+  label: string;
+  value: number;
+}
+
+const TrendChart: React.FC<{ points: TrendPoint[] }> = ({ points }) => {
+  if (points.length === 0) {
+    return (
+      <div className="w-full h-24 relative mt-2 flex items-center justify-center text-xs text-gray-400">
+        暂无时间序列数据
+      </div>
+    );
+  }
+
+  const values = points.map(p => p.value);
+  const max = Math.max(...values);
+  const min = Math.min(...values);
   const width = 100;
   const height = 40;
-  
+
   const pathData = points.map((p, i) => {
-    const x = (i / (points.length - 1)) * width;
-    const y = height - ((p - min) / (max - min)) * height;
+    const x = points.length === 1 ? width / 2 : (i / (points.length - 1)) * width;
+    const y = height - ((p.value - min) / (max - min || 1)) * height;
     return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
   }).join(' ');
 
@@ -102,13 +119,13 @@ const TrendChart = () => {
          <line x1="0" y1="0" x2="100" y2="0" stroke="#f3f4f6" strokeWidth="0.5" />
          <line x1="0" y1="20" x2="100" y2="20" stroke="#f3f4f6" strokeWidth="0.5" />
          <line x1="0" y1="40" x2="100" y2="40" stroke="#f3f4f6" strokeWidth="0.5" />
-         
+
          {/* Area fill */}
          <path d={`${pathData} L ${width} ${height} L 0 ${height} Z`} fill="url(#gradient)" opacity="0.2" />
-         
+
          {/* Line */}
          <path d={pathData} fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-         
+
          <defs>
             <linearGradient id="gradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#6366f1" />
@@ -117,16 +134,20 @@ const TrendChart = () => {
          </defs>
       </svg>
       <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-          <span>课前 (0min)</span>
-          <span>课中 (20min)</span>
-          <span>当前 (40min)</span>
+          <span>{points[0]?.label}</span>
+          <span>{points[Math.floor(points.length / 2)]?.label}</span>
+          <span>{points[points.length - 1]?.label}</span>
       </div>
     </div>
   );
 }
 
-const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, resources, defaultTab = 'overview' }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'subgraph'>('overview');
+const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, resources, scenarioCode, classInfo, defaultTab = 'overview' }) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'subgraph' | 'classroom-analysis'>('overview');
+  const [classroomAnalysis, setClassroomAnalysis] = useState<ClassroomAnalysis | null>(null);
+  const [classroomAnalysisLoading, setClassroomAnalysisLoading] = useState(false);
+
+  const isShowCase = scenarioCode === 'SHOW_CASE';
 
   // Sync activeTab with defaultTab when panel opens
   useEffect(() => {
@@ -134,6 +155,22 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
         setActiveTab(defaultTab);
     }
   }, [isOpen, defaultTab]);
+
+  useEffect(() => {
+    if (activeTab === 'classroom-analysis' && isShowCase && !classroomAnalysis && !classroomAnalysisLoading) {
+      setClassroomAnalysisLoading(true);
+      fetchClassroomAnalysis(scenarioCode, classInfo)
+        .then((analysis) => {
+          setClassroomAnalysis(analysis);
+        })
+        .catch((err) => {
+          console.error('加载课堂视频分析数据失败:', err);
+        })
+        .finally(() => {
+          setClassroomAnalysisLoading(false);
+        });
+    }
+  }, [activeTab, isShowCase, scenarioCode, classInfo, classroomAnalysis, classroomAnalysisLoading]);
 
   // --- Data Calculations ---
   
@@ -145,111 +182,170 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
     return { total: data.nodes.length, studentCount: students.length, teacherCount: teachers.length, knowledgeCount: knowledge.length, students };
   }, [data]);
 
-  // 2. Cognitive Stats
   const cognitiveAverages = useMemo(() => {
-    if (stats.studentCount === 0) return null;
-    const keys: (keyof CognitiveAttributes)[] = ['knowledgeReserve', 'learningEngagement', 'cognitiveLoad', 'learningMotivation', 'computationalThinking', 'humanAiTrust', 'learningMethod', 'learningAttitude'];
-    const sums = keys.reduce((acc, key) => ({ ...acc, [key]: 0 }), {} as Record<keyof CognitiveAttributes, number>);
-    stats.students.forEach((s: GraphNode) => { if (s.studentProfile) keys.forEach(key => sums[key] += s.studentProfile![key]); });
-    return keys.map(key => ({
-      key,
-      label: { knowledgeReserve: '知识储备', learningEngagement: '学习投入', cognitiveLoad: '认知负荷', learningMotivation: '学习动机', computationalThinking: '计算思维', humanAiTrust: '人机信任度', learningMethod: '学习方法', learningAttitude: '学习态度' }[key],
-      value: (sums[key] / stats.studentCount).toFixed(1)
-    }));
-  }, [stats]);
+    const keys: (keyof CognitiveAttributes)[] = ['knowledgeReserve', 'learningEngagement', 'cognitiveLoad', 'learningMotivation', 'computationalThinking', 'humanAiTrust', 'learningMethod', 'learningAttitude', 'selfRegulatedLearning', 'aiLiteracy'];
+
+    const studentsWithProfile = data.nodes.filter(n => n.type === NodeType.STUDENT && n.studentProfile);
+    if (studentsWithProfile.length === 0) return null;
+
+    return keys.map(key => {
+      const values = studentsWithProfile
+        .map(n => n.studentProfile![key])
+        .filter((v): v is number => typeof v === 'number' && v > 0);
+      const avg = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+      return {
+        key,
+        label: COGNITIVE_DIMENSION_LABELS[key],
+        value: avg.toFixed(1)
+      };
+    });
+  }, [data.nodes]);
 
   // 3. Resource Stats
   const resourceStats = useMemo(() => ({
     total: resources.length,
-    avgAccuracy: resources.length > 0 ? (resources.reduce((acc, r) => acc + r.accuracy, 0) / resources.length).toFixed(1) : '0'
+    avgAccuracy: resources.length > 0 ? (resources.reduce((acc, r) => acc + (r.accuracy ?? 0), 0) / resources.length).toFixed(1) : '0'
   }), [resources]);
 
   // 4. Satisfaction Stats
   const satisfactionStats = useMemo(() => {
-    const pushed = stats.studentCount;
-    const filled = Math.floor(pushed * (0.85 + Math.random() * 0.1)); 
-    const score = (4.2 + Math.random() * 0.6).toFixed(1); 
-    return { pushed, filled, score, percentage: ((parseFloat(score) / 5) * 100).toFixed(0) };
-  }, [stats.studentCount]);
+    const survey = data.meta?.surveyStats;
+    if (survey) {
+      return {
+        pushed: survey.pushed,
+        filled: survey.filled,
+        score: survey.score.toFixed(1),
+        percentage: survey.percentage.toString(),
+      };
+    }
+    return null;
+  }, [data.meta]);
 
   // --- Subgraph Analysis Data ---
-
-  // A. Knowledge Heatmap (Hotspots)
-  const knowledgeHotspots = useMemo(() => {
-      const kNodes = data.nodes.filter(n => n.type === NodeType.KNOWLEDGE);
-      const degreeMap = new Map<string, number>();
-      
-      data.links.forEach(l => {
-          const targetId = typeof l.target === 'object' ? l.target.id : l.target as string;
-          const sourceId = typeof l.source === 'object' ? l.source.id : l.source as string;
-          
-          if (targetId.startsWith('K')) degreeMap.set(targetId, (degreeMap.get(targetId) || 0) + 1);
-          if (sourceId.startsWith('K')) degreeMap.set(sourceId, (degreeMap.get(sourceId) || 0) + 1);
-      });
-
-      return kNodes
-        .map(n => ({ label: n.name, value: degreeMap.get(n.id) || 0 }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 6);
-  }, [data]);
-
-  // B. Learning Mode (Interaction Types)
-  const interactionTypes = useMemo(() => {
-      let ts = 0, ss = 0, sk = 0;
-      data.links.forEach(l => {
-          const sType = typeof l.source === 'object' ? l.source.type : (l.source as string).startsWith('T') ? NodeType.TEACHER : (l.source as string).startsWith('S') ? NodeType.STUDENT : NodeType.KNOWLEDGE;
-          const tType = typeof l.target === 'object' ? l.target.type : (l.target as string).startsWith('T') ? NodeType.TEACHER : (l.target as string).startsWith('S') ? NodeType.STUDENT : NodeType.KNOWLEDGE;
-
-          if ((sType === NodeType.TEACHER && tType === NodeType.STUDENT) || (sType === NodeType.STUDENT && tType === NodeType.TEACHER)) ts++;
-          else if (sType === NodeType.STUDENT && tType === NodeType.STUDENT) ss++;
-          else if ((sType === NodeType.STUDENT && tType === NodeType.KNOWLEDGE) || (sType === NodeType.KNOWLEDGE && tType === NodeType.STUDENT)) sk++;
-      });
-      return [
-          { label: '师生互动 (指导)', value: ts, color: '#7c3aed' },
-          { label: '生生协作 (研讨)', value: ss, color: '#f59e0b' },
-          { label: '人机/自主 (探索)', value: sk, color: '#059669' }
-      ];
-  }, [data]);
-
-  // C. Group Attention (Student Degree Distribution)
-  const groupAttention = useMemo(() => {
-      const counts = { high: 0, medium: 0, low: 0 };
-      const sNodes = data.nodes.filter(n => n.type === NodeType.STUDENT);
-      
-      const degreeMap = new Map<string, number>();
-      data.links.forEach(l => {
-        const ids = [typeof l.source === 'object' ? l.source.id : l.source, typeof l.target === 'object' ? l.target.id : l.target];
-        ids.forEach((id: any) => {
-            if (typeof id === 'string' && id.startsWith('S')) degreeMap.set(id, (degreeMap.get(id) || 0) + 1);
-        });
-      });
-
-      sNodes.forEach(n => {
-          const d = degreeMap.get(n.id) || 0;
-          if (d >= 8) counts.high++;
-          else if (d >= 5) counts.medium++;
-          else counts.low++;
-      });
-      
-      const total = sNodes.length || 1;
-      return [
-          { label: '高活跃核心圈', value: counts.high, max: total, color: 'bg-indigo-500' },
-          { label: '中活跃协作圈', value: counts.medium, max: total, color: 'bg-blue-400' },
-          { label: '低活跃边缘圈', value: counts.low, max: total, color: 'bg-gray-400' }
-      ];
-  }, [data]);
-
-  // D. Interaction Source (New for Interaction Type classification)
-  const interactionSources = useMemo(() => {
+  // 单次遍历 data.links 计算所有子图指标（避免多次遍历同一数据集）
+  const subgraphAnalysis = useMemo(() => {
+    let ts = 0, ss = 0, sk = 0, tk = 0;
     let physical = 0, platform = 0;
+    const kDegreeMap = new Map<string, number>();
+    const sDegreeMap = new Map<string, number>();
+
     data.links.forEach(l => {
-        if (l.type === InteractionType.PHYSICAL) physical++;
-        else platform++;
+      const sNode = typeof l.source === 'object' ? l.source : data.nodes.find(n => n.id === l.source);
+      const tNode = typeof l.target === 'object' ? l.target : data.nodes.find(n => n.id === l.target);
+      const sType = sNode?.type;
+      const tType = tNode?.type;
+      const sId = typeof l.source === 'object' ? l.source.id : l.source;
+      const tId = typeof l.target === 'object' ? l.target.id : l.target;
+
+      // 交互模式分类（含教师-知识点）
+      if ((sType === NodeType.TEACHER && tType === NodeType.STUDENT) ||
+          (sType === NodeType.STUDENT && tType === NodeType.TEACHER)) {
+        ts++;
+      } else if (sType === NodeType.STUDENT && tType === NodeType.STUDENT) {
+        ss++;
+      } else if ((sType === NodeType.STUDENT && tType === NodeType.KNOWLEDGE) ||
+                 (sType === NodeType.KNOWLEDGE && tType === NodeType.STUDENT)) {
+        sk++;
+      } else if ((sType === NodeType.TEACHER && tType === NodeType.KNOWLEDGE) ||
+                 (sType === NodeType.KNOWLEDGE && tType === NodeType.TEACHER)) {
+        tk++;
+      }
+
+      // 数据来源
+      if (l.type === InteractionType.PHYSICAL) physical++;
+      else platform++;
+
+      // 学生节点度
+      if (sNode?.type === NodeType.STUDENT) sDegreeMap.set(sId, (sDegreeMap.get(sId) || 0) + 1);
+      if (tNode?.type === NodeType.STUDENT) sDegreeMap.set(tId, (sDegreeMap.get(tId) || 0) + 1);
+
+      // 知识点节点度
+      if (sNode?.type === NodeType.KNOWLEDGE) kDegreeMap.set(sId, (kDegreeMap.get(sId) || 0) + 1);
+      if (tNode?.type === NodeType.KNOWLEDGE) kDegreeMap.set(tId, (kDegreeMap.get(tId) || 0) + 1);
     });
-    return [
-        { label: '物理空间采集', value: physical, color: '#475569' }, // Matches Slate-600
-        { label: '平台数据采集', value: platform, color: '#3b82f6' }  // Matches Blue-500
+
+    // A. 知识热点图
+    const kNodes = data.nodes.filter(n => n.type === NodeType.KNOWLEDGE);
+    const knowledgeHotspots = kNodes
+      .map(n => ({ label: n.name, value: kDegreeMap.get(n.id) || 0 }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+
+    // B. 交互模式
+    const interactionTypes = [
+      { label: '师生互动 (指导)', value: ts, color: '#7c3aed' },
+      { label: '生生协作 (研讨)', value: ss, color: '#f59e0b' },
+      { label: '人机/自主 (探索)', value: sk, color: '#059669' },
+      { label: '教师-知识点 (讲授)', value: tk, color: '#ef4444' },
     ];
+
+    // C. 群体关注度（百分位数动态阈值）
+    const sNodes = data.nodes.filter(n => n.type === NodeType.STUDENT);
+    const degrees = sNodes.map(n => sDegreeMap.get(n.id) || 0).sort((a, b) => a - b);
+    const total = sNodes.length || 1;
+
+    let highThreshold = 8;
+    let mediumThreshold = 5;
+    if (degrees.length > 0) {
+      highThreshold = degrees[Math.floor(degrees.length * 0.75)] ?? 0;
+      mediumThreshold = degrees[Math.floor(degrees.length * 0.5)] ?? 0;
+    }
+
+    const counts = { high: 0, medium: 0, low: 0 };
+    sNodes.forEach(n => {
+      const d = sDegreeMap.get(n.id) || 0;
+      if (d >= highThreshold) counts.high++;
+      else if (d >= mediumThreshold) counts.medium++;
+      else counts.low++;
+    });
+
+    const groupAttention = [
+      { label: '高活跃核心圈', value: counts.high, max: total, color: 'bg-indigo-500' },
+      { label: '中活跃协作圈', value: counts.medium, max: total, color: 'bg-blue-400' },
+      { label: '低活跃边缘圈', value: counts.low, max: total, color: 'bg-gray-400' }
+    ];
+
+    // D. 数据来源
+    const interactionSources = [
+      { label: '物理空间采集', value: physical, color: '#475569' },
+      { label: '平台数据采集', value: platform, color: '#3b82f6' }
+    ];
+
+    return { knowledgeHotspots, interactionTypes, groupAttention, interactionSources };
+  }, [data]);
+
+  const timelineData = useMemo(() => {
+    const timeLinks = data.links.filter(l => l.createdAt);
+    if (timeLinks.length === 0) return [] as TrendPoint[];
+
+    const timestamps = timeLinks.map(l => new Date(l.createdAt!).getTime()).sort((a, b) => a - b);
+    const min = timestamps[0];
+    const max = timestamps[timestamps.length - 1];
+
+    if (min === max) {
+      return [{
+        label: new Date(min).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+        value: timeLinks.reduce((sum, l) => sum + l.value, 0)
+      }] as TrendPoint[];
+    }
+
+    const bucketCount = Math.min(10, timeLinks.length);
+    const interval = (max - min) / bucketCount;
+    const buckets = new Array(bucketCount).fill(0).map((_, i) => ({
+      start: min + i * interval,
+      value: 0,
+    }));
+
+    timeLinks.forEach(l => {
+      const t = new Date(l.createdAt!).getTime();
+      const idx = Math.min(Math.floor((t - min) / interval), bucketCount - 1);
+      buckets[idx].value += l.value;
+    });
+
+    return buckets.map((b) => ({
+      label: new Date(b.start).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+      value: b.value
+    })) as TrendPoint[];
   }, [data]);
 
   if (!isOpen) return null;
@@ -263,7 +359,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
             <div className="flex justify-between items-center p-4 pb-0 bg-indigo-600 text-white rounded-t-xl">
                 <div className="flex items-center gap-2 mb-4">
                     <PieChart className="w-6 h-6" />
-                    <h2 className="text-xl font-bold">全域数据统计分析 Dashboard</h2>
+                    <h2 className="text-xl font-bold">全班数据统计分析 Dashboard</h2>
                 </div>
                 <button onClick={onClose} className="text-white/80 hover:text-white transition-colors mb-4">
                     <X className="w-6 h-6" />
@@ -284,6 +380,14 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
                 >
                     <GitGraph className="w-4 h-4" /> 子图透视
                 </button>
+                {isShowCase && (
+                    <button 
+                        onClick={() => setActiveTab('classroom-analysis')}
+                        className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'classroom-analysis' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    >
+                        <Video className="w-4 h-4" /> 课堂视频分析
+                    </button>
+                )}
             </div>
         </div>
 
@@ -348,23 +452,30 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
                         <BarChart3 className="w-4 h-4 text-emerald-500" /> 班级群体认知模版分析 (平均分/5分)
                         </h3>
                         <div className="grid grid-cols-2 gap-x-12 gap-y-5">
-                            {cognitiveAverages?.map((item) => {
-                                const val = parseFloat(item.value);
-                                return (
-                                    <div key={item.key} className="space-y-1">
-                                        <div className="flex justify-between text-xs font-medium text-gray-600">
-                                            <span>{item.label}</span>
-                                            <span>{item.value}</span>
+                            {cognitiveAverages ? (
+                                cognitiveAverages.map((item) => {
+                                    const val = parseFloat(item.value);
+                                    return (
+                                        <div key={item.key} className="space-y-1">
+                                            <div className="flex justify-between text-xs font-medium text-gray-600">
+                                                <span>{item.label}</span>
+                                                <span>{item.value}</span>
+                                            </div>
+                                            <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                                                <div 
+                                                    className={`h-full rounded-full ${val >= 4 ? 'bg-emerald-500' : val >= 3 ? 'bg-indigo-500' : 'bg-amber-500'}`}
+                                                    style={{ width: `${(val / 5) * 100}%` }}
+                                                ></div>
+                                            </div>
                                         </div>
-                                        <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                                            <div 
-                                                className={`h-full rounded-full ${val >= 4 ? 'bg-emerald-500' : val >= 3 ? 'bg-indigo-500' : 'bg-amber-500'}`}
-                                                style={{ width: `${(val / 5) * 100}%` }}
-                                            ></div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })
+                            ) : (
+                                <div className="col-span-2 flex flex-col items-center justify-center py-8 text-gray-400">
+                                    <BarChart3 className="w-8 h-8 mb-2 text-gray-300" />
+                                    <p className="text-xs">暂无班级认知模版数据</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -373,40 +484,47 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
                         <h3 className="text-sm font-bold text-gray-500 uppercase mb-4 flex items-center gap-2">
                         <ThumbsUp className="w-4 h-4 text-pink-500" /> 满意度调查分析
                         </h3>
-                        <div className="grid grid-cols-3 gap-6">
-                            <div className="bg-blue-50 p-4 rounded-xl flex items-center gap-4 border border-blue-100">
-                                <div className="p-3 bg-white rounded-full text-blue-500 shadow-sm">
-                                    <Send className="w-6 h-6" />
+                        {satisfactionStats ? (
+                            <div className="grid grid-cols-3 gap-6">
+                                <div className="bg-blue-50 p-4 rounded-xl flex items-center gap-4 border border-blue-100">
+                                    <div className="p-3 bg-white rounded-full text-blue-500 shadow-sm">
+                                        <Send className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-blue-500 font-medium uppercase">问卷推送人数</p>
+                                        <p className="text-2xl font-bold text-blue-900">{satisfactionStats.pushed} 人</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-xs text-blue-500 font-medium uppercase">问卷推送人数</p>
-                                    <p className="text-2xl font-bold text-blue-900">{satisfactionStats.pushed} 人</p>
-                                </div>
-                            </div>
 
-                            <div className="bg-violet-50 p-4 rounded-xl flex items-center gap-4 border border-violet-100">
-                                <div className="p-3 bg-white rounded-full text-violet-500 shadow-sm">
-                                    <CheckCircle className="w-6 h-6" />
+                                <div className="bg-violet-50 p-4 rounded-xl flex items-center gap-4 border border-violet-100">
+                                    <div className="p-3 bg-white rounded-full text-violet-500 shadow-sm">
+                                        <CheckCircle className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-violet-500 font-medium uppercase">问卷填写人数</p>
+                                        <p className="text-2xl font-bold text-violet-900">{satisfactionStats.filled} 人</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-xs text-violet-500 font-medium uppercase">问卷填写人数</p>
-                                    <p className="text-2xl font-bold text-violet-900">{satisfactionStats.filled} 人</p>
-                                </div>
-                            </div>
 
-                            <div className="bg-pink-50 p-4 rounded-xl flex items-center gap-4 border border-pink-100">
-                                <div className="p-3 bg-white rounded-full text-pink-500 shadow-sm">
-                                    <ThumbsUp className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <p className="text-xs text-pink-500 font-medium uppercase">整体满意度</p>
-                                    <div className="flex items-baseline gap-2">
-                                        <p className="text-2xl font-bold text-pink-900">{satisfactionStats.score}/5.0</p>
-                                        <span className="text-xs text-pink-600 font-medium">({satisfactionStats.percentage}%)</span>
+                                <div className="bg-pink-50 p-4 rounded-xl flex items-center gap-4 border border-pink-100">
+                                    <div className="p-3 bg-white rounded-full text-pink-500 shadow-sm">
+                                        <ThumbsUp className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-pink-500 font-medium uppercase">整体满意度</p>
+                                        <div className="flex items-baseline gap-2">
+                                            <p className="text-2xl font-bold text-pink-900">{satisfactionStats.score}/5.0</p>
+                                            <span className="text-xs text-pink-600 font-medium">({satisfactionStats.percentage}%)</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                                <ThumbsUp className="w-8 h-8 mb-2 text-gray-300" />
+                                <p className="text-xs">暂无满意度调查数据</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -421,10 +539,10 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
                              <Target className="w-4 h-4 text-rose-500" /> 知识热点图 (高频交互节点)
                         </h3>
                         <div className="space-y-2">
-                            {knowledgeHotspots.map((k, i) => (
-                                <BarRow key={i} label={k.label} value={k.value} max={knowledgeHotspots[0]?.value || 1} color="bg-rose-500" />
+                            {subgraphAnalysis.knowledgeHotspots.map((k, i) => (
+                                <BarRow key={i} label={k.label} value={k.value} max={subgraphAnalysis.knowledgeHotspots[0]?.value || 1} color="bg-rose-500" />
                             ))}
-                            {knowledgeHotspots.length === 0 && <p className="text-xs text-gray-400">暂无交互数据</p>}
+                            {subgraphAnalysis.knowledgeHotspots.length === 0 && <p className="text-xs text-gray-400">暂无交互数据</p>}
                         </div>
                         <p className="text-[10px] text-gray-400 mt-4 text-center">基于网络度中心性 (Degree Centrality) 计算</p>
                     </div>
@@ -440,21 +558,22 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
                         <div className="grid grid-cols-2 gap-4">
                             <div className="flex flex-col items-center">
                                 <span className="text-[10px] font-semibold text-gray-400 mb-2 uppercase">模式结构</span>
-                                <DonutChart data={interactionTypes} size={100} />
+                                <DonutChart data={subgraphAnalysis.interactionTypes} size={100} />
                             </div>
                             <div className="flex flex-col items-center border-l border-gray-100">
                                 <span className="text-[10px] font-semibold text-gray-400 mb-2 uppercase">数据来源</span>
-                                <DonutChart data={interactionSources} size={100} />
+                                <DonutChart data={subgraphAnalysis.interactionSources} size={100} />
                             </div>
                         </div>
 
                         <div className="mt-4 p-2 bg-gray-50 rounded text-[10px] text-gray-500 leading-relaxed border border-gray-100">
-                            <strong>分析：</strong> 
-                            {interactionSources[0].value > interactionSources[1].value 
-                                ? "网络数据主要来源于物理空间中的师生/生生互动，体现了课堂现场的高频交流。" 
+                            <strong>分析：</strong>
+                            {subgraphAnalysis.interactionSources[0].value > subgraphAnalysis.interactionSources[1].value
+                                ? "网络数据主要来源于物理空间中的师生/生生互动，体现了课堂现场的高频交流。"
                                 : "网络交互高度依赖线上平台，体现了混合式或远程学习的特征。"
                             }
                         </div>
+
                     </div>
 
                     {/* Group Attention */}
@@ -463,7 +582,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
                              <Layers className="w-4 h-4 text-blue-500" /> 群体关注度分布
                         </h3>
                         <div className="space-y-3">
-                             {groupAttention.map((g, i) => (
+                             {subgraphAnalysis.groupAttention.map((g, i) => (
                                 <BarRow key={i} label={g.label} value={g.value} max={g.max} color={g.color} />
                              ))}
                         </div>
@@ -475,15 +594,29 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
                         <h3 className="text-sm font-bold text-gray-500 uppercase mb-2 flex items-center gap-2">
                              <TrendingUp className="w-4 h-4 text-indigo-500" /> 学习模式演化趋势
                         </h3>
-                        <TrendChart />
+                        <TrendChart points={timelineData} />
                         <div className="mt-3 flex gap-4 text-xs">
                             <div className="flex items-center gap-1.5">
                                 <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
                                 <span className="text-gray-600">交互密度</span>
                             </div>
-                            <p className="text-gray-400 flex-1 text-right">模拟最近40分钟数据</p>
+                            <p className="text-gray-400 flex-1 text-right">
+                                {timelineData.length > 0 ? '基于交互时间分布' : '暂无时间序列数据'}
+                            </p>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {activeTab === 'classroom-analysis' && isShowCase && (
+                <div className="animate-in slide-in-from-bottom-2 duration-300">
+                    {classroomAnalysisLoading ? (
+                        <div className="flex items-center justify-center h-64 text-gray-400">
+                            加载中...
+                        </div>
+                    ) : (
+                        <ClassroomAnalysisView data={classroomAnalysis} />
+                    )}
                 </div>
             )}
 

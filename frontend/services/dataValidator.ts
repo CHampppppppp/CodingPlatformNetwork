@@ -6,9 +6,6 @@ type GraphLinkAssertion = (link: any, index: number) => asserts link is GraphLin
 type ClassInfoAssertion = (classInfo: any) => asserts classInfo is { school: string; grade: string; classId: string };
 type ScenarioAssertion = (scenario: any) => asserts scenario is string;
 
-/**
- * 验证GraphData数据结构
- */
 export const validateGraphData: GraphDataAssertion = (data) => {
   if (!data) {
     throw new Error('数据为空');
@@ -57,9 +54,6 @@ export const validateGraphData: GraphDataAssertion = (data) => {
   });
 };
 
-/**
- * 验证GraphNode数据结构
- */
 export const validateGraphNode: GraphNodeAssertion = (node, index) => {
   if (!node) {
     throw new Error(`节点 ${index} 为空`);
@@ -86,9 +80,6 @@ export const validateGraphNode: GraphNodeAssertion = (node, index) => {
   }
 };
 
-/**
- * 验证GraphLink数据结构
- */
 export const validateGraphLink: GraphLinkAssertion = (link, index) => {
   if (!link) {
     throw new Error(`链接 ${index} 为空`);
@@ -111,14 +102,10 @@ export const validateGraphLink: GraphLinkAssertion = (link, index) => {
   }
 };
 
-/**
- * 转换API返回的数据为前端格式
- */
 export const transformGraphData = (data: any): GraphData => {
   try {
     validateGraphData(data);
 
-    // 确保数据结构正确
     return {
       nodes: data.nodes.map((node: any) => ({
         id: node.id,
@@ -135,7 +122,8 @@ export const transformGraphData = (data: any): GraphData => {
         target: link.target,
         value: link.value,
         type: link.type
-      }))
+      })),
+      meta: data.meta
     };
   } catch (error) {
     console.error('转换数据失败:', error);
@@ -143,9 +131,6 @@ export const transformGraphData = (data: any): GraphData => {
   }
 };
 
-/**
- * 验证ClassInfo数据结构
- */
 export const validateClassInfo: ClassInfoAssertion = (classInfo) => {
   if (!classInfo) {
     throw new Error('班级信息为空');
@@ -164,19 +149,21 @@ export const validateClassInfo: ClassInfoAssertion = (classInfo) => {
   }
 };
 
-/**
- * 验证Scenario数据
- */
 export const validateScenario: ScenarioAssertion = (scenario) => {
   if (!scenario || typeof scenario !== 'string') {
     throw new Error('场景类型必须是字符串');
   }
 };
 
-/**
- * 清理和规范化数据
- */
 export const sanitizeGraphData = (data: GraphData): GraphData => {
+  const validNodeIds = new Set(data.nodes.map(node => node.id.trim()));
+
+  const filteredLinks = data.links.filter(link => {
+    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+    return validNodeIds.has(sourceId.trim()) && validNodeIds.has(targetId.trim());
+  });
+
   return {
     nodes: data.nodes.map(node => ({
       ...node,
@@ -184,11 +171,12 @@ export const sanitizeGraphData = (data: GraphData): GraphData => {
       name: node.name.trim(),
       type: node.type
     })),
-    links: data.links.map(link => ({
+    links: filteredLinks.map(link => ({
       ...link,
       source: typeof link.source === 'object' ? link.source : link.source.trim(),
       target: typeof link.target === 'object' ? link.target : link.target.trim(),
       type: link.type
-    }))
+    })),
+    meta: data.meta
   };
 };

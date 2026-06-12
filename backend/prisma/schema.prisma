@@ -1,9 +1,10 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
+  engineType = "library"
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "mysql"
 }
 
 /// 学习场景
@@ -15,30 +16,37 @@ model LearningScenario {
   isActive  Boolean              @default(true)
   createdAt DateTime             @default(now())
   updatedAt DateTime             @updatedAt
-  sessions  InteractionSession[]
   nodes     GraphNode[]
+  sessions  InteractionSession[]
+  schools   School[]
 
   @@map("learning_scenarios_test")
 }
 
 /// 学校/校区节点，顶级组织单位
 model School {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  createdAt DateTime @default(now())
+  id        String          @id @default(cuid())
+  scenarioId String
+  name      String
+  createdAt DateTime        @default(now())
   grades    Grade[]
+  scenario  LearningScenario @relation(fields: [scenarioId], references: [id])
+  teachers  TeacherProfile[]
 
+  @@unique([scenarioId, name])
+  @@index([scenarioId])
   @@map("schools_test")
 }
 
 /// 年级节点，属某一学校
 model Grade {
-  id        String        @id @default(cuid())
+  id        String           @id @default(cuid())
   schoolId  String
   gradeName Int
-  createdAt DateTime      @default(now())
-  classes   SchoolClass[]
-  school    School        @relation(fields: [schoolId], references: [id])
+  createdAt DateTime         @default(now())
+  classes   Class[]
+  school    School           @relation(fields: [schoolId], references: [id])
+  teachers  TeacherProfile[]
 
   @@unique([schoolId, gradeName])
   @@index([schoolId])
@@ -46,12 +54,15 @@ model Grade {
 }
 
 /// 班级节点，属某一年级
-model SchoolClass {
-  id        String   @id @default(cuid())
-  gradeId   String
-  className String
-  createdAt DateTime @default(now())
-  grade     Grade    @relation(fields: [gradeId], references: [id])
+model Class {
+  id          String         @id @default(cuid())
+  gradeId     String
+  className   String
+  teacherId   String?        @unique
+  createdAt   DateTime       @default(now())
+  grade       Grade          @relation(fields: [gradeId], references: [id])
+  teacher     TeacherProfile?
+  teacherNode GraphNode?     @relation("ClassTeacherNode", fields: [teacherId], references: [id])
 
   @@unique([gradeId, className])
   @@index([gradeId])
@@ -62,22 +73,28 @@ model SchoolClass {
 /// nodeType 取值: Student | Teacher | Knowledge | Class | School | Grade
 /// 通过 nodeType 区分不同类型节点，关联的扩展信息存储在对应的 Profile 表中
 model GraphNode {
-  id                String                    @id @default(cuid())
+  id                String                      @id @default(cuid())
   nodeType          String
   displayName       String
   scenarioId        String
   schoolId          String?
   gradeId           String?
   classId           String?
-  createdAt         DateTime                  @default(now())
-  updatedAt         DateTime                  @updatedAt
-  sourceEdges       Interaction[]             @relation("SourceNode")
-  targetEdges       Interaction[]             @relation("TargetNode")
-  knowledgeProfile  KnowledgeProfile?
-  cognitiveProfiles StudentCognitiveProfile[]
-  studentProfile    StudentProfile?
-  teacherProfile    TeacherProfile?
-  scenario          LearningScenario          @relation(fields: [scenarioId], references: [id])
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+  scenario          LearningScenario            @relation(fields: [scenarioId], references: [id])
+  sourceEdges                 Interaction[]               @relation("SourceNode")
+  targetEdges                 Interaction[]               @relation("TargetNode")
+  studentKnowledgeRelations   StudentKnowledgeRelation[]  @relation("StudentKnowledgeStudent")
+  knowledgeStudentRelations   StudentKnowledgeRelation[]  @relation("StudentKnowledgeKnowledge")
+  knowledgeProfile            KnowledgeProfile?
+  resourceRelations           ResourceKnowledgeRelation[]
+  cognitiveProfiles           StudentCognitiveProfile[]
+  studentProfile              StudentProfile?
+  studentWorks                StudentWork[]
+  teacherStudentWorks         StudentWork[]     @relation("TeacherStudentWorks")
+  teacherProfile              TeacherProfile?
+  teachingClass               Class?    @relation("ClassTeacherNode")
 
   @@index([nodeType])
   @@index([scenarioId])
@@ -87,58 +104,71 @@ model GraphNode {
 
 /// 学生节点扩展属性，1:1 关联 GraphNode (nodeType = Student)
 model StudentProfile {
-  nodeId                  String    @id
-  learningStylePreference String?
-  personality             String?
-  groupBehavior           String?
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
-  node                    GraphNode @relation(fields: [nodeId], references: [id])
+  nodeId                String    @id
+  externalUserId        String?
+  gender                String?
+  learningStyle         String?
+  personality           String?
+  groupBehavior         String?
+  aiContentSatisfaction String?
+  resourceHelpfulness   String?
+  posterSatisfaction    String?
+  teachingPreference    String?
+  helpSource            String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  node                  GraphNode @relation(fields: [nodeId], references: [id])
 
+  @@index([externalUserId])
   @@map("student_profiles_test")
 }
 
 /// 教师节点扩展属性，1:1 关联 GraphNode (nodeType = Teacher)
 model TeacherProfile {
-  nodeId        String    @id
+  nodeId        String      @id
   subject       String?
   teachingGrade Int?
   teachingClass String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  node          GraphNode @relation(fields: [nodeId], references: [id])
+  schoolId      String?
+  gradeId       String?
+  classId       String?     @unique
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  node          GraphNode   @relation(fields: [nodeId], references: [id])
+  school        School?     @relation(fields: [schoolId], references: [id])
+  grade         Grade?      @relation(fields: [gradeId], references: [id])
+  class         Class? @relation(fields: [classId], references: [id])
 
   @@map("teacher_profiles_test")
 }
 
 /// 知识点节点扩展属性，1:1 关联 GraphNode (nodeType = Knowledge)
-/// parentNodeId 指向父级知识点节点，支持树状结构
 model KnowledgeProfile {
   nodeId        String    @id
-  content       String?
+  content       String?   @db.Text
   knowledgeType String?
   category      String?
-  parentNodeId  String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   node          GraphNode @relation(fields: [nodeId], references: [id])
 
-  @@index([parentNodeId])
   @@map("knowledge_profiles_test")
 }
 
 /// 一次交互会话，记录某学习场景在某班级/时间下的完整交互记录
 model InteractionSession {
-  id           String           @id @default(cuid())
-  scenarioId   String
-  schoolId     String
-  gradeId      String
-  classId      String?
-  sessionName  String?
-  occurredAt   DateTime
-  createdAt    DateTime         @default(now())
-  scenario     LearningScenario @relation(fields: [scenarioId], references: [id])
-  interactions Interaction[]
+  id                String                    @id @default(cuid())
+  scenarioId        String
+  schoolId          String
+  gradeId           String
+  classId           String?
+  sessionName       String?
+  occurredAt        DateTime
+  createdAt         DateTime                  @default(now())
+  scenario          LearningScenario          @relation(fields: [scenarioId], references: [id])
+  interactions      Interaction[]
+  classroomAnalysis SessionClassroomAnalysis?
+  studentWorks      StudentWork[]
 
   @@index([scenarioId, occurredAt])
   @@index([schoolId, gradeId, classId, occurredAt])
@@ -152,22 +182,25 @@ model InteractionSession {
 /// strength 表示交互强度/频次，decimal(10,4) 保证精度
 model Interaction {
   id              String             @id @default(cuid())
-  interactionType String
+  interactionType String             @db.VarChar(50)
   createdAt       DateTime           @default(now())
-  actionType      String?
+  actionType      String?            @db.VarChar(50)
   durationSec     Int?
   sessionId       String
   sourceNodeId    String
-  strength        Decimal                 @db.Decimal(10, 4)
+  strength        Decimal            @db.Decimal(10, 4)
   targetNodeId    String
-  session         InteractionSession @relation(fields: [sessionId], references: [id])
-  sourceNode      GraphNode          @relation("SourceNode", fields: [sourceNodeId], references: [id], onUpdate: NoAction)
-  targetNode      GraphNode          @relation("TargetNode", fields: [targetNodeId], references: [id], onUpdate: NoAction)
+  relationSourceId String?
+  session          InteractionSession           @relation(fields: [sessionId], references: [id])
+  sourceNode       GraphNode                    @relation("SourceNode", fields: [sourceNodeId], references: [id], onUpdate: NoAction)
+  targetNode       GraphNode                    @relation("TargetNode", fields: [targetNodeId], references: [id], onUpdate: NoAction)
+  relationSource   StudentKnowledgeRelation?    @relation(fields: [relationSourceId], references: [id], onDelete: SetNull)
 
   @@unique([sessionId, sourceNodeId, targetNodeId, interactionType, actionType])
   @@index([sessionId])
   @@index([sourceNodeId, targetNodeId])
   @@index([interactionType, createdAt])
+  @@index([targetNodeId], map: "interactions_test_targetNodeId_fkey")
   @@map("interactions_test")
 }
 
@@ -218,5 +251,151 @@ model StudentCognitiveDimensionScore {
 
   @@unique([profileId, dimensionCode])
   @@index([profileId])
+  @@index([dimensionCode], map: "student_cognitive_dimension_scores_test_dimensionCode_fkey")
   @@map("student_cognitive_dimension_scores_test")
+}
+
+/// 资源表，存储资源中心展示的学习资源
+/// resourceType 取值: VIDEO | ARTICLE | PRACTICE | GAME | DOCUMENT
+model Resource {
+  id                 String                      @id @default(cuid())
+  title              String
+  description        String?
+  url                String?
+  resourceType       String
+  acceptanceRate     Decimal?                    @db.Decimal(5, 2)
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+  knowledgeRelations ResourceKnowledgeRelation[]
+  studentRates       StudentResourceRate[]
+
+  @@index([resourceType])
+  @@map("resources_test")
+}
+
+/// 资源与知识点的关联表，支持一个资源关联多个知识点
+model ResourceKnowledgeRelation {
+  id              String    @id @default(cuid())
+  resourceId      String
+  knowledgeNodeId String
+  knowledgeNode   GraphNode @relation(fields: [knowledgeNodeId], references: [id], onDelete: Cascade)
+  resource        Resource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, knowledgeNodeId])
+  @@index([knowledgeNodeId])
+  @@map("resource_knowledge_relations_test")
+}
+
+/// 学生对资源的评分表
+model StudentResourceRate {
+  id         String   @id @default(cuid())
+  studentId  String
+  resourceId String
+  rate       Decimal  @db.Decimal(3, 2)
+  createdAt  DateTime @default(now())
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, resourceId])
+  @@index([resourceId])
+  @@map("student_resource_rates_test")
+}
+
+/// 学生与知识点的关联表，记录学生学习了哪些知识点
+/// 作为学生-知识点关系的权威数据源，自动同步到 interactions 表
+model StudentKnowledgeRelation {
+  id              String    @id @default(cuid())
+  studentNodeId   String
+  knowledgeNodeId String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  studentNode     GraphNode       @relation("StudentKnowledgeStudent", fields: [studentNodeId], references: [id], onDelete: Cascade)
+  knowledgeNode   GraphNode       @relation("StudentKnowledgeKnowledge", fields: [knowledgeNodeId], references: [id], onDelete: Cascade)
+  derivedInteractions Interaction[]
+
+  @@unique([studentNodeId, knowledgeNodeId])
+  @@index([studentNodeId])
+  @@index([knowledgeNodeId])
+  @@map("student_knowledge_relations_test")
+}
+
+/// 学生作品表，存储学生创作的作品信息
+/// 关联至 GraphNode (nodeType = Student) 和 InteractionSession
+model StudentWork {
+  id               String              @id @default(cuid())
+  studentNodeId    String
+  sessionId        String?
+  externalWorkId   String?             @unique
+  workName         String
+  publishedAt      DateTime?
+  /// 作品所属主题信息
+  themeId          String?
+  themeName        String?
+  themeDirectory   String?
+  textbookName     String?
+  /// 作品互动数据
+  likeCount        Int                 @default(0)
+  commentCount     Int                 @default(0)
+  /// 教师评分
+  teacherId        String?
+  teacherScore     Decimal?            @db.Decimal(5, 2)
+  teacherComment   String?             @db.Text
+  /// 点赞详情（JSON 数组，存储点赞学生信息）
+  likeDetails      String?             @db.Text
+  /// 评论详情（JSON 数组，存储评论内容和学生信息）
+  commentDetails   String?             @db.Text
+  /// 埋点数据
+  activityLogCount Int                 @default(0)
+  activityLogMeta  String?             @db.Text
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  session          InteractionSession? @relation(fields: [sessionId], references: [id])
+  studentNode      GraphNode           @relation(fields: [studentNodeId], references: [id], onDelete: Cascade)
+  teacher          GraphNode?          @relation("TeacherStudentWorks", fields: [teacherId], references: [id], onDelete: SetNull)
+
+  @@index([studentNodeId])
+  @@index([sessionId])
+  @@index([externalWorkId])
+  @@index([teacherId])
+  @@map("student_works_test")
+}
+
+/// 课堂视频自动分析报告，存储基于课堂视频分析框架的九维度评估结果
+model SessionClassroomAnalysis {
+  id                             String             @id @default(cuid())
+  sessionId                      String             @unique
+  knowledgeActivationRate        Decimal?           @db.Decimal(5, 2)
+  activatedKnowledgeCount        Int?
+  totalKnowledgeCount            Int?
+  behavioralEngagementLevel      String?
+  teacherStudentInteractionCount Int?
+  peerCollaborationCount         Int?
+  cognitiveEngagementLevel       String?
+  constructiveUtteranceCount     Int?
+  hasBurnout                     Boolean?
+  hasFrustration                 Boolean?
+  conceptDevelopmentLevel        String?
+  feedbackQualityLevel           String?
+  academicExpectationLevel       String?
+  closedQuestionCount            Int?
+  applicationQuestionCount       Int?
+  openQuestionCount              Int?
+  acceptFeedbackCount            Int?
+  praiseFeedbackCount            Int?
+  extendFeedbackCount            Int?
+  correctFeedbackCount           Int?
+  studentUtteranceCount          Int?
+  teacherFluencyLevel            String?
+  toolVarietyCount               Int?
+  selfAwarenessLevel             String?
+  selfManagementLevel            String?
+  collectiveManagementLevel      String?
+  ruleClarityLevel               String?
+  positiveReinforcementLevel     String?
+  negativeReductionLevel         String?
+  createdAt                      DateTime           @default(now())
+  updatedAt                      DateTime           @updatedAt
+  session                        InteractionSession @relation(fields: [sessionId], references: [id])
+
+  @@map("session_classroom_analyses_test")
 }

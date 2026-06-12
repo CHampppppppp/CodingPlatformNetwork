@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据概况统计报告</title>
+<style>
+  :root { --bg: #f6f7f9; --card: #fff; --text: #1f2328; --muted: #656d76; --border: #d1d9e0; --accent: #0969da; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0d1117; --card: #161b22; --text: #c9d1d9; --muted: #8b949e; --border: #30363d; --accent: #58a6ff; } }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; }
+  .container { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 28px; margin-bottom: 8px; }
+  .meta { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .card .label { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .card .value { font-size: 28px; font-weight: 600; color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 32px; }
+  th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { background: var(--bg); font-weight: 600; font-size: 14px; color: var(--muted); }
+  td { font-size: 14px; }
+  tr:last-child td { border-bottom: none; }
+  h2 { font-size: 20px; margin: 32px 0 12px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>数据概况统计报告</h1>
+  <div class="meta">生成时间: 2026/5/14 12:30:29 · 数据来源: mysql://root@localhost:3306/interaction_network_test</div>
+
+  <div class="grid">
+    <div class="card"><div class="label">学校数量</div><div class="value">379</div></div>
+    <div class="card"><div class="label">年级数量</div><div class="value">1926</div></div>
+    <div class="card"><div class="label">班级数量</div><div class="value">15673</div></div>
+    <div class="card"><div class="label">学生数量</div><div class="value">99469</div></div>
+    <div class="card"><div class="label">教师数量</div><div class="value">15673</div></div>
+    <div class="card"><div class="label">知识点数量</div><div class="value">150</div></div>
+    <div class="card"><div class="label">网络节点总数</div><div class="value">115292</div></div>
+    <div class="card"><div class="label">交互记录数量</div><div class="value">225702</div></div>
+    <div class="card"><div class="label">会话数量</div><div class="value">6173</div></div>
+    <div class="card"><div class="label">学习场景数量</div><div class="value">6</div></div>
+    <div class="card"><div class="label">学生作品数量</div><div class="value">16144</div></div>
+    <div class="card"><div class="label">资源数量</div><div class="value">104</div></div>
+    <div class="card"><div class="label">认知维度定义数量</div><div class="value">24</div></div>
+    <div class="card"><div class="label">学生认知画像数量</div><div class="value">199230</div></div>
+    <div class="card"><div class="label">课堂分析数量</div><div class="value">1</div></div>
+    <div class="card"><div class="label">学生资源评分数量</div><div class="value">1676646</div></div>
+    <div class="card"><div class="label">学生知识点关联数量</div><div class="value">18217</div></div>
+  </div>
+
+  <h2>节点类型分布</h2>
+  <table>
+    <thead><tr><th>节点类型</th><th>数量</th></tr></thead>
+    <tbody><tr><td>Knowledge</td><td>150</td></tr>
+<tr><td>Student</td><td>99469</td></tr>
+<tr><td>Teacher</td><td>15673</td></tr></tbody>
+  </table>
+
+  <h2>学习场景分布</h2>
+  <table>
+    <thead><tr><th>场景名称</th><th>代码</th><th>节点数</th><th>会话数</th></tr></thead>
+    <tbody><tr><td>展示场景</td><td>SHOW_CASE</td><td>13575</td><td>4</td></tr>
+<tr><td>学科课程在线学习</td><td>ONLINE_COURSE</td><td>0</td><td>0</td></tr>
+<tr><td>课后线上教师授课答疑</td><td>TEACHER_QA</td><td>0</td><td>0</td></tr>
+<tr><td>家庭在线学习</td><td>HOME_LEARNING</td><td>0</td><td>0</td></tr>
+<tr><td>在线协作学习</td><td>COLLABORATIVE_LEARNING</td><td>253</td><td>19</td></tr>
+<tr><td>社团课等非正式学习</td><td>INFORMAL_LEARNING</td><td>101464</td><td>6150</td></tr></tbody>
+  </table>
+
+  <h2>交互类型分布</h2>
+  <table>
+    <thead><tr><th>交互类型</th><th>数量</th></tr></thead>
+    <tbody><tr><td>PLATFORM</td><td>225702</td></tr></tbody>
+  </table>
+
+  <h2>学校Top 10（按年级数）</h2>
+  <table>
+    <thead><tr><th>学校名称</th><th>年级数</th><th>教师数</th><th>学生数</th></tr></thead>
+    <tbody><tr><td>舟山第一小学</td><td>7</td><td>50</td><td>181</td></tr>
+<tr><td>龙游县樾园小学</td><td>6</td><td>51</td><td>170</td></tr>
+<tr><td>三门县浦坝港镇沿江初级中学</td><td>6</td><td>45</td><td>134</td></tr>
+<tr><td>上海外国语大学秀洲外国语学校</td><td>6</td><td>35</td><td>107</td></tr>
+<tr><td>上海尚阳外国语学校桐乡实验学校</td><td>6</td><td>47</td><td>122</td></tr>
+<tr><td>下陈中心小学</td><td>6</td><td>38</td><td>299</td></tr>
+<tr><td>东阳市南马实验小学</td><td>6</td><td>41</td><td>128</td></tr>
+<tr><td>东阳市南马镇中心小学</td><td>6</td><td>55</td><td>120</td></tr>
+<tr><td>东阳市横店镇第二小学</td><td>6</td><td>56</td><td>205</td></tr>
+<tr><td>临海市回浦实验中学</td><td>6</td><td>42</td><td>149</td></tr></tbody>
+  </table>
+</div>
+</body>
+</html>
