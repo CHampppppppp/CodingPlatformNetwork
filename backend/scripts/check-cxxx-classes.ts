@@ -31,7 +31,7 @@ async function main() {
     console.log(`\n${school.name} - Grade 6:`, grades6.length);
 
     for (const grade of grades6) {
-      const classes = await prisma.schoolClass.findMany({
+      const classes = await prisma.class.findMany({
         where: { gradeId: grade.id },
       });
       console.log(`  Classes:`, classes.length);

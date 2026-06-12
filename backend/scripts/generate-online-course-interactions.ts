@@ -81,7 +81,7 @@ async function main() {
       continue;
     }
 
-    const classRecord = await prisma.schoolClass.findFirst({
+    const classRecord = await prisma.class.findFirst({
       where: { gradeId: grade.id, className },
     });
     if (!classRecord) {

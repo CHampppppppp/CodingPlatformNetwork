@@ -69,8 +69,8 @@ async function listAllTables() {
     }));
   }, await prisma.grade.count());
 
-  await showTable('SchoolClass', async () => {
-    const data = await prisma.schoolClass.findMany({
+  await showTable('Class', async () => {
+    const data = await prisma.class.findMany({
       take: 10,
       include: {
         grade: {
@@ -86,7 +86,7 @@ async function listAllTables() {
       grade: c.grade.gradeName,
       className: c.className
     }));
-  }, await prisma.schoolClass.count());
+  }, await prisma.class.count());
 
   await showTable('GraphNode (所有节点)', async () => {
     const data = await prisma.graphNode.findMany({

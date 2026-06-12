@@ -29,7 +29,7 @@ async function main() {
     console.log(`\n${school.name} - Grade 10:`, grades10.length);
 
     for (const grade of grades10) {
-      const classes = await prisma.schoolClass.findMany({
+      const classes = await prisma.class.findMany({
         where: { gradeId: grade.id },
       });
       console.log(`Classes in grade 10:`, classes.map(c => c.className));

@@ -109,7 +109,7 @@ export class GraphQueryService {
     const [schools, grades, classes] = await Promise.all([
       this.prisma.school.findMany({ select: { id: true, name: true } }),
       this.prisma.grade.findMany({ select: { id: true, gradeName: true } }),
-      this.prisma.schoolClass.findMany({
+      this.prisma.class.findMany({
         select: { id: true, className: true },
       }),
     ]);
@@ -120,9 +120,9 @@ export class GraphQueryService {
         grades.map((grade) => [grade.id, grade.gradeName.toString()]),
       ),
       classNames: new Map(
-        classes.map((schoolClass) => [
-          schoolClass.id,
-          String(schoolClass.className),
+        classes.map((classRecord) => [
+          classRecord.id,
+          String(classRecord.className),
         ]),
       ),
     };

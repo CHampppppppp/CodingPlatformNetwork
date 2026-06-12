@@ -419,7 +419,7 @@ export class StudentService {
       },
     });
 
-    const [school, grade, schoolClass] = await Promise.all([
+    const [school, grade, classRecord] = await Promise.all([
       studentNode.schoolId
         ? this.prisma.school.findUnique({
             where: { id: studentNode.schoolId },
@@ -433,7 +433,7 @@ export class StudentService {
           })
         : Promise.resolve(null),
       studentNode.classId
-        ? this.prisma.schoolClass.findUnique({
+        ? this.prisma.class.findUnique({
             where: { id: studentNode.classId },
             select: { className: true },
           })
@@ -450,7 +450,7 @@ export class StudentService {
             grade?.gradeName != null
               ? `${grade.gradeName}年级`
               : studentNode.gradeId ?? null,
-          classId: schoolClass?.className ?? studentNode.classId ?? null,
+          classId: classRecord?.className ?? studentNode.classId ?? null,
         },
         profile: latestProfile
           ? {

@@ -19,8 +19,8 @@ async function main() {
   const uniqClassIds = [...new Set(students.map(s => s.classId))];
   console.log('GraphNode.classId uniq:', uniqClassIds);
 
-  const sc = await prisma.schoolClass.findFirst({ where: { className: '801班' }, select: { id: true } });
-  console.log('SchoolClass 801 id:', sc?.id);
+  const sc = await prisma.class.findFirst({ where: { className: '801班' }, select: { id: true } });
+  console.log('Class 801 id:', sc?.id);
   console.log('Match?', uniqClassIds.includes(sc?.id || ''));
 }
 main().finally(() => prisma.$disconnect());

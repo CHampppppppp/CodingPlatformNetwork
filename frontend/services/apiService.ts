@@ -30,6 +30,14 @@ const classKeyToId = new Map<string, string>();
 const gradeDisplayToRaw = new Map<string, string>();
 const classDisplayToRaw = new Map<string, string>();
 
+function clearOrgMappings(): void {
+  schoolNameToId.clear();
+  gradeKeyToId.clear();
+  classKeyToId.clear();
+  gradeDisplayToRaw.clear();
+  classDisplayToRaw.clear();
+}
+
 export const fetchScenarios = async (): Promise<LearningScenarioOption[]> => {
   const url = `${API_BASE_URL}/scenarios`;
   console.log("请求场景列表:", url);
@@ -517,7 +525,7 @@ export const fetchSchools = async (scenarioCode?: string): Promise<string[]> => 
     const payload = await response.json();
     const list = Array.isArray(payload?.data) ? payload.data : [];
 
-    schoolNameToId.clear();
+    clearOrgMappings();
     const names: string[] = [];
     list.forEach((item: OrgOptionLike) => {
       const normalized = normalizeOrgOption(item);

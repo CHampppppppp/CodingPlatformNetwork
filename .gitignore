@@ -42,3 +42,4 @@ dist-ssr
 # Backend generated data files
 backend/datas/
 *.sql
+!backend/prisma/migrations/**/*.sql

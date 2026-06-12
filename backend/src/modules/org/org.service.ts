@@ -64,24 +64,8 @@ export class OrgService {
 
     const scenarioId = await resolveScenarioId(this.prisma, scenarioCode);
 
-    const where: any = {
-      nodeType: "Student",
-      schoolId: { not: null }
-    };
-    if (scenarioId) {
-      where.scenarioId = scenarioId;
-    }
-
-    const schoolIds = await this.prisma.graphNode.findMany({
-      where,
-      distinct: ['schoolId'],
-      select: { schoolId: true }
-    }).then(nodes => nodes.map(node => node.schoolId).filter(Boolean) as string[]);
-
     const schools = await this.prisma.school.findMany({
-      where: {
-        id: { in: schoolIds }
-      },
+      where: scenarioId ? { scenarioId } : {},
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     });
@@ -105,28 +89,8 @@ export class OrgService {
       return cachedData;
     }
 
-    const scenarioId = await resolveScenarioId(this.prisma, scenarioCode);
-
-    const where: any = {
-      nodeType: "Student",
-      schoolId,
-      gradeId: { not: null },
-    };
-    if (scenarioId) {
-      where.scenarioId = scenarioId;
-    }
-
-    const gradeIds = await this.prisma.graphNode.findMany({
-      where,
-      distinct: ["gradeId"],
-      select: { gradeId: true },
-    }).then(nodes => nodes.map(node => node.gradeId).filter(Boolean) as string[]);
-
     const grades = await this.prisma.grade.findMany({
-      where: {
-        schoolId,
-        id: { in: gradeIds },
-      },
+      where: { schoolId },
       select: {
         id: true,
         gradeName: true,
@@ -153,28 +117,8 @@ export class OrgService {
       return cachedData;
     }
 
-    const scenarioId = await resolveScenarioId(this.prisma, scenarioCode);
-
-    const where: any = {
-      nodeType: "Student",
-      gradeId,
-      classId: { not: null },
-    };
-    if (scenarioId) {
-      where.scenarioId = scenarioId;
-    }
-
-    const classIds = await this.prisma.graphNode.findMany({
-      where,
-      distinct: ["classId"],
-      select: { classId: true },
-    }).then(nodes => nodes.map(node => node.classId).filter(Boolean) as string[]);
-
-    const classes = await this.prisma.schoolClass.findMany({
-      where: {
-        gradeId,
-        id: { in: classIds },
-      },
+    const classes = await this.prisma.class.findMany({
+      where: { gradeId },
       select: {
         id: true,
         className: true,
@@ -203,56 +147,16 @@ export class OrgService {
 
     const scenarioId = await resolveScenarioId(this.prisma, scenarioCode);
 
-    const nodeWhere: any = {
-      nodeType: "Student",
-      schoolId: { not: null },
-    };
-    if (scenarioId) {
-      nodeWhere.scenarioId = scenarioId;
-    }
-
-    const schoolIds = await this.prisma.graphNode.findMany({
-      where: nodeWhere,
-      distinct: ["schoolId"],
-      select: { schoolId: true },
-    }).then(nodes => nodes.map(node => node.schoolId).filter(Boolean) as string[]);
-
-    const gradeIds = await this.prisma.graphNode.findMany({
-      where: {
-        ...nodeWhere,
-        gradeId: { not: null },
-      },
-      distinct: ["gradeId"],
-      select: { gradeId: true },
-    }).then(nodes => nodes.map(node => node.gradeId).filter(Boolean) as string[]);
-
-    const classIds = await this.prisma.graphNode.findMany({
-      where: {
-        ...nodeWhere,
-        classId: { not: null },
-      },
-      distinct: ["classId"],
-      select: { classId: true },
-    }).then(nodes => nodes.map(node => node.classId).filter(Boolean) as string[]);
-
     const schools = await this.prisma.school.findMany({
-      where: {
-        id: { in: schoolIds }
-      },
+      where: scenarioId ? { scenarioId } : {},
       select: {
         id: true,
         name: true,
         grades: {
-          where: {
-            id: { in: gradeIds }
-          },
           select: {
             id: true,
             gradeName: true,
             classes: {
-              where: {
-                id: { in: classIds }
-              },
               select: {
                 id: true,
                 className: true

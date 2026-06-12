@@ -28,7 +28,7 @@ async function main() {
     'cmp54arp5004b4wl3glyrlksd', // class 9
   ];
 
-  const classes = await prisma.schoolClass.findMany({
+  const classes = await prisma.class.findMany({
     where: { id: { in: classIds } },
     include: { grade: true },
   });

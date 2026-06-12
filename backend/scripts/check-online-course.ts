@@ -36,7 +36,7 @@ async function main() {
     // 查学校信息
     let schoolInfo = 'no classId';
     if (s.classId) {
-      const sc = await prisma.schoolClass.findUnique({ where: { id: s.classId } });
+      const sc = await prisma.class.findUnique({ where: { id: s.classId } });
       if (sc) {
         const grade = await prisma.grade.findUnique({ where: { id: sc.gradeId } });
         const school = grade ? await prisma.school.findUnique({ where: { id: grade.schoolId } }) : null;

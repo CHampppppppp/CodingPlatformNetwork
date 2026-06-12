@@ -27,7 +27,7 @@ async function main() {
     });
 
     for (const grade of grades10) {
-      const classes = await prisma.schoolClass.findMany({
+      const classes = await prisma.class.findMany({
         where: { gradeId: grade.id },
       });
 

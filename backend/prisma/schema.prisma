@@ -18,6 +18,7 @@ model LearningScenario {
   updatedAt DateTime             @updatedAt
   nodes     GraphNode[]
   sessions  InteractionSession[]
+  schools   School[]
 
   @@map("learning_scenarios_test")
 }
@@ -25,11 +26,15 @@ model LearningScenario {
 /// 学校/校区节点，顶级组织单位
 model School {
   id        String          @id @default(cuid())
-  name      String          @unique
+  scenarioId String
+  name      String
   createdAt DateTime        @default(now())
   grades    Grade[]
+  scenario  LearningScenario @relation(fields: [scenarioId], references: [id])
   teachers  TeacherProfile[]
 
+  @@unique([scenarioId, name])
+  @@index([scenarioId])
   @@map("schools_test")
 }
 
@@ -39,7 +44,7 @@ model Grade {
   schoolId  String
   gradeName Int
   createdAt DateTime         @default(now())
-  classes   SchoolClass[]
+  classes   Class[]
   school    School           @relation(fields: [schoolId], references: [id])
   teachers  TeacherProfile[]
 
@@ -49,7 +54,7 @@ model Grade {
 }
 
 /// 班级节点，属某一年级
-model SchoolClass {
+model Class {
   id          String         @id @default(cuid())
   gradeId     String
   className   String
@@ -89,7 +94,7 @@ model GraphNode {
   studentWorks                StudentWork[]
   teacherStudentWorks         StudentWork[]     @relation("TeacherStudentWorks")
   teacherProfile              TeacherProfile?
-  teachingClass               SchoolClass?    @relation("ClassTeacherNode")
+  teachingClass               Class?    @relation("ClassTeacherNode")
 
   @@index([nodeType])
   @@index([scenarioId])
@@ -132,7 +137,7 @@ model TeacherProfile {
   node          GraphNode   @relation(fields: [nodeId], references: [id])
   school        School?     @relation(fields: [schoolId], references: [id])
   grade         Grade?      @relation(fields: [gradeId], references: [id])
-  class         SchoolClass? @relation(fields: [classId], references: [id])
+  class         Class? @relation(fields: [classId], references: [id])
 
   @@map("teacher_profiles_test")
 }

@@ -18,7 +18,7 @@ async function main() {
   }
 
   // Get all classes
-  const classes = await prisma.schoolClass.findMany({});
+  const classes = await prisma.class.findMany({});
   console.log(`Total classes: ${classes.length}`);
 
   // Get existing sessions for ONLINE_COURSE

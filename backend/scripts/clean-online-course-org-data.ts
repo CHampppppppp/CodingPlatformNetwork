@@ -204,7 +204,7 @@ async function main() {
 
   for (const school of orphans) {
     try {
-      await prisma.schoolClass.deleteMany({ where: { grade: { schoolId: school.id } } });
+      await prisma.class.deleteMany({ where: { grade: { schoolId: school.id } } });
       await prisma.grade.deleteMany({ where: { schoolId: school.id } });
       await prisma.school.delete({ where: { id: school.id } });
     } catch (e: any) {

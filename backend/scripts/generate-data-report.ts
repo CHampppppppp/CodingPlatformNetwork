@@ -25,7 +25,7 @@ async function main() {
   const counts = await Promise.all([
     prisma.school.count(),
     prisma.grade.count(),
-    prisma.schoolClass.count(),
+    prisma.class.count(),
     prisma.graphNode.count({ where: { nodeType: 'Student' } }),
     prisma.graphNode.count({ where: { nodeType: 'Teacher' } }),
     prisma.graphNode.count({ where: { nodeType: 'Knowledge' } }),

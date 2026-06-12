@@ -37,7 +37,7 @@ function randomPick<T>(arr: T[], rng: () => number): T {
 async function main() {
   console.log(`Generating ${STUDENT_COUNT} students for class 1...`);
 
-  const classInfo = await prisma.schoolClass.findUnique({
+  const classInfo = await prisma.class.findUnique({
     where: { id: CLASS_ID },
     include: { grade: true }
   });

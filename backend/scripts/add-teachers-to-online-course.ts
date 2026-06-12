@@ -34,7 +34,7 @@ async function main() {
     if (teachers.length > 0) continue; // 已有老师
 
     // 通过class查school/grade信息
-    const sc = await prisma.schoolClass.findUnique({ where: { id: session.classId! } });
+    const sc = await prisma.class.findUnique({ where: { id: session.classId! } });
     if (!sc) continue;
 
     const grade = await prisma.grade.findUnique({ where: { id: sc.gradeId } });
@@ -70,7 +70,7 @@ async function main() {
     });
 
     // 更新班级teacherId
-    await prisma.schoolClass.update({
+    await prisma.class.update({
       where: { id: sc.id },
       data: { teacherId: teacherNode.id },
     });

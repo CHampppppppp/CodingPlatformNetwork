@@ -149,7 +149,7 @@ export class IngestionService {
       duplicateCount: 0,
     };
 
-    await this.importSchools(data, maps, result);
+    await this.importSchools(scenario.id, data, maps, result);
     await this.importGradesAndClasses(data.classes, maps, result);
     await this.importUsers(scenario.id, data.users, maps, result, concurrency);
     await this.importKnowledges(
@@ -195,15 +195,21 @@ export class IngestionService {
   }
 
   private async importSchools(
+    scenarioId: string,
     data: NormalizedPlatformData,
     maps: ImportMaps,
     result: IngestionImportResult,
   ): Promise<void> {
     for (const school of data.schools) {
       const created = await this.prisma.school.upsert({
-        where: { name: school.name },
+        where: {
+          scenarioId_name: {
+            scenarioId,
+            name: school.name,
+          },
+        },
         update: {},
-        create: { name: school.name },
+        create: { scenarioId, name: school.name },
       });
       maps.schoolIdByExternalId.set(school.externalId, created.id);
       result.schoolCount += 1;
@@ -244,7 +250,7 @@ export class IngestionService {
       const gradeId = maps.gradeIdByKey.get(gradeKey);
       if (!gradeId) continue;
 
-      const createdClass = await this.prisma.schoolClass.upsert({
+      const createdClass = await this.prisma.class.upsert({
         where: {
           gradeId_className: {
             gradeId,

@@ -57,15 +57,15 @@ async function findOrCreateGrade(schoolId: string, gradeNumber: number): Promise
 }
 
 async function findOrCreateClass(gradeId: string, className: string, teacherId?: string): Promise<string> {
-  let sc = await prisma.schoolClass.findFirst({ where: { gradeId, className } });
+  let sc = await prisma.class.findFirst({ where: { gradeId, className } });
   if (sc) {
     // 如果已有班级但没有teacher，关联一下
     if (!sc.teacherId && teacherId) {
-      await prisma.schoolClass.update({ where: { id: sc.id }, data: { teacherId } });
+      await prisma.class.update({ where: { id: sc.id }, data: { teacherId } });
     }
     return sc.id;
   }
-  sc = await prisma.schoolClass.create({ data: { gradeId, className, teacherId: teacherId || null } });
+  sc = await prisma.class.create({ data: { gradeId, className, teacherId: teacherId || null } });
   console.log(`  Created class: ${className}`);
   return sc.id;
 }
@@ -162,7 +162,7 @@ async function main() {
     const teacher = await getOrCreateTeacher(scenario.id, schoolId, gradeId, classId, info);
 
     // 更新班级的teacherId
-    await prisma.schoolClass.update({
+    await prisma.class.update({
       where: { id: classId },
       data: { teacherId: teacher.id },
     });
