@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mysql -u root -e \"SHOW DATABASES;\")"
+      "Bash(mysql -u root -e \"SHOW DATABASES;\")",
+      "Bash(mysql *)"
     ]
   }
 }

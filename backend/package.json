@@ -8,7 +8,6 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "db:push": "prisma db push --accept-data-loss",
     "db:seed": "ts-node prisma/seed.ts",
-    "db:explore": "ts-node scripts/db-explorer.ts",
     "db:generate": "prisma generate",
     "start": "nest start",
     "start:dev": "NODE_OPTIONS='--max-old-space-size=4096' nest start --watch",
