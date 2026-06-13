@@ -7,8 +7,8 @@ import { PrismaService } from "../src/shared/utils/prisma.service";
 
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
-const DATAS_DIR = path.resolve(__dirname, "../datas");
-const LONG_FORMAT_FILENAME = process.env.LONG_FORMAT_CSV ?? "ONLINE_COURSE_long_format_v2.csv";
+const DATAS_DIR = path.resolve(__dirname, "../datas/ONLINE_COURSE");
+const LONG_FORMAT_FILENAME = process.env.LONG_FORMAT_CSV ?? "ONLINE_COURSE_long_format_v3.csv";
 const CONCURRENCY = 5;
 
 async function main() {

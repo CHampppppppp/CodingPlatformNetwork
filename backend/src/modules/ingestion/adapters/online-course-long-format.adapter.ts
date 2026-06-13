@@ -15,7 +15,7 @@ import {
 
 const SCENARIO_CODE = "ONLINE_COURSE";
 const SCENARIO_NAME = "学科课程在线学习";
-const DEFAULT_FILENAME = "ONLINE_COURSE_long_format_v2.csv";
+const DEFAULT_FILENAME = "ONLINE_COURSE_long_format_v3.csv";
 const DEFAULT_OCCURRED_AT = new Date("2026-01-13T00:00:00Z");
 const DEFAULT_CLASS_FALLBACK = "默认班级";
 
@@ -160,7 +160,7 @@ export class OnlineCourseLongFormatAdapter implements PlatformAdapter {
         seen.add(kid);
         knowledges.push({
           externalId: kid,
-          displayName: `知识#${kid}`,
+          displayName: `知识 ${kid.slice(0, 8)}`,
         });
       }
     }
