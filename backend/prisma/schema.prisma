@@ -19,6 +19,7 @@ model LearningScenario {
   nodes     GraphNode[]
   sessions  InteractionSession[]
   schools   School[]
+  profiles  KnowledgeProfile[]
 
   @@map("learning_scenarios_test")
 }
@@ -145,13 +146,16 @@ model TeacherProfile {
 /// 知识点节点扩展属性，1:1 关联 GraphNode (nodeType = Knowledge)
 model KnowledgeProfile {
   nodeId        String    @id
+  scenarioId    String
   content       String?   @db.Text
   knowledgeType String?
   category      String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   node          GraphNode @relation(fields: [nodeId], references: [id])
+  scenario      LearningScenario @relation(fields: [scenarioId], references: [id])
 
+  @@index([scenarioId])
   @@map("knowledge_profiles_test")
 }
 
