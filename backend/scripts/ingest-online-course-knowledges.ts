@@ -138,15 +138,27 @@ async function main() {
     idMap[kid] = nodeId;
   }
 
-  // 5. Write map
-  fs.writeFileSync(MAP_OUTPUT, JSON.stringify(idMap, null, 2), "utf-8");
+  // 5. Write map (cuid → displayName for downstream consumers)
+  const displayNameByCuid: Record<string, string> = {};
+  for (const [kid, cuid] of Object.entries(idMap)) {
+    const row = rows.find((r) => r.id === kid);
+    if (row) {
+      const name = deriveDisplayName(row);
+      if (name) displayNameByCuid[cuid] = name;
+    }
+  }
+  const mapWithNames = {
+    kidToCuid: idMap,
+    cuidToName: displayNameByCuid,
+  };
+  fs.writeFileSync(MAP_OUTPUT, JSON.stringify(mapWithNames, null, 2), "utf-8");
 
   console.log("\n=== Summary ===");
   console.log(`  Total in CSV: ${rows.length}`);
   console.log(`  Created: ${created}`);
   console.log(`  Reused: ${reused}`);
   console.log(`  Failed: ${failed}`);
-  console.log(`  Map: ${MAP_OUTPUT} (${Object.keys(idMap).length} entries)`);
+  console.log(`  Map: ${MAP_OUTPUT} (${Object.keys(idMap).length} kid→cuid, ${Object.keys(displayNameByCuid).length} cuid→name)`);
 
   await prisma.$disconnect();
 }

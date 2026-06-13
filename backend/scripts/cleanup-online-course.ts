@@ -50,6 +50,27 @@ async function clean() {
   console.log('Deleted sessions');
   await prisma.graphNode.deleteMany({ where: { scenarioId: scenario.id } });
   console.log('Deleted nodes');
+
+  // Delete org hierarchy (School → Grade → Class)
+  const schools = await prisma.school.findMany({ where: { scenarioId: scenario.id }, select: { id: true } });
+  const schoolIds = schools.map(s => s.id);
+  console.log('Schools to delete:', schoolIds.length);
+
+  if (schoolIds.length > 0) {
+    const grades = await prisma.grade.findMany({ where: { schoolId: { in: schoolIds } }, select: { id: true } });
+    const gradeIds = grades.map(g => g.id);
+    console.log('Grades to delete:', gradeIds.length);
+
+    if (gradeIds.length > 0) {
+      await prisma.class.deleteMany({ where: { gradeId: { in: gradeIds } } });
+      console.log('Deleted classes');
+      await prisma.grade.deleteMany({ where: { id: { in: gradeIds } } });
+      console.log('Deleted grades');
+    }
+    await prisma.school.deleteMany({ where: { id: { in: schoolIds } } });
+    console.log('Deleted schools');
+  }
+
   await prisma.learningScenario.delete({ where: { id: scenario.id } });
   console.log('Deleted scenario');
 
