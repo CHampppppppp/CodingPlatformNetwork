@@ -1,32 +1,33 @@
 #!/usr/bin/env ts-node
 import * as dotenv from "dotenv";
 import * as path from "path";
-import { OnlineCourseAdapter } from "../src/modules/ingestion/adapters/online-course.adapter";
+import { OnlineCourseLongFormatAdapter } from "../src/modules/ingestion/adapters/online-course-long-format.adapter";
 import { IngestionService } from "../src/modules/ingestion/services/ingestion.service";
 import { PrismaService } from "../src/shared/utils/prisma.service";
 
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const DATAS_DIR = path.resolve(__dirname, "../datas");
+const LONG_FORMAT_FILENAME = process.env.LONG_FORMAT_CSV ?? "ONLINE_COURSE_long_format_v2.csv";
 const CONCURRENCY = 5;
 
 async function main() {
-  console.log("=== ONLINE_COURSE 数据导入 ===\n");
+  console.log("=== ONLINE_COURSE Long-Format 数据导入 ===\n");
 
   const prisma = new PrismaService();
   await prisma.$connect();
 
   try {
-    const adapter = new OnlineCourseAdapter(DATAS_DIR);
-    const normalizedData = await adapter.parse();
+    const adapter = new OnlineCourseLongFormatAdapter(DATAS_DIR, LONG_FORMAT_FILENAME);
+    const data = await adapter.parse();
 
-    console.log("原始数据：", normalizedData.sourceStats);
+    console.log("源数据:", data.sourceStats);
     console.log(
-      `标准化：schools=${normalizedData.schools.length} classes=${normalizedData.classes.length} users=${normalizedData.users.length} knowledges=${normalizedData.knowledges.length} sessions=${normalizedData.sessions.length} relations=${normalizedData.studentKnowledgeRelations.length} interactions=${normalizedData.interactions.length}\n`,
+      `标准化：schools=${data.schools.length} classes=${data.classes.length} users=${data.users.length} knowledges=${data.knowledges.length} sessions=${data.sessions.length} relations=${data.studentKnowledgeRelations.length} interactions=${data.interactions.length}\n`,
     );
 
     const ingestionService = new IngestionService(prisma);
-    const result = await ingestionService.importPlatformData(normalizedData, {
+    const result = await ingestionService.importPlatformData(data, {
       concurrency: CONCURRENCY,
       skipWhenScenarioHasNodes: true,
     });
