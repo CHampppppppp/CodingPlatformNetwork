@@ -85,6 +85,7 @@ export class NodeService {
         await tx.knowledgeProfile.create({
           data: {
             nodeId: node.id,
+            scenarioId: node.scenarioId,
             content: dto.profile?.content ?? dto.displayName,
             knowledgeType: dto.profile?.knowledgeType ?? "GENERAL",
             category: dto.profile?.category ?? null,

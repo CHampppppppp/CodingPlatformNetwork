@@ -375,6 +375,7 @@ export class IngestionService {
                 content: knowledge.content ?? null,
                 knowledgeType: knowledge.knowledgeType ?? null,
                 category: knowledge.category ?? null,
+                scenario: { connect: { id: scenarioId } },
               },
             },
           },
