@@ -150,12 +150,14 @@ model KnowledgeProfile {
   content       String?   @db.Text
   knowledgeType String?
   category      String?
+  difficulty    String?   // LOW | MEDIUM | HIGH
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   node          GraphNode @relation(fields: [nodeId], references: [id])
   scenario      LearningScenario @relation(fields: [scenarioId], references: [id])
 
   @@index([scenarioId])
+  @@index([difficulty])
   @@map("knowledge_profiles_test")
 }
 

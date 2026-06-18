@@ -118,7 +118,17 @@
       "Bash(powershell -Command \"Get-CimInstance Win32_Process -Filter 'ProcessId = 8724' | Select-Object ProcessId,Name,CommandLine | Format-List\")",
       "Bash(powershell -Command \"Get-CimInstance Win32_Process -Filter 'ProcessId = 6516' | Select-Object ProcessId,Name,CommandLine | Format-List\")",
       "Bash(MYSQL_PWD=123456 \"/c/Program Files/MySQL/MySQL Server 8.0/bin/mysql\" -u root -e \"SELECT VERSION\\(\\);\")",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(curl -s http://localhost:3334/org/schools)",
+      "Bash(curl -s http://localhost:3334/api/v1/org/schools)",
+      "Bash(lsof -ti:3334)",
+      "Bash(xargs kill -9)",
+      "Bash(grep -n \"CREATE DATABASE\\\\|USE \\\\`interaction_network_test\\\\`\" /Users/champ/Documents/CodingPlatformNetwork/interaction_network_test.sql)",
+      "Bash(grep -E \"\\\\.\\(ts|json|csv|sql\\)$\")",
+      "Bash(ps *)",
+      "Bash(kill -9 16218 27703 29207 29213 29232 29239)",
+      "Bash(awk '{print $2}')",
+      "Bash(xargs -r kill -9)"
     ]
   }
 }
