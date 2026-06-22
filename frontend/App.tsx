@@ -554,6 +554,31 @@ const App: React.FC = () => {
         };
       }
 
+      const DIMENSION_ORDER = new Map([
+        ["COG_READING", 1],
+        ["COG_LANGUAGE", 2],
+        ["COG_SCIENCE_KNOWLEDGE", 3],
+        ["COG_SCIENCE_INQUIRY", 4],
+        ["COG_COMPUTATIONAL", 5],
+        ["COG_TECH_LITERACY", 6],
+        ["PSY_ANXIETY", 7],
+        ["PSY_DEPRESSION", 8],
+        ["PSY_RESILIENCE", 9],
+        ["PSY_INTEREST_STABILITY", 10],
+        ["PSY_PRESSURE", 11],
+        ["PSY_LIFE_SATISFACTION", 12],
+        ["PRAC_INNOVATION", 13],
+        ["PRAC_PROBLEM_SOLVING", 14],
+        ["PRAC_COLLABORATION", 15],
+        ["PRAC_PRACTICE", 16],
+      ]);
+
+      const sortedDimensions = [...templateProfile.dimensions].sort(
+        (a, b) =>
+          (DIMENSION_ORDER.get(a.dimensionCode) ?? 999) -
+          (DIMENSION_ORDER.get(b.dimensionCode) ?? 999),
+      );
+
       newProfileData.template = {
         profileMeta: templateProfile.profile
           ? {
@@ -562,7 +587,7 @@ const App: React.FC = () => {
               totalScore: templateProfile.profile.totalScore,
             }
           : undefined,
-        dimensions: templateProfile.dimensions.map((d) => ({
+        dimensions: sortedDimensions.map((d) => ({
           code: d.dimensionCode,
           name: d.dimensionNameZh,
           category: d.category,
