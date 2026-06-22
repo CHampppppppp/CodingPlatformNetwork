@@ -41,12 +41,19 @@ export interface Node {
   knowledgeProfile?: KnowledgeProfile;
 }
 
+export type ActionType =
+  | "STUDY"
+  | "LIKE"
+  | "COMMENT"
+  | "HELP_SEEKING"
+  | "TEACHER_EVALUATION";
+
 export interface Link {
   source: string;
   target: string;
   value: number;
   type: "PHYSICAL" | "PLATFORM";
-  actionType?: string | null;
+  actionType?: ActionType | null;
   createdAt?: string | null;
 }
 
