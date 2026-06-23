@@ -49,6 +49,21 @@ export interface NormalizedKnowledge {
   externalSchoolId?: string | null;
   gradeName?: number | null;
   gradeNames?: number[];
+  resourceExternalId?: string | null;
+}
+
+export interface NormalizedResource {
+  externalId: string;
+  title: string;
+  description?: string | null;
+  url?: string | null;
+  resourceType: "VIDEO" | "ARTICLE" | "PRACTICE" | "GAME" | "DOCUMENT";
+  acceptanceRate?: number | null;
+}
+
+export interface NormalizedResourceKnowledgeRelation {
+  resourceExternalId: string;
+  knowledgeExternalId: string;
 }
 
 export interface NormalizedSession {
@@ -119,6 +134,8 @@ export interface NormalizedPlatformData {
   classes: NormalizedClassGroup[];
   users: NormalizedUser[];
   knowledges: NormalizedKnowledge[];
+  resources: NormalizedResource[];
+  resourceKnowledgeRelations: NormalizedResourceKnowledgeRelation[];
   sessions: NormalizedSession[];
   studentKnowledgeRelations: NormalizedStudentKnowledgeRelation[];
   interactions: NormalizedInteraction[];

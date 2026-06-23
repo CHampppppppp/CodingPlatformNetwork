@@ -267,7 +267,7 @@ model Resource {
   id                 String                      @id @default(cuid())
   title              String
   description        String?
-  url                String?
+  url                String?                     @db.Text
   resourceType       String
   acceptanceRate     Decimal?                    @db.Decimal(5, 2)
   createdAt          DateTime                    @default(now())

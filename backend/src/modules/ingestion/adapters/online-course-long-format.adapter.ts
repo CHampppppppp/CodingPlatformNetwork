@@ -8,6 +8,8 @@ import {
   NormalizedInteraction,
   NormalizedKnowledge,
   NormalizedPlatformData,
+  NormalizedResource,
+  NormalizedResourceKnowledgeRelation,
   NormalizedSchool,
   NormalizedSession,
   NormalizedStudentKnowledgeRelation,
@@ -19,6 +21,7 @@ import {
 const SCENARIO_CODE = "ONLINE_COURSE";
 const SCENARIO_NAME = "学科课程在线学习";
 const DEFAULT_FILENAME = "ONLINE_COURSE_V7.csv";
+const RESOURCES_FILENAME = "ONLINE_COURSE_resources.csv";
 const DEFAULT_OCCURRED_AT = new Date("2026-01-13T00:00:00Z");
 const DEFAULT_CLASS_FALLBACK = "默认班级";
 
@@ -57,6 +60,19 @@ const COL_WORK_TEACHER_SCORE = "作品_教师评分";
 const COL_WORK_TEACHER_COMMENT = "作品_教师评语";
 const COL_WORK_LIKE_DETAILS = "点赞学生姓名列表";
 const COL_WORK_ACTIVITY_COUNT = "埋点记录数";
+
+// Resources CSV column names
+const RES_COL_CONTENT = "content";
+const RES_COL_CODE = "代码 code";
+const RES_COL_KNOWLEDGE = "知识点";
+const RES_COL_MAIN = "主要的知识点";
+const RES_COL_QUESTION_PREFIX = "试题-题干";
+const RES_COL_CODE_PREFIX = "试题-代码";
+const RES_COL_KNOWLEDGE_PREFIX = "试题-知识点";
+const RES_COL_ANSWER_PREFIX = "试题-答案";
+const RES_COL_VIDEO_URL = "视频链接";
+const RES_COL_TEXTBOOK_PAGE = "教材-对应的页码";
+const RES_COL_ID = "id";
 
 // Likert scale mapping: 非常同意=5, 同意=4, 一般=3, 不同意=2, 非常不同意=1
 const LIKERT_MAP: Record<string, number> = {
@@ -104,10 +120,13 @@ export class OnlineCourseLongFormatAdapter implements PlatformAdapter {
     const rows = this.readCsv();
     this.classGradeMap = this.buildClassGradeMap(rows);
 
+    const resourceRows = this.readResourcesCsv();
+
     const schools = this.buildSchools(rows);
     const classes = this.buildClasses(rows);
     const users = this.buildUsers(rows);
-    const knowledges = this.buildKnowledges(rows);
+    const { knowledges, resources, resourceKnowledgeRelations } =
+      this.buildKnowledgesAndResources(resourceRows);
     const sessions = this.buildSessions(classes, schools);
     const studentKnowledgeRelations = this.buildStudentKnowledgeRelations(rows);
     const interactions = this.buildInteractions(rows, sessions);
@@ -125,6 +144,8 @@ export class OnlineCourseLongFormatAdapter implements PlatformAdapter {
       classes,
       users,
       knowledges,
+      resources,
+      resourceKnowledgeRelations,
       sessions,
       studentKnowledgeRelations,
       interactions,
@@ -132,8 +153,23 @@ export class OnlineCourseLongFormatAdapter implements PlatformAdapter {
       studentWorks,
       sourceStats: {
         longFormatRows: rows.length,
+        resourceRows: resourceRows.length,
       },
     };
+  }
+
+  private readResourcesCsv(): CsvRow[] {
+    const filepath = path.join(this.datasDir, RESOURCES_FILENAME);
+    if (!fs.existsSync(filepath)) {
+      return [];
+    }
+    const content = fs.readFileSync(filepath, "utf-8");
+    return csvParse(content, {
+      columns: true,
+      skip_empty_lines: true,
+      relax_column_count: true,
+      bom: true,
+    });
   }
 
   private readCsv(): CsvRow[] {
@@ -305,20 +341,74 @@ export class OnlineCourseLongFormatAdapter implements PlatformAdapter {
     return users;
   }
 
-  private buildKnowledges(rows: CsvRow[]): NormalizedKnowledge[] {
-    const seen = new Set<string>();
-    const knowledges: NormalizedKnowledge[] = [];
-    for (const row of rows) {
-      const themeId = (row[COL_THEME_ID] || "").trim();
-      if (!themeId || seen.has(themeId)) continue;
-      seen.add(themeId);
-      const themeName = (row[COL_THEME_NAME] || "").trim();
-      knowledges.push({
-        externalId: themeId,
-        displayName: themeName || `知识 ${themeId}`,
-      });
+  private buildKnowledgesAndResources(
+    resourceRows: CsvRow[],
+  ): {
+    knowledges: NormalizedKnowledge[];
+    resources: NormalizedResource[];
+    resourceKnowledgeRelations: NormalizedResourceKnowledgeRelation[];
+  } {
+    const resources: NormalizedResource[] = [];
+    const resourceById = new Map<string, NormalizedResource>();
+    const knowledgeById = new Map<string, NormalizedKnowledge>();
+    const relations: NormalizedResourceKnowledgeRelation[] = [];
+
+    for (const row of resourceRows) {
+      const resourceId = (row[RES_COL_ID] || "").trim();
+      const videoUrl = (row[RES_COL_VIDEO_URL] || "").trim();
+      if (!resourceId || !videoUrl) continue;
+
+      const mainKnowledge = (row[RES_COL_MAIN] || "").trim();
+      const resourceTitle = mainKnowledge || `资源 ${resourceId}`;
+
+      if (!resourceById.has(resourceId)) {
+        const resource: NormalizedResource = {
+          externalId: resourceId,
+          title: resourceTitle,
+          description: (row[RES_COL_KNOWLEDGE] || "").trim() || null,
+          url: videoUrl,
+          resourceType: "VIDEO",
+        };
+        resourceById.set(resourceId, resource);
+        resources.push(resource);
+      }
+
+      for (let i = 1; i <= 3; i++) {
+        const title = (row[`${RES_COL_KNOWLEDGE_PREFIX}${i}`] || "").trim();
+        if (!title) continue;
+
+        const question = (row[`${RES_COL_QUESTION_PREFIX}${i}`] || "").trim();
+        const code = (row[`${RES_COL_CODE_PREFIX}${i}`] || "").trim();
+        const answer = (row[`${RES_COL_ANSWER_PREFIX}${i}`] || "").trim();
+
+        const parts: string[] = [];
+        if (question) parts.push(question);
+        if (code) parts.push(`\n代码：\n${code}`);
+        if (answer) parts.push(`\n答案：\n${answer}`);
+        const content = parts.join("\n").trim() || null;
+
+        const knowledgeId = `${resourceId}:knowledge:${i}`;
+        if (!knowledgeById.has(knowledgeId)) {
+          knowledgeById.set(knowledgeId, {
+            externalId: knowledgeId,
+            displayName: title,
+            content,
+            resourceExternalId: resourceId,
+          });
+        }
+
+        relations.push({
+          resourceExternalId: resourceId,
+          knowledgeExternalId: knowledgeId,
+        });
+      }
     }
-    return knowledges;
+
+    return {
+      knowledges: Array.from(knowledgeById.values()),
+      resources,
+      resourceKnowledgeRelations: relations,
+    };
   }
 
   private buildSessions(
@@ -346,25 +436,10 @@ export class OnlineCourseLongFormatAdapter implements PlatformAdapter {
   private buildStudentKnowledgeRelations(
     rows: CsvRow[],
   ): NormalizedStudentKnowledgeRelation[] {
-    const relations: NormalizedStudentKnowledgeRelation[] = [];
-    for (const row of rows) {
-      const studentExternalId = (row[COL_USER_ID] || "").trim();
-      if (!studentExternalId) continue;
-      const sessionExternalId = this.sessionExternalIdForRow(row);
-      if (!sessionExternalId) continue;
-
-      const themeId = (row[COL_THEME_ID] || "").trim();
-      if (!themeId) continue;
-
-      relations.push({
-        studentExternalId,
-        knowledgeExternalId: themeId,
-        sessionExternalId,
-        strength: 1,
-        actionType: "STUDY",
-      });
-    }
-    return relations;
+    // 学生与知识点的 STUDY 关系不再从原始 CSV 中直接推导，
+    // 因为真实知识点来自 resources.csv，学生行为数据中没有直接对应键。
+    // 导入后可通过 generate-random-study-interactions.ts 脚本补充。
+    return [];
   }
 
   private buildInteractions(

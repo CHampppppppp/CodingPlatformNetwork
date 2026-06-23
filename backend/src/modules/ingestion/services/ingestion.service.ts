@@ -5,6 +5,8 @@ import {
   NormalizedClassGroup,
   NormalizedInteraction,
   NormalizedPlatformData,
+  NormalizedResource,
+  NormalizedResourceKnowledgeRelation,
   NormalizedStudentKnowledgeRelation,
   NormalizedUser,
 } from "../types/normalized-platform-data";
@@ -23,6 +25,8 @@ export interface IngestionImportResult {
   studentCount: number;
   teacherCount: number;
   knowledgeCount: number;
+  resourceCount?: number;
+  resourceKnowledgeRelationCount?: number;
   sessionCount: number;
   relationCount: number;
   studyInteractionCount: number;
@@ -45,6 +49,7 @@ type ImportMaps = {
   classIdByKey: Map<string, string>;
   nodeIdByUserExternalId: Map<string, string>;
   nodeIdByKnowledgeExternalId: Map<string, string>;
+  resourceIdByExternalId: Map<string, string>;
   studentContextByExternalId: Map<string, NodeContext>;
   sessionIdByExternalId: Map<string, string>;
 };
@@ -131,6 +136,7 @@ export class IngestionService {
       classIdByKey: new Map(),
       nodeIdByUserExternalId: new Map(),
       nodeIdByKnowledgeExternalId: new Map(),
+      resourceIdByExternalId: new Map(),
       studentContextByExternalId: new Map(),
       sessionIdByExternalId: new Map(),
     };
@@ -144,6 +150,8 @@ export class IngestionService {
       studentCount: 0,
       teacherCount: 0,
       knowledgeCount: 0,
+      resourceCount: 0,
+      resourceKnowledgeRelationCount: 0,
       sessionCount: 0,
       relationCount: 0,
       studyInteractionCount: 0,
@@ -159,6 +167,18 @@ export class IngestionService {
     await this.importKnowledges(
       scenario.id,
       data.knowledges,
+      maps,
+      result,
+      concurrency,
+    );
+    await this.importResources(
+      data.resources,
+      maps,
+      result,
+      concurrency,
+    );
+    await this.importResourceKnowledgeRelations(
+      data.resourceKnowledgeRelations,
       maps,
       result,
       concurrency,
@@ -202,6 +222,8 @@ export class IngestionService {
       studentCount: 0,
       teacherCount: 0,
       knowledgeCount: 0,
+      resourceCount: 0,
+      resourceKnowledgeRelationCount: 0,
       sessionCount: 0,
       relationCount: 0,
       studyInteractionCount: 0,
@@ -431,6 +453,81 @@ export class IngestionService {
 
         maps.nodeIdByKnowledgeExternalId.set(knowledge.externalId, node.id);
         result.knowledgeCount += 1;
+      },
+      concurrency,
+    );
+  }
+
+  private async importResources(
+    resources: NormalizedResource[],
+    maps: ImportMaps,
+    result: IngestionImportResult,
+    concurrency: number,
+  ): Promise<void> {
+    await parallelLimit(
+      resources,
+      async (resource) => {
+        try {
+          const url = resource.url ?? null;
+          const created = await this.prisma.resource.create({
+            data: {
+              title: resource.title,
+              description: resource.description ?? null,
+              url: url,
+              resourceType: resource.resourceType,
+              acceptanceRate:
+                resource.acceptanceRate != null
+                  ? new Prisma.Decimal(resource.acceptanceRate)
+                  : null,
+            },
+          });
+          maps.resourceIdByExternalId.set(resource.externalId, created.id);
+          result.resourceCount = (result.resourceCount ?? 0) + 1;
+        } catch (error) {
+          if (isUniqueConstraintError(error)) {
+            result.duplicateCount += 1;
+            return;
+          }
+          throw error;
+        }
+      },
+      concurrency,
+    );
+  }
+
+  private async importResourceKnowledgeRelations(
+    relations: NormalizedResourceKnowledgeRelation[],
+    maps: ImportMaps,
+    result: IngestionImportResult,
+    concurrency: number,
+  ): Promise<void> {
+    await parallelLimit(
+      relations,
+      async (relation) => {
+        const resourceId = maps.resourceIdByExternalId.get(
+          relation.resourceExternalId,
+        );
+        const knowledgeNodeId = maps.nodeIdByKnowledgeExternalId.get(
+          relation.knowledgeExternalId,
+        );
+        if (!resourceId || !knowledgeNodeId) return;
+
+        try {
+          await this.prisma.resourceKnowledgeRelation.create({
+            data: {
+              resourceId,
+              knowledgeNodeId,
+            },
+          });
+          result.resourceKnowledgeRelationCount =
+            (result.resourceKnowledgeRelationCount ?? 0) + 1;
+        } catch (error) {
+          if (isUniqueConstraintError(error)) {
+            result.duplicateCount += 1;
+            return;
+          }
+          throw error;
+        }
       },
       concurrency,
     );
