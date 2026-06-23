@@ -50,21 +50,22 @@ export class ResourceService {
 
     const resourceIds = items.map((item) => item.id);
 
-    const rateGroups = await this.prisma.studentResourceRate.groupBy({
-      by: ["resourceId"],
+    const rates = await this.prisma.studentResourceRate.findMany({
       where: { resourceId: { in: resourceIds } },
-      _avg: { rate: true },
+      select: { resourceId: true, rate: true },
     });
 
-    const rateMap = new Map(
-      rateGroups.map((g) => [
-        g.resourceId,
-        g._avg.rate != null ? Number(g._avg.rate) : null,
-      ]),
-    );
+    const rateAgg = new Map<string, { sum: number; count: number }>();
+    for (const r of rates) {
+      const prev = rateAgg.get(r.resourceId) ?? { sum: 0, count: 0 };
+      prev.sum += Number(r.rate);
+      prev.count += 1;
+      rateAgg.set(r.resourceId, prev);
+    }
 
     const enrichedItems = items.map((item) => {
-      const avgRate = rateMap.get(item.id) ?? null;
+      const agg = rateAgg.get(item.id);
+      const avgRate = agg ? agg.sum / agg.count : null;
       return {
         ...item,
         acceptanceRate: avgRate != null ? (avgRate / 5) * 100 : null,
