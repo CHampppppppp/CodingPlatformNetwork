@@ -1,68 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../shared/utils/prisma.service";
 import { Node } from "../../../shared/types/graph-data.type";
+import {
+  AGGREGATE_DIMENSION_KEYS,
+  AggregateDimensionScores,
+  computeAggregateDimensionScores,
+  emptyAggregateDimensionScores,
+  hasAnyAggregateDimensionScore,
+} from "../../../shared/utils/cognitive-dimensions";
 
-const dimensionCodes: Record<string, string[]> = {
-  knowledgeReserve: ["COG_READING", "COG_LANGUAGE", "COG_SCIENCE_KNOWLEDGE"],
-  learningEngagement: [
-    "COG_SCIENCE_INQUIRY",
-    "PRAC_PRACTICE",
-    "PRAC_COLLABORATION",
-  ],
-  cognitiveLoad: [
-    "PSY_ANXIETY",
-    "PSY_DEPRESSION",
-    "PSY_PRESSURE",
-    "PSY_LIFE_SATISFACTION",
-  ],
-  learningMotivation: ["PSY_RESILIENCE", "PSY_INTEREST_STABILITY"],
-  computationalThinking: ["COG_COMPUTATIONAL"],
-  humanAiTrust: ["COG_TECH_LITERACY"],
-  learningMethod: ["PRAC_PROBLEM_SOLVING", "PRAC_COLLABORATION"],
-  learningAttitude: ["PRAC_INNOVATION"],
-  selfRegulatedLearning: ["PRAC_PROBLEM_SOLVING"],
-  aiLiteracy: ["COG_TECH_LITERACY"],
-};
-
-const dimensionMultipliers: Record<string, number> = {
-  knowledgeReserve: 1 / 2,
-  learningEngagement: 1 / 2,
-  cognitiveLoad: 0.5,
-  learningMotivation: 1 / 2,
-  computationalThinking: 1 / 2,
-  humanAiTrust: 1 / 2,
-  learningMethod: 1 / 2,
-  learningAttitude: 1 / 2,
-  selfRegulatedLearning: 1 / 2,
-  aiLiteracy: 1 / 2,
-};
-
-const precomputedDimensionKeys = [
-  "knowledgeReserve",
-  "learningEngagement",
-  "cognitiveLoad",
-  "learningMotivation",
-  "computationalThinking",
-  "humanAiTrust",
-  "learningMethod",
-  "learningAttitude",
-  "selfRegulatedLearning",
-  "aiLiteracy",
-] as const;
-
-type CognitiveStats = Record<(typeof precomputedDimensionKeys)[number], number>;
-
-function computeDimension(
-  dimMap: Map<string, number>,
-  codes: string[],
-  multiplier: number,
-): number {
-  const values = codes
-    .map((code) => dimMap.get(code) ?? 0)
-    .filter((value) => value > 0);
-  if (values.length === 0) return 0;
-  return (values.reduce((a, b) => a + b, 0) / values.length) * multiplier;
-}
+type CognitiveStats = AggregateDimensionScores;
 
 @Injectable()
 export class CognitiveProfileService {
@@ -90,7 +37,7 @@ export class CognitiveProfileService {
         ]),
       );
 
-      if (this.hasPrecomputedDimensions(dimMap)) {
+      if (hasAnyAggregateDimensionScore(dimMap)) {
         node.studentProfile = {
           ...node.studentProfile,
           knowledgeReserve: dimMap.get("knowledgeReserve"),
@@ -109,7 +56,7 @@ export class CognitiveProfileService {
 
       node.studentProfile = {
         ...node.studentProfile,
-        ...this.computeAggregateDimensions(dimMap),
+        ...computeAggregateDimensionScores(dimMap),
       };
     }
   }
@@ -131,13 +78,22 @@ export class CognitiveProfileService {
         ]),
       );
 
-      if (this.hasPrecomputedDimensions(dimMap)) {
-        return Object.fromEntries(
-          precomputedDimensionKeys.map((key) => [key, dimMap.get(key) ?? 0]),
-        ) as CognitiveStats;
+      if (hasAnyAggregateDimensionScore(dimMap)) {
+        return {
+          knowledgeReserve: dimMap.get("knowledgeReserve") ?? 0,
+          learningEngagement: dimMap.get("learningEngagement") ?? 0,
+          cognitiveLoad: dimMap.get("cognitiveLoad") ?? 0,
+          learningMotivation: dimMap.get("learningMotivation") ?? 0,
+          computationalThinking: dimMap.get("computationalThinking") ?? 0,
+          humanAiTrust: dimMap.get("humanAiTrust") ?? 0,
+          learningMethod: dimMap.get("learningMethod") ?? 0,
+          learningAttitude: dimMap.get("learningAttitude") ?? 0,
+          selfRegulatedLearning: dimMap.get("selfRegulatedLearning") ?? 0,
+          aiLiteracy: dimMap.get("aiLiteracy") ?? 0,
+        };
       }
 
-      return this.computeAggregateDimensions(dimMap);
+      return computeAggregateDimensionScores(dimMap);
     });
 
     const average = (key: keyof CognitiveStats) => {
@@ -166,18 +122,7 @@ export class CognitiveProfileService {
   }
 
   emptyStats(): CognitiveStats {
-    return {
-      knowledgeReserve: 0,
-      learningEngagement: 0,
-      cognitiveLoad: 0,
-      learningMotivation: 0,
-      computationalThinking: 0,
-      humanAiTrust: 0,
-      learningMethod: 0,
-      learningAttitude: 0,
-      selfRegulatedLearning: 0,
-      aiLiteracy: 0,
-    };
+    return emptyAggregateDimensionScores();
   }
 
   private async getLatestProfileMap(studentNodeIds: string[]) {
@@ -208,66 +153,5 @@ export class CognitiveProfileService {
         dimensionScores: true,
       },
     });
-  }
-
-  private hasPrecomputedDimensions(dimMap: Map<string, number>) {
-    return precomputedDimensionKeys.some(
-      (key) => dimMap.has(key) && (dimMap.get(key) ?? 0) > 0,
-    );
-  }
-
-  private computeAggregateDimensions(dimMap: Map<string, number>): CognitiveStats {
-    return {
-      knowledgeReserve: computeDimension(
-        dimMap,
-        dimensionCodes.knowledgeReserve,
-        dimensionMultipliers.knowledgeReserve,
-      ),
-      learningEngagement: computeDimension(
-        dimMap,
-        dimensionCodes.learningEngagement,
-        dimensionMultipliers.learningEngagement,
-      ),
-      cognitiveLoad: computeDimension(
-        dimMap,
-        dimensionCodes.cognitiveLoad,
-        dimensionMultipliers.cognitiveLoad,
-      ),
-      learningMotivation: computeDimension(
-        dimMap,
-        dimensionCodes.learningMotivation,
-        dimensionMultipliers.learningMotivation,
-      ),
-      computationalThinking: computeDimension(
-        dimMap,
-        dimensionCodes.computationalThinking,
-        dimensionMultipliers.computationalThinking,
-      ),
-      humanAiTrust: computeDimension(
-        dimMap,
-        dimensionCodes.humanAiTrust,
-        dimensionMultipliers.humanAiTrust,
-      ),
-      learningMethod: computeDimension(
-        dimMap,
-        dimensionCodes.learningMethod,
-        dimensionMultipliers.learningMethod,
-      ),
-      learningAttitude: computeDimension(
-        dimMap,
-        dimensionCodes.learningAttitude,
-        dimensionMultipliers.learningAttitude,
-      ),
-      selfRegulatedLearning: computeDimension(
-        dimMap,
-        dimensionCodes.selfRegulatedLearning,
-        dimensionMultipliers.selfRegulatedLearning,
-      ),
-      aiLiteracy: computeDimension(
-        dimMap,
-        dimensionCodes.aiLiteracy,
-        dimensionMultipliers.aiLiteracy,
-      ),
-    };
   }
 }
