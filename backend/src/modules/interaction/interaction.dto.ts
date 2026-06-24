@@ -9,7 +9,16 @@ export const batchCreateInteractionsSchema = z.object({
         targetNodeId: z.string().min(1),
         interactionType: z.enum(["PHYSICAL", "PLATFORM"]),
         strength: z.number().min(0),
-        actionType: z.string().optional().nullable(),
+        actionType: z
+          .enum([
+            "STUDY",
+            "LIKE",
+            "COMMENT",
+            "HELP_SEEKING",
+            "TEACHER_EVALUATION",
+          ])
+          .optional()
+          .nullable(),
         durationSec: z.number().int().min(0).optional().nullable(),
       }),
     )

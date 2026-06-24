@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { Link, Node } from "../../../shared/types/graph-data.type";
+import { ActionType, Link, Node } from "../../../shared/types/graph-data.type";
 import {
   GraphNodeWithProfiles,
   InteractionWithNodes,
@@ -51,7 +51,7 @@ export class GraphAssemblerService {
       value: Number(interaction.strength),
       type:
         interaction.interactionType === "PHYSICAL" ? "PHYSICAL" : "PLATFORM",
-      actionType: interaction.actionType,
+      actionType: (interaction.actionType as ActionType) ?? null,
       createdAt: interaction.createdAt.toISOString(),
     }));
   }

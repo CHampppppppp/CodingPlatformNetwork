@@ -128,7 +128,9 @@
       "Bash(ps *)",
       "Bash(kill -9 16218 27703 29207 29213 29232 29239)",
       "Bash(awk '{print $2}')",
-      "Bash(xargs -r kill -9)"
+      "Bash(xargs -r kill -9)",
+      "Bash(python3 *)",
+      "Bash(python *)"
     ]
   }
 }

@@ -5,6 +5,8 @@ import {
   NormalizedClassGroup,
   NormalizedInteraction,
   NormalizedPlatformData,
+  NormalizedResource,
+  NormalizedResourceKnowledgeRelation,
   NormalizedStudentKnowledgeRelation,
   NormalizedUser,
 } from "../types/normalized-platform-data";
@@ -23,11 +25,15 @@ export interface IngestionImportResult {
   studentCount: number;
   teacherCount: number;
   knowledgeCount: number;
+  resourceCount?: number;
+  resourceKnowledgeRelationCount?: number;
   sessionCount: number;
   relationCount: number;
   studyInteractionCount: number;
   platformInteractionCount: number;
   duplicateCount: number;
+  cognitiveProfileCount: number;
+  studentWorkCount: number;
 }
 
 type NodeContext = {
@@ -43,6 +49,7 @@ type ImportMaps = {
   classIdByKey: Map<string, string>;
   nodeIdByUserExternalId: Map<string, string>;
   nodeIdByKnowledgeExternalId: Map<string, string>;
+  resourceIdByExternalId: Map<string, string>;
   studentContextByExternalId: Map<string, NodeContext>;
   sessionIdByExternalId: Map<string, string>;
 };
@@ -129,6 +136,7 @@ export class IngestionService {
       classIdByKey: new Map(),
       nodeIdByUserExternalId: new Map(),
       nodeIdByKnowledgeExternalId: new Map(),
+      resourceIdByExternalId: new Map(),
       studentContextByExternalId: new Map(),
       sessionIdByExternalId: new Map(),
     };
@@ -142,11 +150,15 @@ export class IngestionService {
       studentCount: 0,
       teacherCount: 0,
       knowledgeCount: 0,
+      resourceCount: 0,
+      resourceKnowledgeRelationCount: 0,
       sessionCount: 0,
       relationCount: 0,
       studyInteractionCount: 0,
       platformInteractionCount: 0,
       duplicateCount: 0,
+      cognitiveProfileCount: 0,
+      studentWorkCount: 0,
     };
 
     await this.importSchools(scenario.id, data, maps, result);
@@ -155,6 +167,18 @@ export class IngestionService {
     await this.importKnowledges(
       scenario.id,
       data.knowledges,
+      maps,
+      result,
+      concurrency,
+    );
+    await this.importResources(
+      data.resources,
+      maps,
+      result,
+      concurrency,
+    );
+    await this.importResourceKnowledgeRelations(
+      data.resourceKnowledgeRelations,
       maps,
       result,
       concurrency,
@@ -168,6 +192,18 @@ export class IngestionService {
     );
     await this.importPlatformInteractions(
       data.interactions,
+      maps,
+      result,
+      concurrency,
+    );
+    await this.importCognitiveProfiles(
+      data.cognitiveProfiles ?? [],
+      maps,
+      result,
+      concurrency,
+    );
+    await this.importStudentWorks(
+      data.studentWorks ?? [],
       maps,
       result,
       concurrency,
@@ -186,11 +222,15 @@ export class IngestionService {
       studentCount: 0,
       teacherCount: 0,
       knowledgeCount: 0,
+      resourceCount: 0,
+      resourceKnowledgeRelationCount: 0,
       sessionCount: 0,
       relationCount: 0,
       studyInteractionCount: 0,
       platformInteractionCount: 0,
       duplicateCount: 0,
+      cognitiveProfileCount: 0,
+      studentWorkCount: 0,
     };
   }
 
@@ -308,6 +348,30 @@ export class IngestionService {
                   studentProfile: {
                     create: {
                       externalUserId: user.externalUserId ?? null,
+                      gender: user.gender ?? null,
+                      learningStyle: user.learningStyle ?? null,
+                      personality: user.personality ?? null,
+                      groupBehavior: user.groupBehavior ?? null,
+                      aiContentSatisfaction:
+                        user.aiContentSatisfaction != null
+                          ? String(user.aiContentSatisfaction)
+                          : null,
+                      resourceHelpfulness:
+                        user.resourceHelpfulness != null
+                          ? String(user.resourceHelpfulness)
+                          : null,
+                      posterSatisfaction:
+                        user.posterSatisfaction != null
+                          ? String(user.posterSatisfaction)
+                          : null,
+                      teachingPreference:
+                        user.teachingPreference != null
+                          ? String(user.teachingPreference)
+                          : null,
+                      helpSource:
+                        user.helpSource != null
+                          ? String(user.helpSource)
+                          : null,
                     },
                   },
                 }
@@ -336,6 +400,12 @@ export class IngestionService {
           });
           result.studentCount += 1;
         } else {
+          if (resolvedClassId) {
+            await this.prisma.class.update({
+              where: { id: resolvedClassId },
+              data: { teacherId: node.id },
+            });
+          }
           result.teacherCount += 1;
         }
       },
@@ -383,6 +453,81 @@ export class IngestionService {
 
         maps.nodeIdByKnowledgeExternalId.set(knowledge.externalId, node.id);
         result.knowledgeCount += 1;
+      },
+      concurrency,
+    );
+  }
+
+  private async importResources(
+    resources: NormalizedResource[],
+    maps: ImportMaps,
+    result: IngestionImportResult,
+    concurrency: number,
+  ): Promise<void> {
+    await parallelLimit(
+      resources,
+      async (resource) => {
+        try {
+          const url = resource.url ?? null;
+          const created = await this.prisma.resource.create({
+            data: {
+              title: resource.title,
+              description: resource.description ?? null,
+              url: url,
+              resourceType: resource.resourceType,
+              acceptanceRate:
+                resource.acceptanceRate != null
+                  ? new Prisma.Decimal(resource.acceptanceRate)
+                  : null,
+            },
+          });
+          maps.resourceIdByExternalId.set(resource.externalId, created.id);
+          result.resourceCount = (result.resourceCount ?? 0) + 1;
+        } catch (error) {
+          if (isUniqueConstraintError(error)) {
+            result.duplicateCount += 1;
+            return;
+          }
+          throw error;
+        }
+      },
+      concurrency,
+    );
+  }
+
+  private async importResourceKnowledgeRelations(
+    relations: NormalizedResourceKnowledgeRelation[],
+    maps: ImportMaps,
+    result: IngestionImportResult,
+    concurrency: number,
+  ): Promise<void> {
+    await parallelLimit(
+      relations,
+      async (relation) => {
+        const resourceId = maps.resourceIdByExternalId.get(
+          relation.resourceExternalId,
+        );
+        const knowledgeNodeId = maps.nodeIdByKnowledgeExternalId.get(
+          relation.knowledgeExternalId,
+        );
+        if (!resourceId || !knowledgeNodeId) return;
+
+        try {
+          await this.prisma.resourceKnowledgeRelation.create({
+            data: {
+              resourceId,
+              knowledgeNodeId,
+            },
+          });
+          result.resourceKnowledgeRelationCount =
+            (result.resourceKnowledgeRelationCount ?? 0) + 1;
+        } catch (error) {
+          if (isUniqueConstraintError(error)) {
+            result.duplicateCount += 1;
+            return;
+          }
+          throw error;
+        }
       },
       concurrency,
     );
@@ -510,6 +655,113 @@ export class IngestionService {
             },
           });
           result.platformInteractionCount += 1;
+        } catch (error) {
+          if (isUniqueConstraintError(error)) {
+            result.duplicateCount += 1;
+            return;
+          }
+          throw error;
+        }
+      },
+      concurrency,
+    );
+  }
+
+  private async importCognitiveProfiles(
+    profiles: NormalizedPlatformData["cognitiveProfiles"],
+    maps: ImportMaps,
+    result: IngestionImportResult,
+    concurrency: number,
+  ): Promise<void> {
+    if (!profiles || profiles.length === 0) return;
+
+    await parallelLimit(
+      profiles,
+      async (profile) => {
+        const studentNodeId = maps.nodeIdByUserExternalId.get(
+          profile.studentExternalId,
+        );
+        if (!studentNodeId) return;
+
+        try {
+          const created = await this.prisma.studentCognitiveProfile.create({
+            data: {
+              studentNodeId,
+              profileVersion: profile.profileVersion,
+              generatedAt: profile.generatedAt,
+              totalScore: new Prisma.Decimal(profile.totalScore),
+              dimensionScores: {
+                create: profile.dimensions.map((d) => ({
+                  dimensionCode: d.dimensionCode,
+                  scoreValue: new Prisma.Decimal(d.scoreValue),
+                  scoreLevel: d.scoreLevel,
+                })),
+              },
+            },
+          });
+          result.cognitiveProfileCount += 1;
+        } catch (error) {
+          if (isUniqueConstraintError(error)) {
+            result.duplicateCount += 1;
+            return;
+          }
+          throw error;
+        }
+      },
+      concurrency,
+    );
+  }
+
+  private async importStudentWorks(
+    works: NormalizedPlatformData["studentWorks"],
+    maps: ImportMaps,
+    result: IngestionImportResult,
+    concurrency: number,
+  ): Promise<void> {
+    if (!works || works.length === 0) return;
+
+    await parallelLimit(
+      works,
+      async (work) => {
+        const studentNodeId = maps.nodeIdByUserExternalId.get(
+          work.studentExternalId,
+        );
+        const sessionId = maps.sessionIdByExternalId.get(
+          work.sessionExternalId,
+        );
+        if (!studentNodeId || !sessionId) return;
+
+        const teacherNodeId = work.teacherExternalId
+          ? maps.nodeIdByUserExternalId.get(work.teacherExternalId)
+          : null;
+
+        try {
+          await this.prisma.studentWork.create({
+            data: {
+              studentNodeId,
+              sessionId,
+              externalWorkId: work.externalWorkId ?? null,
+              workName: work.workName,
+              publishedAt: work.publishedAt ?? null,
+              themeId: work.themeId ?? null,
+              themeName: work.themeName ?? null,
+              themeDirectory: work.themeDirectory ?? null,
+              textbookName: work.textbookName ?? null,
+              likeCount: work.likeCount ?? 0,
+              commentCount: work.commentCount ?? 0,
+              teacherId: teacherNodeId ?? null,
+              teacherScore:
+                work.teacherScore != null
+                  ? new Prisma.Decimal(work.teacherScore)
+                  : null,
+              teacherComment: work.teacherComment ?? null,
+              likeDetails: work.likeDetails ?? null,
+              commentDetails: work.commentDetails ?? null,
+              activityLogCount: work.activityLogCount ?? 0,
+              activityLogMeta: work.activityLogMeta ?? null,
+            },
+          });
+          result.studentWorkCount += 1;
         } catch (error) {
           if (isUniqueConstraintError(error)) {
             result.duplicateCount += 1;

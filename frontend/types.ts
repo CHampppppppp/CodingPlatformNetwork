@@ -11,6 +11,14 @@ export enum InteractionType {
   PLATFORM = "PLATFORM", // 基于平台采集 (虚线)
 }
 
+export enum ActionType {
+  STUDY = "STUDY",
+  LIKE = "LIKE",
+  COMMENT = "COMMENT",
+  HELP_SEEKING = "HELP_SEEKING",
+  TEACHER_EVALUATION = "TEACHER_EVALUATION",
+}
+
 export enum Scenario {
   SHOW_CASE = "展示场景",
   ONLINE_COURSE = "学科课程在线学习",

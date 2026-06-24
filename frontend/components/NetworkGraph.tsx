@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
-import { GraphData, GraphNode, NodeType, InteractionType } from '../types';
+import { GraphData, GraphNode, NodeType, InteractionType, ActionType } from '../types';
 
 interface NetworkGraphProps {
   data: GraphData;
@@ -56,18 +56,16 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
       .data(data.links)
       .join("line")
       .attr("stroke-width", (d: any) => {
-        if (d.actionType === "COLLABORATION") return 0.8;
-        if (d.actionType === "HELP_SEEKING") return 2.5;
+        if (d.actionType === ActionType.HELP_SEEKING) return 2.5;
         return Math.sqrt(d.value);
       })
       .attr("stroke", (d) => linkColor(d.type))
       .attr("stroke-opacity", (d: any) => {
-        if (d.actionType === "COLLABORATION") return 0.25;
-        if (d.actionType === "HELP_SEEKING") return 0.5;
+        if (d.actionType === ActionType.HELP_SEEKING) return 0.5;
         return 0.6;
       })
-      .attr("stroke-dasharray", (d) => (d.type === InteractionType.PLATFORM || d.type === 'SOCIAL') ? "4, 2" : null)
-      .attr("class", (d) => (d.type === InteractionType.PLATFORM || d.type === 'SOCIAL') ? "platform-link" : "physical-link");
+      .attr("stroke-dasharray", (d) => d.type === InteractionType.PLATFORM ? "4, 2" : null)
+      .attr("class", (d) => d.type === InteractionType.PLATFORM ? "platform-link" : "physical-link");
 
     const node = rootG.append("g")
       .attr("stroke", "#fff")

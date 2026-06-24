@@ -29,6 +29,15 @@ export interface NormalizedUser {
   gradeName?: number | null;
   className?: string | null;
   subject?: string | null;
+  gender?: string | null;
+  learningStyle?: string | null;
+  personality?: string | null;
+  groupBehavior?: string | null;
+  aiContentSatisfaction?: number | null;
+  resourceHelpfulness?: number | null;
+  posterSatisfaction?: number | null;
+  teachingPreference?: number | null;
+  helpSource?: number | null;
 }
 
 export interface NormalizedKnowledge {
@@ -40,6 +49,21 @@ export interface NormalizedKnowledge {
   externalSchoolId?: string | null;
   gradeName?: number | null;
   gradeNames?: number[];
+  resourceExternalId?: string | null;
+}
+
+export interface NormalizedResource {
+  externalId: string;
+  title: string;
+  description?: string | null;
+  url?: string | null;
+  resourceType: "VIDEO" | "ARTICLE" | "PRACTICE" | "GAME" | "DOCUMENT";
+  acceptanceRate?: number | null;
+}
+
+export interface NormalizedResourceKnowledgeRelation {
+  resourceExternalId: string;
+  knowledgeExternalId: string;
 }
 
 export interface NormalizedSession {
@@ -69,15 +93,54 @@ export interface NormalizedInteraction {
   durationSec?: number | null;
 }
 
+export interface NormalizedCognitiveScore {
+  dimensionCode: string;
+  scoreValue: number;
+  scoreLevel: string;
+}
+
+export interface NormalizedCognitiveProfile {
+  studentExternalId: string;
+  profileVersion: string;
+  generatedAt: Date;
+  totalScore: number;
+  dimensions: NormalizedCognitiveScore[];
+}
+
+export interface NormalizedStudentWork {
+  studentExternalId: string;
+  sessionExternalId: string;
+  externalWorkId?: string | null;
+  workName: string;
+  publishedAt?: Date | null;
+  themeId?: string | null;
+  themeName?: string | null;
+  themeDirectory?: string | null;
+  textbookName?: string | null;
+  likeCount?: number;
+  commentCount?: number;
+  teacherExternalId?: string | null;
+  teacherScore?: number | null;
+  teacherComment?: string | null;
+  likeDetails?: string | null;
+  commentDetails?: string | null;
+  activityLogCount?: number;
+  activityLogMeta?: string | null;
+}
+
 export interface NormalizedPlatformData {
   scenario: NormalizedScenario;
   schools: NormalizedSchool[];
   classes: NormalizedClassGroup[];
   users: NormalizedUser[];
   knowledges: NormalizedKnowledge[];
+  resources: NormalizedResource[];
+  resourceKnowledgeRelations: NormalizedResourceKnowledgeRelation[];
   sessions: NormalizedSession[];
   studentKnowledgeRelations: NormalizedStudentKnowledgeRelation[];
   interactions: NormalizedInteraction[];
+  cognitiveProfiles?: NormalizedCognitiveProfile[];
+  studentWorks?: NormalizedStudentWork[];
   sourceStats?: Record<string, number>;
 }
 
