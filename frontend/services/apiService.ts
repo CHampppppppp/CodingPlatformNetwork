@@ -1,4 +1,4 @@
-import { GraphData, LearningScenarioOption } from "../types";
+import { GraphData, LearningScenarioOption, ChatbotDimensionIncrementData } from "../types";
 import { API_BASE_URL } from "../constants";
 
 export interface StudentCognitiveTemplateApiResponse {
@@ -863,6 +863,39 @@ export const fetchStudentCognitiveTemplate = async (
     return normalized;
   } catch (error) {
     console.error("获取学生认知模板失败:", error);
+    throw error;
+  }
+};
+
+export const fetchChatbotDimensionIncrement = async (
+  studentNodeId: string,
+): Promise<ChatbotDimensionIncrementData> => {
+  try {
+    const url = `${API_BASE_URL}/students/${encodeURIComponent(
+      studentNodeId,
+    )}/chatbot-dimension-increment`;
+    console.log("请求 chatbot 维度增量数据:", url);
+
+    const response = await fetchWithRetry(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API请求失败: ${response.status}`);
+    }
+
+    const payload = await response.json();
+    const data = payload?.data ?? payload;
+    if (!data || !data.studentNodeId) {
+      throw new Error("chatbot 维度增量数据返回结构无效");
+    }
+
+    return data as ChatbotDimensionIncrementData;
+  } catch (error) {
+    console.error("获取 chatbot 维度增量数据失败:", error);
     throw error;
   }
 };

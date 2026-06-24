@@ -235,3 +235,19 @@ export interface ClassroomAnalysis {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface ChatbotDimensionIncrementItem {
+  dimensionCode: string;
+  dimensionNameZh: string;
+  category: string;
+  previousValue: number | null;
+  newValue: number;
+  changeDelta: number;
+  reason: string;
+  updatedAt: string | null;
+}
+
+export interface ChatbotDimensionIncrementData {
+  studentNodeId: string;
+  baseDimensions: ChatbotDimensionIncrementItem[];
+}

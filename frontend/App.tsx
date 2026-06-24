@@ -23,6 +23,7 @@ import {
   AlertCircle,
   Stethoscope,
   Sparkles,
+  TrendingUp,
 } from "lucide-react";
 import NetworkGraph from "./components/NetworkGraph";
 import AnalysisPanel from "./components/AnalysisPanel";
@@ -35,8 +36,12 @@ import {
   getClassesBySchoolAndGrade,
   fetchResourceStudentRates,
 } from "./services/dataService";
-import { fetchStudentCognitiveTemplate as fetchStudentCognitiveTemplateRaw, fetchStudentExpertIntervention } from "./services/apiService";
+import { fetchStudentCognitiveTemplate as fetchStudentCognitiveTemplateRaw, fetchStudentExpertIntervention, fetchChatbotDimensionIncrement } from "./services/apiService";
 import { getStrategy } from "./services/strategies";
+import {
+  computeAggregateDimensions,
+  buildTemplateDimensions,
+} from "./services/dimensionUtils";
 import {
   GraphData,
   Resource,
@@ -48,6 +53,7 @@ import {
   GraphLink,
   StudentProfile,
   LearningScenarioOption,
+  ChatbotDimensionIncrementData,
 } from "./types";
 import {
   COGNITIVE_DIMENSION_LABELS,
@@ -140,6 +146,13 @@ const App: React.FC = () => {
     Awaited<ReturnType<typeof fetchStudentExpertIntervention>> | null
   >(null);
   const [expertInterventionLoading, setExpertInterventionLoading] = useState(false);
+
+  const [isChatbotIncrementOpen, setIsChatbotIncrementOpen] = useState(false);
+  const [chatbotIncrementData, setChatbotIncrementData] = useState<
+    ChatbotDimensionIncrementData | null
+  >(null);
+  const [chatbotIncrementLoading, setChatbotIncrementLoading] = useState(false);
+  const [isUpdatingScores, setIsUpdatingScores] = useState(false);
 
   // Class options state (loaded async)
   const [classOptions, setClassOptions] = useState<{
@@ -661,6 +674,80 @@ const App: React.FC = () => {
     setExpertInterventionData(null);
   };
 
+  const isChatbotIncrementEligible = useMemo(() => {
+    return scenarioCode === "SHOW_CASE" && classInfo.classId.includes("801");
+  }, [scenarioCode, classInfo.classId]);
+
+  const handleChatbotIncrement = async () => {
+    if (!selectedNode || selectedNode.type !== NodeType.STUDENT) return;
+
+    setChatbotIncrementLoading(true);
+    setIsUpdatingScores(true);
+    try {
+      const data = await fetchChatbotDimensionIncrement(selectedNode.id);
+      setChatbotIncrementData(data);
+
+      const baseScoreMap = data.baseDimensions.reduce<Record<string, number>>(
+        (acc, item) => {
+          acc[item.dimensionCode] = item.newValue;
+          return acc;
+        },
+        {},
+      );
+
+      const aggregateScores = computeAggregateDimensions(baseScoreMap);
+      const templateDimensions = buildTemplateDimensions(baseScoreMap);
+
+      setSelectedNode((prev) => {
+        if (!prev || prev.id !== selectedNode.id || prev.type !== NodeType.STUDENT) {
+          return prev;
+        }
+
+        const baseProfile = prev.studentProfile || {
+          school: "",
+          grade: "",
+          classId: "",
+          knowledgeReserve: 0,
+          learningEngagement: 0,
+          cognitiveLoad: 0,
+          learningMotivation: 0,
+          computationalThinking: 0,
+          humanAiTrust: 0,
+          learningMethod: 0,
+          learningAttitude: 0,
+          selfRegulatedLearning: 0,
+          aiLiteracy: 0,
+        };
+
+        return {
+          ...prev,
+          studentProfile: {
+            ...baseProfile,
+            ...aggregateScores,
+            template: {
+              ...baseProfile.template,
+              dimensions: templateDimensions,
+            },
+          },
+        };
+      });
+
+      setTimeout(() => {
+        setIsUpdatingScores(false);
+        setIsChatbotIncrementOpen(true);
+      }, 600);
+    } catch (err) {
+      console.error("加载 chatbot 维度增量数据失败:", err);
+      setIsUpdatingScores(false);
+    } finally {
+      setChatbotIncrementLoading(false);
+    }
+  };
+
+  const handleCloseChatbotIncrement = () => {
+    setIsChatbotIncrementOpen(false);
+  };
+
   const handleAttributeEnter = (
     e: React.MouseEvent,
     label: string,
@@ -1016,6 +1103,20 @@ const App: React.FC = () => {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
+                      {selectedNode.type === NodeType.STUDENT && isChatbotIncrementEligible && (
+                        <button
+                          onClick={handleChatbotIncrement}
+                          disabled={chatbotIncrementLoading}
+                          className="flex items-center gap-1.5 bg-emerald-500/80 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg transition-colors text-xs font-medium backdrop-blur-sm disabled:opacity-70"
+                        >
+                          {chatbotIncrementLoading ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <TrendingUp className="w-3.5 h-3.5" />
+                          )}
+                          <span>增量更新</span>
+                        </button>
+                      )}
                       {selectedNode.type === NodeType.STUDENT && scenarioCode === "SHOW_CASE" && (
                         <button
                           onClick={handleOpenExpertIntervention}
@@ -1063,10 +1164,14 @@ const App: React.FC = () => {
                                   return (
                                     <div
                                       key={key}
-                                      className={`space-y-1 group relative p-2 bg-slate-50 rounded-lg border border-slate-100 ${
+                                      className={`space-y-1 group relative p-2 bg-slate-50 rounded-lg border border-slate-100 transition-colors duration-300 ${
                                         canShowStrategy
                                           ? "cursor-help"
                                           : "cursor-default"
+                                      } ${
+                                        isUpdatingScores
+                                          ? "ring-2 ring-emerald-200 bg-emerald-50/70"
+                                          : ""
                                       }`}
                                       onMouseEnter={(e) => {
                                         if (dimensionCodeToStrategyKey[key]) {
@@ -1146,10 +1251,14 @@ const App: React.FC = () => {
                                     return (
                                       <div
                                         key={item.code}
-                                        className={`space-y-1 group relative p-2 bg-slate-50 rounded-lg border border-slate-100 ${
+                                        className={`space-y-1 group relative p-2 bg-slate-50 rounded-lg border border-slate-100 transition-colors duration-300 ${
                                           canShowStrategy
                                             ? "cursor-help"
                                             : "cursor-default"
+                                        } ${
+                                          isUpdatingScores
+                                            ? "ring-2 ring-emerald-200 bg-emerald-50/70"
+                                            : ""
                                         }`}
                                         onMouseEnter={(e) => {
                                           if (
@@ -1614,6 +1723,87 @@ const App: React.FC = () => {
                   <p className="text-sm text-slate-500">加载专家干预数据失败，请重试</p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Chatbot Dimension Increment Modal */}
+      {isChatbotIncrementOpen && chatbotIncrementData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-[900px] max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-emerald-50 to-teal-50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-500 rounded-lg">
+                  <TrendingUp className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800">个人维度增量更新</h2>
+                  <p className="text-xs text-slate-500">
+                    {selectedNode?.name} · 基于 chatbot 历史维度记录的前后对比
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseChatbotIncrement}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full p-2 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-emerald-500" />
+                  16 个基础维度得分对比
+                </h3>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                  {chatbotIncrementData.baseDimensions.map((item) => (
+                    <div key={item.dimensionCode} className="space-y-2 p-3 bg-white rounded-lg border border-slate-100">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="text-sm font-semibold text-slate-700">{item.dimensionNameZh}</div>
+                          <div className="text-[10px] text-slate-400">{item.category}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-slate-400">
+                              {item.previousValue !== null
+                                ? item.previousValue.toFixed(1)
+                                : "—"}
+                            </span>
+                            <span className="text-slate-300">→</span>
+                            <span className="font-bold text-slate-800">{item.newValue.toFixed(1)}</span>
+                            {item.changeDelta !== 0 && (
+                              <span
+                                className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                                  item.changeDelta > 0
+                                    ? "bg-emerald-100 text-emerald-700"
+                                    : "bg-rose-100 text-rose-700"
+                                }`}
+                              >
+                                {item.changeDelta > 0 ? "+" : ""}
+                                {item.changeDelta.toFixed(1)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                          style={{ width: `${Math.min((item.newValue / 10) * 100, 100)}%` }}
+                        ></div>
+                      </div>
+                      <div className="text-[11px] text-slate-500 bg-slate-50 rounded px-2 py-1.5">
+                        <span className="font-medium text-slate-600">更新依据：</span>
+                        {item.reason}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
