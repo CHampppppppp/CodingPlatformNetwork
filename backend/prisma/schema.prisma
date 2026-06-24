@@ -267,8 +267,9 @@ model Resource {
   id                 String                      @id @default(cuid())
   title              String
   description        String?
-  url                String?
+  url                String?                     @db.VarChar(500)
   resourceType       String
+  difficulty         String?
   acceptanceRate     Decimal?                    @db.Decimal(5, 2)
   createdAt          DateTime                    @default(now())
   updatedAt          DateTime                    @updatedAt
@@ -276,6 +277,7 @@ model Resource {
   studentRates       StudentResourceRate[]
 
   @@index([resourceType])
+  @@index([difficulty])
   @@map("resources_test")
 }
 

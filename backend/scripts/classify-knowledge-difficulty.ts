@@ -44,7 +44,7 @@ function callDeepSeek(prompt: string): Promise<string> {
     const body = JSON.stringify({
       model: DEEPSEEK_MODEL,
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 10,
+      max_tokens: 50,
       temperature: 0.1,
     });
 
@@ -71,7 +71,8 @@ function callDeepSeek(prompt: string): Promise<string> {
               reject(new Error(`DeepSeek error: ${JSON.stringify(json.error)}`));
               return;
             }
-            const text = json.choices?.[0]?.message?.content ?? "";
+            const message = json.choices?.[0]?.message ?? {};
+            const text = (message.content || message.reasoning_content || "");
             resolve(text.trim().toUpperCase());
           } catch (err) {
             reject(new Error(`Failed to parse response: ${data}`));
