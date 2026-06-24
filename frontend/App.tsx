@@ -297,12 +297,7 @@ const App: React.FC = () => {
 
   // Load classes when school or grade changes
   useEffect(() => {
-    console.log("班级加载 useEffect 触发:", { 
-      school: classInfo.school, 
-      grade: classInfo.grade 
-    });
     if (!classInfo.school || !classInfo.grade) {
-      console.log("缺少学校或年级，跳过加载班级");
       return;
     }
 
@@ -1240,7 +1235,7 @@ const App: React.FC = () => {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {selectedNode.type === NodeType.STUDENT && isChatbotIncrementEligible && (
+                      {isChatbotIncrementEligible && (
                         <button
                           onClick={handleChatbotIncrement}
                           disabled={chatbotIncrementLoading}
