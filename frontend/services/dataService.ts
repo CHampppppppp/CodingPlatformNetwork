@@ -32,7 +32,12 @@ import {
   graphDataCache,
 } from "./performanceUtils";
 
-function anonymizeStudentNames(data: GraphData): GraphData {
+function anonymizeStudentNames(data: GraphData, scenarioCode: string): GraphData {
+  // 展示场景直接显示学生真实姓名，不做脱敏
+  if (scenarioCode === "SHOW_CASE") {
+    return data;
+  }
+
   let studentIndex = 0;
 
   const nodes = data.nodes.map((node) => {
@@ -141,7 +146,7 @@ export const fetchGraphData = async (
       // 清理和规范化数据
       const sanitizedData = sanitizeGraphData(transformedData);
 
-      const anonymizedData = anonymizeStudentNames(sanitizedData);
+      const anonymizedData = anonymizeStudentNames(sanitizedData, scenarioCode);
 
       return anonymizedData;
     });

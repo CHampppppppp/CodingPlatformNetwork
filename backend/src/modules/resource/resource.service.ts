@@ -66,8 +66,12 @@ export class ResourceService {
     const enrichedItems = items.map((item) => {
       const agg = rateAgg.get(item.id);
       const avgRate = agg ? agg.sum / agg.count : null;
+      const relatedKnowledgeIds = item.knowledgeRelations.map(
+        (rel) => rel.knowledgeNode.id,
+      );
       return {
         ...item,
+        relatedKnowledgeIds,
         acceptanceRate: avgRate != null ? (avgRate / 5) * 100 : null,
       };
     });
