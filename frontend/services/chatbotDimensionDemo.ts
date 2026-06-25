@@ -45,14 +45,18 @@ function roundOneDecimal(value: number): number {
 }
 
 /**
- * 生成以正向变化为主的 delta， demo 展示效果更积极但不失真：
+ * 生成以正向变化为主、但保留少量小幅负向变化的 delta，
+ * 让 demo 既展示积极效果，又具备一定真实感。
+ * - 5%  概率小幅下降（-0.3 ~ -0.1）
  * - 35% 概率保持不变
- * - 65% 概率正向变化（小幅或中幅）
- * - 不出现明显下降
+ * - 60% 概率正向变化（小幅或中幅）
  */
 function randomDelta(): number {
   const r = Math.random();
-  if (r < 0.35) {
+  if (r < 0.05) {
+    return roundOneDecimal(-0.3 + Math.random() * 0.2);
+  }
+  if (r < 0.4) {
     return 0;
   }
 
@@ -66,9 +70,10 @@ function randomDelta(): number {
 /** 根据变化幅度生成描述前缀 */
 function changeWording(delta: number): string {
   if (delta === 0) return "保持稳定";
-  if (delta < 0.3) return "略有提升";
-  if (delta < 0.7) return "稳步改善";
-  return "明显提升";
+  if (delta > 0 && delta < 0.3) return "略有提升";
+  if (delta >= 0.3 && delta < 0.7) return "稳步改善";
+  if (delta >= 0.7) return "明显提升";
+  return "略有回落";
 }
 
 /** 每个维度对应“增量更新”的教学干预依据文案 */
@@ -79,6 +84,10 @@ function dimensionReason(code: string, delta: number): string {
 
   if (delta === 0) {
     return `近期 ${dimensionName} 未观察到显著波动，继续保持当前学习节奏与干预策略即可。`;
+  }
+
+  if (delta < 0) {
+    return `略有回落：受近期任务难度或学习节奏变化影响，${dimensionName} 出现短期波动，建议关注后续变化并及时调整支持策略。`;
   }
 
   const reasons: Record<string, string> = {
