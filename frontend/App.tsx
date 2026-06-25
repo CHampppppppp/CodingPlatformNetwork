@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import NetworkGraph from "./components/NetworkGraph";
 import AnalysisPanel from "./components/AnalysisPanel";
+import StarRating from "./components/StarRating";
 import {
   fetchGraphData,
   fetchResources,
@@ -159,6 +160,7 @@ const App: React.FC = () => {
   const [recommendedResources, setRecommendedResources] = useState<
     RecommendedResource[]
   >([]);
+  const [resourceRatings, setResourceRatings] = useState<Record<string, number>>({});
 
   const interventionAnalysis = useMemo(() => {
     if (!expertInterventionData) return null;
@@ -717,6 +719,7 @@ const App: React.FC = () => {
   const handleCloseRecommend = () => {
     setIsRecommendOpen(false);
     setRecommendedResources([]);
+    setResourceRatings({});
   };
 
   // 资格判断绑定到「选中的学生节点自身」的班级，而非全局下拉框的 classInfo.classId。
@@ -1901,6 +1904,18 @@ const App: React.FC = () => {
                             历史正确率 {Math.round(resource.accuracy)}%
                           </span>
                         )}
+                        <div className="mt-2 pt-2 border-t border-slate-100">
+                          <StarRating
+                            label="教师反馈："
+                            value={resourceRatings[resource.id] ?? 0}
+                            onChange={(score) => {
+                              setResourceRatings((prev) => ({
+                                ...prev,
+                                [resource.id]: score,
+                              }));
+                            }}
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>
