@@ -76,10 +76,10 @@ async function mockRatesForScenario(
   console.log(`\n场景: ${scenarioLabel}`);
 
   // 获取该场景下所有学生-知识点关系
+  // 知识点可跨场景共享，因此只按学生所在场景过滤。
   const studentKnowledgeRelations = await prisma.studentKnowledgeRelation.findMany({
     where: {
       studentNode: { scenarioId },
-      knowledgeNode: { scenarioId },
     },
     select: {
       studentNodeId: true,
