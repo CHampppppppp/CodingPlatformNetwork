@@ -9,8 +9,8 @@ import {
 
 const SCALE_MAX = 5;
 
-/** 当未传入学生基线时使用的内部默认得分，仅作为兜底 */
-const FALLBACK_BASELINE_SCORES: Record<string, number> = {
+/** 当未传入学生基线时使用的默认得分，仅作为兜底 */
+export const FALLBACK_BASELINE_SCORES: Record<string, number> = {
   knowledgeReserve: 3.2,
   learningEngagement: 3.5,
   cognitiveLoad: 3.0,

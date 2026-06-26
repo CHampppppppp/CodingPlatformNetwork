@@ -22,7 +22,6 @@ import {
   Loader2,
   AlertCircle,
   Stethoscope,
-  Sparkles,
 } from "lucide-react";
 import NetworkGraph from "./components/NetworkGraph";
 import AnalysisPanel from "./components/AnalysisPanel";
@@ -37,7 +36,7 @@ import {
   fetchResourceStudentRates,
 } from "./services/dataService";
 import { fetchStudentCognitiveTemplate as fetchStudentCognitiveTemplateRaw, fetchStudentExpertIntervention, fetchChatbotDimensionIncrement } from "./services/apiService";
-import { generateDemoChatbotIncrementData } from "./services/chatbotDimensionDemo";
+import { generateDemoChatbotIncrementData, FALLBACK_BASELINE_SCORES } from "./services/chatbotDimensionDemo";
 import { getStrategy, getLearningStyleStrategies } from "./services/strategies";
 import {
   recommendResources,
@@ -88,8 +87,8 @@ function writeStoredIncrementScores(
 ): void {
   try {
     localStorage.setItem(CHATBOT_INCREMENT_STORAGE_KEY, JSON.stringify(scores));
-  } catch {
-    // ignore storage errors
+  } catch (err) {
+    console.warn("保存增量得分到 localStorage 失败:", err);
   }
 }
 
@@ -127,6 +126,10 @@ const dimensionCodeToStrategyKey: Record<string, keyof CognitiveAttributes> = {
 function isRealUrl(url: string | undefined): boolean {
   if (!url) return false;
   return url.startsWith('http') && !url.includes('example.com');
+}
+
+function isGraphNode(value: string | GraphNode): value is GraphNode {
+  return typeof value === "object" && value !== null && "id" in value;
 }
 
 function hasCognitiveProfileValues(profile: Partial<StudentProfile> | undefined): boolean {
@@ -460,14 +463,8 @@ const App: React.FC = () => {
       );
 
       graphData.links.forEach((link) => {
-        const sourceId =
-          typeof link.source === "object"
-            ? (link.source as any).id
-            : link.source;
-        const targetId =
-          typeof link.target === "object"
-            ? (link.target as any).id
-            : link.target;
+        const sourceId = isGraphNode(link.source) ? link.source.id : link.source;
+        const targetId = isGraphNode(link.target) ? link.target.id : link.target;
 
         if (kIds.includes(sourceId)) {
           if (studentIdSet.has(targetId)) connectedStudentIds.push(targetId);
@@ -515,14 +512,8 @@ const App: React.FC = () => {
       );
 
       graphData.links.forEach((link) => {
-        const sourceId =
-          typeof link.source === "object"
-            ? (link.source as any).id
-            : link.source;
-        const targetId =
-          typeof link.target === "object"
-            ? (link.target as any).id
-            : link.target;
+        const sourceId = isGraphNode(link.source) ? link.source.id : link.source;
+        const targetId = isGraphNode(link.target) ? link.target.id : link.target;
 
         if (sourceId === node.id && studentIdSet.has(targetId)) {
           connectedStudentIds.push(targetId);
@@ -542,14 +533,8 @@ const App: React.FC = () => {
       );
 
       graphData.links.forEach((link) => {
-        const sourceId =
-          typeof link.source === "object"
-            ? (link.source as any).id
-            : link.source;
-        const targetId =
-          typeof link.target === "object"
-            ? (link.target as any).id
-            : link.target;
+        const sourceId = isGraphNode(link.source) ? link.source.id : link.source;
+        const targetId = isGraphNode(link.target) ? link.target.id : link.target;
 
         if (sourceId === node.id && knowledgeIdSet.has(targetId)) {
           connectedKnowledgeIds.push(targetId);
@@ -1338,7 +1323,8 @@ const App: React.FC = () => {
                                     key as keyof CognitiveAttributes;
 
                                   const displayValueRaw =
-                                    selectedNode.studentProfile![attributeKey];
+                                    selectedNode.studentProfile![attributeKey] ??
+                                    FALLBACK_BASELINE_SCORES[key];
 
                                   if (
                                     typeof displayValueRaw !== "number" ||
