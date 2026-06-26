@@ -48,8 +48,7 @@ export class CognitiveProfileService {
         node.studentProfile = {
           ...node.studentProfile,
           knowledgeReserve: dimMap.get("knowledgeReserve"),
-          learningEngagement:
-            dimMap.get("learningEngagement") ?? learningEngagementFromDegree,
+          learningEngagement: learningEngagementFromDegree,
           cognitiveLoad: dimMap.get("cognitiveLoad"),
           learningMotivation: dimMap.get("learningMotivation"),
           computationalThinking: dimMap.get("computationalThinking"),
@@ -65,6 +64,7 @@ export class CognitiveProfileService {
       node.studentProfile = {
         ...node.studentProfile,
         ...computeAggregateDimensionScores(dimMap),
+        learningEngagement: learningEngagementFromDegree,
       };
     }
   }
