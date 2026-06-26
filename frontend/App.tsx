@@ -749,22 +749,10 @@ const App: React.FC = () => {
     const profile = selectedNode.studentProfile;
     if (!profile) return;
 
-    // 活跃度（learningEngagement）一律按当前节点在图中的边数计算，
-    // 与后端 CognitiveProfileService 的口径保持一致。
-    const degree = graphData.links.reduce((count, link) => {
-      const sourceId =
-        typeof link.source === "object"
-          ? (link.source as any).id
-          : link.source;
-      const targetId =
-        typeof link.target === "object"
-          ? (link.target as any).id
-          : link.target;
-      return sourceId === selectedNode.id || targetId === selectedNode.id
-        ? count + 1
-        : count;
-    }, 0);
-    const engagement = Math.min(5, degree / 10);
+    // 活跃度（learningEngagement）由后端 CognitiveProfileService 统一从
+    // StudentProfile.totalDegree 计算并下发，前端直接使用，保证前后端口径一致。
+    const engagement =
+      typeof profile.learningEngagement === "number" ? profile.learningEngagement : 0;
 
     // 如果刚完成 AI 辅导维度增量，优先使用增量后的最新知识储备得分；
     // 否则使用个人画板中当前展示的学生画像数据。
