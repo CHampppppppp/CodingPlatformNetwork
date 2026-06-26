@@ -82,7 +82,7 @@ function stableHashFromString(input: string): number {
 
 /**
  * 基于学生节点 ID 和维度编码计算稳定增量。
- * 大多数维度落在 0.25~0.9；约 15% 的维度保持稳定（增量为 0）。
+ * 大多数维度落在 0.25~0.9；约 15% 的维度提升较慢（0.1~0.2），避免全部维度同步大幅增长。
  */
 function computeStableDelta(
   nodeId: string,
@@ -93,7 +93,7 @@ function computeStableDelta(
   const jitterHash = stableHashFromString(`${nodeId}:jitter:${index}`);
 
   if (jitterHash < 0.15) {
-    return roundOneDecimal(jitterHash * 0.03);
+    return roundOneDecimal(0.1 + jitterHash * 0.7);
   }
 
   return roundOneDecimal(0.25 + base * 0.65);
