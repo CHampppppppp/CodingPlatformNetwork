@@ -495,11 +495,14 @@ const App: React.FC = () => {
     setSelectedResource(null);
     setStudentRates({});
 
-    // 在个人画板展开时，console.log 当前学生的学习投入（learningEngagement）原始值。
+    // 在个人画板展开时，console.log 当前学生的学习投入与活跃度原始值。
     if (node.type === NodeType.STUDENT) {
       console.log(
-        `[learningEngagement] ${node.name} (${node.id}):`,
-        node.studentProfile?.learningEngagement ?? 0,
+        `[StudentProfile] ${node.name} (${node.id}):`,
+        {
+          learningEngagement: node.studentProfile?.learningEngagement ?? 0,
+          activityLevel: node.studentProfile?.activityLevel ?? 0,
+        },
       );
     }
 
@@ -742,10 +745,11 @@ const App: React.FC = () => {
     const profile = selectedNode.studentProfile;
     if (!profile) return;
 
-    // 学习投入（learningEngagement）由后端 CognitiveProfileService 统一从
-    // StudentProfile.totalDegree 计算并下发，前端直接使用，保证前后端口径一致。
+    // 活跃度（activityLevel）由后端 CognitiveProfileService 统一从
+    // StudentProfile.totalDegree 计算并下发，前端推荐资源直接使用该字段，
+    // 与学习投入（learningEngagement）解耦。
     const engagement =
-      typeof profile.learningEngagement === "number" ? profile.learningEngagement : 0;
+      typeof profile.activityLevel === "number" ? profile.activityLevel : 0;
 
     // 如果刚完成 AI 辅导维度增量，优先使用增量后的最新知识储备得分；
     // 否则使用个人画板中当前展示的学生画像数据。
@@ -1860,7 +1864,7 @@ const App: React.FC = () => {
                 <div>
                   <h2 className="text-lg font-bold text-slate-800">推荐资源</h2>
                   <p className="text-xs text-slate-500">
-                    {selectedNode.name} · 基于知识储备与学习投入的个性化资源推荐
+                    {selectedNode.name} · 基于知识储备与活跃度的个性化资源推荐
                   </p>
                 </div>
               </div>

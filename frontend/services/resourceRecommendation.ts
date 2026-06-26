@@ -2,7 +2,7 @@ import { Resource } from "../types";
 
 /** 资源推荐结果项：在原始资源基础上附带本次推荐的理由与难度档。 */
 export interface RecommendedResource extends Resource {
-  /** 推荐理由（依据知识储备 / 学习投入生成）。 */
+  /** 推荐理由（依据知识储备 / 活跃度生成）。 */
   recommendReason: string;
   /** 资源难度档：基于资源 difficulty 字段推断。 */
   difficultyLabel: "基础" | "进阶" | "挑战";
@@ -12,10 +12,10 @@ export interface RecommendedResource extends Resource {
 const LOW_THRESHOLD = 2;
 const HIGH_THRESHOLD = 4;
 
-/** 不同学习投入对应的推荐资源数量。 */
+/** 不同活跃度对应的推荐资源数量。 */
 const COUNT_BY_ENGAGEMENT = { high: 6, medium: 4, low: 3 } as const;
 
-/** 学习投入 → 偏好的资源类型（按优先级排列）。 */
+/** 活跃度 → 偏好的资源类型（按优先级排列）。 */
 const TYPE_PREFERENCE_BY_ENGAGEMENT = {
   high: ["VIDEO", "ARTICLE"],
   medium: ["PRACTICE", "DOCUMENT"],
@@ -41,14 +41,14 @@ function preferredDifficulty(
   return "LOW";
 }
 
-/** 根据学习投入决定推荐数量。 */
+/** 根据活跃度决定推荐数量。 */
 function countByEngagement(engagement: number): number {
   if (engagement >= HIGH_THRESHOLD) return COUNT_BY_ENGAGEMENT.high;
   if (engagement > LOW_THRESHOLD) return COUNT_BY_ENGAGEMENT.medium;
   return COUNT_BY_ENGAGEMENT.low;
 }
 
-/** 根据学习投入决定偏好的资源类型。 */
+/** 根据活跃度决定偏好的资源类型。 */
 function preferredTypes(engagement: number): string[] {
   if (engagement >= HIGH_THRESHOLD) {
     return [...TYPE_PREFERENCE_BY_ENGAGEMENT.high];
@@ -113,10 +113,10 @@ function buildReason(
         : "知识储备中等";
   const engagementDesc =
     engagement <= LOW_THRESHOLD
-      ? "学习投入较低"
+      ? "活跃度较低"
       : engagement >= HIGH_THRESHOLD
-        ? "学习投入高"
-        : "学习投入中等";
+        ? "活跃度高"
+        : "活跃度中等";
 
   const typeDescMap: Record<string, string> = {
     VIDEO: "视频",
@@ -138,17 +138,17 @@ interface ScoredResource {
 }
 
 /**
- * 依据学生的知识储备与学习投入，从资源池中按规则映射推荐若干资源。
+ * 依据学生的知识储备与活跃度，从资源池中按规则映射推荐若干资源。
  *
  * 规则：
- * - 学习投入决定偏好的资源类型：高→视频/文章，中→练习/文档，低→游戏化。
+ * - 活跃度决定偏好的资源类型：高→视频/文章，中→练习/文档，低→游戏化。
  * - 知识储备决定偏好的难度：高→挑战，中→进阶，低→基础。
  * - 资源先按「类型匹配 + 难度匹配」综合得分分组排序，同分段内随机打乱，
- *   再按学习投入对应的数量取前 N 个，避免每次推荐完全固定，同时允许降级展示。
+ *   再按活跃度对应的数量取前 N 个，避免每次推荐完全固定，同时允许降级展示。
  *
  * @param pool 候选资源（通常为当前图谱关联的资源）
  * @param knowledgeReserve 知识储备得分 0-5
- * @param engagement 学习投入得分 0-5
+ * @param engagement 活跃度得分 0-5
  */
 export function recommendResources(
   pool: Resource[],

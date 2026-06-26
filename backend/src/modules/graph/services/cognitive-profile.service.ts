@@ -32,7 +32,7 @@ export class CognitiveProfileService {
       if (!profile || profile.dimensionScores.length === 0) {
         node.studentProfile = {
           ...node.studentProfile,
-          learningEngagement: learningEngagementFromDegree,
+          activityLevel: learningEngagementFromDegree,
         };
         continue;
       }
@@ -48,7 +48,8 @@ export class CognitiveProfileService {
         node.studentProfile = {
           ...node.studentProfile,
           knowledgeReserve: dimMap.get("knowledgeReserve"),
-          learningEngagement: learningEngagementFromDegree,
+          learningEngagement: dimMap.get("learningEngagement"),
+          activityLevel: learningEngagementFromDegree,
           cognitiveLoad: dimMap.get("cognitiveLoad"),
           learningMotivation: dimMap.get("learningMotivation"),
           computationalThinking: dimMap.get("computationalThinking"),
@@ -64,7 +65,7 @@ export class CognitiveProfileService {
       node.studentProfile = {
         ...node.studentProfile,
         ...computeAggregateDimensionScores(dimMap),
-        learningEngagement: learningEngagementFromDegree,
+        activityLevel: learningEngagementFromDegree,
       };
     }
   }

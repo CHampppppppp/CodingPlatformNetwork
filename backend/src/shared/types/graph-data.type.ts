@@ -5,6 +5,7 @@ export interface StudentProfile {
   externalUserId?: string | null;
   knowledgeReserve?: number;
   learningEngagement?: number;
+  activityLevel?: number;
   cognitiveLoad?: number;
   learningMotivation?: number;
   computationalThinking?: number;

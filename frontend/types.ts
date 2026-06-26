@@ -116,6 +116,7 @@ export interface StudentProfile extends CognitiveAttributes {
   humanMachineTrust?: number; // = humanAiTrust
   learningApproach?: number; // = learningMethod
   priorKnowledge?: number; // = knowledgeReserve
+  activityLevel?: number; // 活跃度（由节点度数计算）
 
   template?: StudentCognitiveTemplate;
 }
