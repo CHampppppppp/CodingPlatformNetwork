@@ -73,6 +73,7 @@ export class ResourceService {
         ...item,
         relatedKnowledgeIds,
         acceptanceRate: avgRate != null ? (avgRate / 5) * 100 : null,
+        difficulty: item.difficulty,
       };
     });
 

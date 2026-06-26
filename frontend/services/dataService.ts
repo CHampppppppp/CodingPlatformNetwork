@@ -195,6 +195,7 @@ export const fetchResources = async (): Promise<Resource[]> => {
       relatedKnowledgeIds:
         r.knowledgeRelations?.map((rel: any) => rel.knowledgeNode?.id).filter(Boolean) || [],
       accuracy: r.acceptanceRate != null ? Math.round(r.acceptanceRate) : null,
+      difficulty: r.difficulty ?? null,
       description: r.description || "",
       url: r.url || undefined,
     }));

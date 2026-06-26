@@ -4,7 +4,7 @@ import { Resource } from "../types";
 export interface RecommendedResource extends Resource {
   /** 推荐理由（依据知识储备 / 活跃度生成）。 */
   recommendReason: string;
-  /** 资源难度档：基于资源接受度推断。 */
+  /** 资源难度档：基于资源 difficulty 字段推断。 */
   difficultyLabel: "基础" | "进阶" | "挑战";
 }
 
@@ -15,26 +15,48 @@ const HIGH_THRESHOLD = 4;
 /** 不同活跃度对应的推荐资源数量。 */
 const COUNT_BY_ENGAGEMENT = { high: 6, medium: 4, low: 3 } as const;
 
-/** 正确率缺失时使用的中性占位值，避免无数据资源被完全排除。 */
-const NEUTRAL_ACCURACY = 60;
+/** 资源类型偏好：活跃度越高越倾向轻量快速的内容，活跃度越低越倾向趣味游戏。 */
+const TYPE_PREFERENCE_BY_ENGAGEMENT = {
+  high: new Set(["VIDEO", "ARTICLE"]),
+  medium: new Set(["PRACTICE", "DOCUMENT"]),
+  low: new Set(["GAME"]),
+} as const;
 
-/**
- * 依据学生「知识储备」推断偏好的资源正确率（作为难度的代理指标）。
- * 正确率越高 ≈ 越基础、越易上手；正确率越低 ≈ 越有挑战性。
- * - 知识储备低 → 偏好高正确率（基础）资源，target≈90
- * - 知识储备高 → 偏好低正确率（挑战）资源，target≈40
- */
-function preferredAccuracy(knowledgeReserve: number): number {
-  const clamped = Math.max(0, Math.min(5, knowledgeReserve));
-  return 90 - (clamped / 5) * 50;
+/** difficulty 与中文难度档的映射。 */
+const DIFFICULTY_TO_LABEL: Record<
+  "LOW" | "MEDIUM" | "HIGH" | string,
+  RecommendedResource["difficultyLabel"]
+> = {
+  LOW: "基础",
+  MEDIUM: "进阶",
+  HIGH: "挑战",
+};
+
+/** 将知识储备转换为偏好的 difficulty 等级。 */
+function preferredDifficulty(
+  knowledgeReserve: number,
+): "LOW" | "MEDIUM" | "HIGH" {
+  if (knowledgeReserve >= HIGH_THRESHOLD) return "HIGH";
+  if (knowledgeReserve > LOW_THRESHOLD) return "MEDIUM";
+  return "LOW";
 }
 
-/** 按资源接受度给资源打难度标签。 */
-function difficultyLabelOf(accuracy: number | null): RecommendedResource["difficultyLabel"] {
-  const value = accuracy ?? NEUTRAL_ACCURACY;
-  if (value >= 70) return "基础";
-  if (value >= 45) return "进阶";
-  return "挑战";
+/** 计算 difficulty 与偏好之间的匹配权重。 */
+function difficultyFitWeight(
+  actual: string | null,
+  preferred: "LOW" | "MEDIUM" | "HIGH",
+): number {
+  if (!actual) return 0.5; // 无难度数据时给中性权重
+
+  const order = ["LOW", "MEDIUM", "HIGH"] as const;
+  const actualIndex = order.indexOf(actual as (typeof order)[number]);
+  const preferredIndex = order.indexOf(preferred);
+  if (actualIndex === -1 || preferredIndex === -1) return 0.3;
+
+  const distance = Math.abs(actualIndex - preferredIndex);
+  if (distance === 0) return 1.0;
+  if (distance === 1) return 0.5;
+  return 0.2;
 }
 
 /** 根据活跃度决定推荐数量。 */
@@ -44,11 +66,34 @@ function countByEngagement(engagement: number): number {
   return COUNT_BY_ENGAGEMENT.low;
 }
 
+/** 根据活跃度决定偏好的资源类型集合。 */
+function preferredTypes(
+  engagement: number,
+): Set<(typeof TYPE_PREFERENCE_BY_ENGAGEMENT)[keyof typeof TYPE_PREFERENCE_BY_ENGAGEMENT] extends Set<infer T> ? T : never> {
+  if (engagement >= HIGH_THRESHOLD) return TYPE_PREFERENCE_BY_ENGAGEMENT.high;
+  if (engagement > LOW_THRESHOLD) return TYPE_PREFERENCE_BY_ENGAGEMENT.medium;
+  return TYPE_PREFERENCE_BY_ENGAGEMENT.low;
+}
+
+/** 计算资源类型与活跃度偏好之间的匹配权重。 */
+function typeFitWeight(resourceType: string, preferred: Set<string>): number {
+  return preferred.has(resourceType) ? 1.0 : 0.3;
+}
+
+/** 按资源 difficulty 字段给资源打难度标签。 */
+function difficultyLabelOf(
+  difficulty: string | null,
+): RecommendedResource["difficultyLabel"] {
+  if (!difficulty) return "进阶";
+  return DIFFICULTY_TO_LABEL[difficulty] ?? "进阶";
+}
+
 /** 生成推荐理由文案。 */
 function buildReason(
   knowledgeReserve: number,
   engagement: number,
   difficulty: RecommendedResource["difficultyLabel"],
+  resourceType: string,
 ): string {
   const reserveDesc =
     knowledgeReserve <= LOW_THRESHOLD
@@ -62,7 +107,17 @@ function buildReason(
       : engagement >= HIGH_THRESHOLD
         ? "活跃度高"
         : "活跃度中等";
-  return `${reserveDesc}、${engagementDesc}，推荐${difficulty}类资源巩固提升`;
+
+  const typeDescMap: Record<string, string> = {
+    VIDEO: "视频",
+    ARTICLE: "文章",
+    PRACTICE: "练习",
+    DOCUMENT: "文档",
+    GAME: "游戏化",
+  };
+  const typeDesc = typeDescMap[resourceType] || resourceType;
+
+  return `${reserveDesc}、${engagementDesc}，推荐${difficulty}${typeDesc}类资源巩固提升`;
 }
 
 /**
@@ -116,26 +171,31 @@ export function recommendResources(
 ): RecommendedResource[] {
   if (pool.length === 0) return [];
 
-  const target = preferredAccuracy(knowledgeReserve);
+  const preferredDiff = preferredDifficulty(knowledgeReserve);
   const count = countByEngagement(engagement);
+  const preferredTypeSet = preferredTypes(engagement);
 
-  // 资源与偏好难度越接近，权重越高；并叠加随机扰动避免结果过于固定。
+  // 资源与偏好难度、偏好类型越接近，权重越高；并叠加随机扰动避免结果过于固定。
   const weighted = pool.map((resource) => {
-    const accuracy = resource.accuracy ?? NEUTRAL_ACCURACY;
-    const distance = Math.abs(accuracy - target);
-    const fitWeight = 1 / (1 + distance / 25);
+    const diffWeight = difficultyFitWeight(resource.difficulty, preferredDiff);
+    const typeWeight = typeFitWeight(resource.type, preferredTypeSet);
     const jitter = 0.5 + Math.random();
-    return { item: resource, weight: fitWeight * jitter };
+    return { item: resource, weight: diffWeight * typeWeight * jitter };
   });
 
   const selected = weightedSampleWithoutReplacement(weighted, count);
 
   return selected.map((resource) => {
-    const difficultyLabel = difficultyLabelOf(resource.accuracy);
+    const difficultyLabel = difficultyLabelOf(resource.difficulty);
     return {
       ...resource,
       difficultyLabel,
-      recommendReason: buildReason(knowledgeReserve, engagement, difficultyLabel),
+      recommendReason: buildReason(
+        knowledgeReserve,
+        engagement,
+        difficultyLabel,
+        resource.type,
+      ),
     };
   });
 }

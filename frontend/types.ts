@@ -190,6 +190,7 @@ export interface Resource {
   type: string;
   relatedKnowledgeIds: string[]; // IDs of K-nodes this resource covers
   accuracy: number | null; // 0-100%, null 表示暂无数据
+  difficulty: "LOW" | "MEDIUM" | "HIGH" | null; // 资源难度等级
   description: string;
   url?: string; // Optional URL for display
 }
