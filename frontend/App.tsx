@@ -37,10 +37,7 @@ import {
   fetchResourceStudentRates,
 } from "./services/dataService";
 import { fetchStudentCognitiveTemplate as fetchStudentCognitiveTemplateRaw, fetchStudentExpertIntervention, fetchChatbotDimensionIncrement } from "./services/apiService";
-import {
-  generateDemoChatbotIncrementData,
-  SEMESTER_BEFORE_SCORES,
-} from "./services/chatbotDimensionDemo";
+import { generateDemoChatbotIncrementData } from "./services/chatbotDimensionDemo";
 import { getStrategy, getLearningStyleStrategies } from "./services/strategies";
 import {
   recommendResources,
@@ -1314,9 +1311,8 @@ const App: React.FC = () => {
                                   const attributeKey =
                                     key as keyof CognitiveAttributes;
 
-                                  const displayValueRaw = !isIncrementApplied
-                                    ? SEMESTER_BEFORE_SCORES[key]
-                                    : selectedNode.studentProfile![attributeKey];
+                                  const displayValueRaw =
+                                    selectedNode.studentProfile![attributeKey];
 
                                   if (
                                     typeof displayValueRaw !== "number" ||

@@ -1,11 +1,14 @@
-import { ChatbotDimensionIncrementData } from "../types";
+import {
+  ChatbotDimensionIncrementData,
+  CognitiveAttributes,
+} from "../types";
 import {
   COGNITIVE_DIMENSION_KEYS,
   COGNITIVE_DIMENSION_LABELS,
 } from "../constants";
 
-/** 学期前得分（硬编码） */
-export const SEMESTER_BEFORE_SCORES: Record<string, number> = {
+/** 当未传入学生基线时使用的内部默认得分，仅作为兜底 */
+const FALLBACK_BASELINE_SCORES: Record<string, number> = {
   knowledgeReserve: 3.2,
   learningEngagement: 3.5,
   cognitiveLoad: 3.0,
@@ -16,20 +19,6 @@ export const SEMESTER_BEFORE_SCORES: Record<string, number> = {
   learningAttitude: 3.7,
   selfRegulatedLearning: 3.4,
   aiLiteracy: 3.0,
-};
-
-/** 学期后得分（硬编码） */
-export const SEMESTER_AFTER_SCORES: Record<string, number> = {
-  knowledgeReserve: 4.1,
-  learningEngagement: 4.3,
-  cognitiveLoad: 4.0,
-  learningMotivation: 4.2,
-  computationalThinking: 4.0,
-  humanAiTrust: 4.4,
-  learningMethod: 4.1,
-  learningAttitude: 4.3,
-  selfRegulatedLearning: 4.2,
-  aiLiteracy: 4.0,
 };
 
 const DIMENSION_CATEGORY: Record<string, string> = {
@@ -51,6 +40,38 @@ function clamp(value: number, min: number, max: number): number {
 
 function roundOneDecimal(value: number): number {
   return Math.round(value * 10) / 10;
+}
+
+/**
+ * 基于字符串生成稳定的 0~1 之间浮点数。
+ * 使用类 DJB2 哈希并在 2147483647 上取模，保证相同输入永远得到相同输出。
+ */
+function stableHashFromString(input: string): number {
+  const MOD = 2147483647;
+  let hash = 5381;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash * 33 + input.charCodeAt(i)) % MOD;
+  }
+  return hash / MOD;
+}
+
+/**
+ * 基于学生节点 ID 和维度编码计算稳定增量。
+ * 大多数维度落在 0.25~0.9；约 15% 的维度返回接近 0 的微小增量，使展示更自然。
+ */
+function computeStableDelta(
+  nodeId: string,
+  code: string,
+  index: number,
+): number {
+  const base = stableHashFromString(`${nodeId}:${code}`);
+  const jitterHash = stableHashFromString(`${nodeId}:jitter:${index}`);
+
+  if (jitterHash < 0.15) {
+    return roundOneDecimal(jitterHash * 0.03);
+  }
+
+  return roundOneDecimal(0.25 + base * 0.65);
 }
 
 /** 根据变化幅度生成描述前缀 */
@@ -103,10 +124,22 @@ function dimensionReason(code: string, delta: number): string {
 
 export function generateDemoChatbotIncrementData(
   studentNodeId: string,
+  baseline?: Partial<CognitiveAttributes>,
 ): ChatbotDimensionIncrementData {
-  const aggregateDimensions = COGNITIVE_DIMENSION_KEYS.map((code) => {
-    const previousValue = clamp(SEMESTER_BEFORE_SCORES[code], 0, 10);
-    const newValue = clamp(SEMESTER_AFTER_SCORES[code], 0, 10);
+  const aggregateDimensions = COGNITIVE_DIMENSION_KEYS.map((code, index) => {
+    const previousValue = clamp(
+      roundOneDecimal(
+        baseline?.[code] ?? FALLBACK_BASELINE_SCORES[code] ?? 0,
+      ),
+      0,
+      5,
+    );
+    const delta = computeStableDelta(studentNodeId, code, index);
+    const newValue = clamp(
+      roundOneDecimal(previousValue + delta),
+      0,
+      5,
+    );
     const changeDelta = roundOneDecimal(newValue - previousValue);
 
     return {
