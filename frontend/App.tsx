@@ -783,8 +783,9 @@ const App: React.FC = () => {
 
     setChatbotIncrementLoading(true);
     try {
+      const baselineProfile = selectedNode.studentProfile;
       const data = DEMO_CHATBOT_INCREMENT
-        ? generateDemoChatbotIncrementData(selectedNode.id)
+        ? generateDemoChatbotIncrementData(selectedNode.id, baselineProfile)
         : await fetchChatbotDimensionIncrement(selectedNode.id);
       setChatbotIncrementData(data);
 
