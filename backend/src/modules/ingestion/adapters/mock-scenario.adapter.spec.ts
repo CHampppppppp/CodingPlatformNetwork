@@ -65,26 +65,59 @@ describe("MockScenarioAdapter", () => {
   });
 
   describe("HOME_LEARNING scenario", () => {
-    it("should generate classes, teachers, students and interactions", async () => {
+    it("should generate expected platform data", async () => {
       const adapter = new MockScenarioAdapter("HOME_LEARNING", {
         classesPerSchool: 2,
       });
       const data = await adapter.parse();
 
       expect(data.scenario.code).toBe("HOME_LEARNING");
+      expect(data.schools).toHaveLength(2);
       expect(data.classes).toHaveLength(4);
+      expect(data.knowledges).toHaveLength(10);
 
-      const teachers = data.users.filter((u) => u.role === "TEACHER");
-      const students = data.users.filter((u) => u.role === "STUDENT");
-      expect(teachers.length).toBeGreaterThan(0);
-      expect(students.length).toBeGreaterThan(0);
+      const studentUsers = data.users.filter((u) => u.role === "STUDENT");
+      const teacherUsers = data.users.filter((u) => u.role === "TEACHER");
+
+      expect(teacherUsers).toHaveLength(data.classes.length);
+      expect(data.sessions).toHaveLength(data.classes.length);
+      expect(data.cognitiveProfiles).toHaveLength(studentUsers.length);
       expect(data.interactions.length).toBeGreaterThan(0);
+
+      for (const cls of data.classes) {
+        const classStudents = studentUsers.filter(
+          (s) =>
+            s.externalSchoolId === cls.externalSchoolId &&
+            s.gradeName === cls.gradeName &&
+            s.className === cls.className,
+        );
+        expect(classStudents.length).toBeGreaterThanOrEqual(20);
+        expect(classStudents.length).toBeLessThanOrEqual(40);
+      }
+
+      const teacherExternalIds = teacherUsers.map((t) => t.externalId);
+      expect(new Set(teacherExternalIds).size).toBe(teacherExternalIds.length);
+
+      const classKeys = data.classes.map(classKey);
+      expect(new Set(classKeys).size).toBe(classKeys.length);
+
+      for (const cls of data.classes) {
+        expect(cls.className).toMatch(/^\d+班$/);
+      }
+
+      const knowledgeExternalIds = data.knowledges.map((k) => k.externalId);
+      expect(new Set(knowledgeExternalIds).size).toBe(
+        knowledgeExternalIds.length,
+      );
+
+      const sessionExternalIds = data.sessions.map((s) => s.externalId);
+      expect(new Set(sessionExternalIds).size).toBe(sessionExternalIds.length);
     });
   });
 
   describe("unsupported scenario", () => {
     it("should throw an error for unsupported scenario code", async () => {
-      const adapter = new MockScenarioAdapter("UNSUPPORTED" as any);
+      const adapter = new MockScenarioAdapter("UNKNOWN");
       await expect(adapter.parse()).rejects.toThrow("Unsupported scenario code");
     });
   });
@@ -109,12 +142,32 @@ describe("MockScenarioAdapter", () => {
       }
     });
 
-    it("should generate exactly 4 classes when classesPerSchool is 2", async () => {
+    it("should generate exactly 4 classes for HOME_LEARNING when classesPerSchool is 2", async () => {
       const adapter = new MockScenarioAdapter("HOME_LEARNING", {
         classesPerSchool: 2,
       });
       const data = await adapter.parse();
       expect(data.classes).toHaveLength(4);
+    });
+
+    it("should generate exactly 12 students per class for HOME_LEARNING when min and max are 12", async () => {
+      const adapter = new MockScenarioAdapter("HOME_LEARNING", {
+        classesPerSchool: 2,
+        minStudentsPerClass: 12,
+        maxStudentsPerClass: 12,
+      });
+      const data = await adapter.parse();
+
+      const studentUsers = data.users.filter((u) => u.role === "STUDENT");
+      for (const cls of data.classes) {
+        const classStudents = studentUsers.filter(
+          (s) =>
+            s.externalSchoolId === cls.externalSchoolId &&
+            s.gradeName === cls.gradeName &&
+            s.className === cls.className,
+        );
+        expect(classStudents).toHaveLength(12);
+      }
     });
   });
 });

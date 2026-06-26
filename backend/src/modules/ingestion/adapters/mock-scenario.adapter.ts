@@ -260,7 +260,7 @@ export class MockScenarioAdapter implements PlatformAdapter {
   private readonly rng: SeededRandom;
 
   constructor(
-    scenarioCode: "TEACHER_QA" | "HOME_LEARNING",
+    scenarioCode: string,
     options: MockScenarioOptions = {},
   ) {
     this.scenarioCode = scenarioCode;
