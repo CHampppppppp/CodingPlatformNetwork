@@ -29,6 +29,10 @@ export class CognitiveProfileService {
       const degree = degreeMap.get(node.id) ?? 0;
       const learningEngagementFromDegree = Math.min(5, degree / 10);
 
+      console.log(
+        `[CognitiveProfile] ${node.name} (${node.id}): degree=${degree}, activityLevel=${learningEngagementFromDegree}`,
+      );
+
       if (!profile || profile.dimensionScores.length === 0) {
         node.studentProfile = {
           ...node.studentProfile,
