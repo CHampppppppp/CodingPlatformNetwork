@@ -14,7 +14,7 @@ import {
 } from "../types/normalized-platform-data";
 
 /**
- * Mock 场景适配器配置选项
+ * Configuration options for the mock scenario adapter.
  */
 export interface MockScenarioOptions {
   schoolCount?: number;
@@ -51,7 +51,7 @@ interface TeacherDef {
 }
 
 /**
- * 线性同余生成器（LCG），用于可复现的局部随机数生成。
+ * Linear congruential generator (LCG) for reproducible local random numbers.
  */
 class SeededRandom {
   private seed: number;
@@ -60,23 +60,29 @@ class SeededRandom {
     this.seed = seed >>> 0;
   }
 
-  /** 返回 [0, 1) 范围内的浮点数 */
+  /** Returns a float in the range [0, 1). */
   next(): number {
     this.seed = (1103515245 * this.seed + 12345) >>> 0;
     return this.seed / 4294967296;
   }
 
-  /** 返回 [min, max] 范围内的整数 */
+  /** Returns an integer in the range [min, max]. */
   nextInt(min: number, max: number): number {
+    if (min > max) {
+      throw new RangeError(`min (${min}) must not be greater than max (${max})`);
+    }
     return Math.floor(this.next() * (max - min + 1)) + min;
   }
 
-  /** 从数组中随机选取一个元素 */
+  /** Picks a random element from the given array. */
   pick<T>(items: T[]): T {
+    if (items.length === 0) {
+      throw new Error("Cannot pick from an empty array");
+    }
     return items[this.nextInt(0, items.length - 1)];
   }
 
-  /** 以给定概率返回 true */
+  /** Returns true with the given probability. */
   chance(probability: number): boolean {
     return this.next() < probability;
   }
@@ -244,7 +250,8 @@ function padTwo(n: number): string {
 }
 
 /**
- * 为 TEACHER_QA 和 HOME_LEARNING 两个缺失场景生成完整 NormalizedPlatformData。
+ * Generates complete NormalizedPlatformData for the two missing scenarios
+ * TEACHER_QA and HOME_LEARNING.
  */
 export class MockScenarioAdapter implements PlatformAdapter {
   readonly scenarioCode: string;
@@ -349,7 +356,7 @@ export class MockScenarioAdapter implements PlatformAdapter {
       counts.push(classCount);
     }
 
-    // 确保每场景总班数在 4-6 之间
+    // Keep the total number of classes per scenario between 4 and 6.
     let totalClasses = counts.reduce((sum, c) => sum + c, 0);
     while (totalClasses < 4) {
       const candidates = counts
@@ -397,7 +404,12 @@ export class MockScenarioAdapter implements PlatformAdapter {
     const users: NormalizedUser[] = [];
 
     for (const cls of classes) {
-      const teacherExternalId = `${cls.externalSchoolId}:${cls.gradeName}:${cls.className}:teacher`;
+      const classKey = this.buildClassKey(
+        cls.externalSchoolId,
+        cls.gradeName,
+        cls.className,
+      );
+      const teacherExternalId = `${classKey}:teacher`;
       const subject = this.rng.pick(SUBJECTS);
       const teacherDisplayName = `${cls.className}老师`;
 
@@ -436,7 +448,7 @@ export class MockScenarioAdapter implements PlatformAdapter {
       );
 
       for (let i = 1; i <= studentCount; i++) {
-        const externalId = `${cls.externalSchoolId}:${cls.gradeName}:${cls.className}:s${padTwo(i)}`;
+        const externalId = `${classKey}:s${padTwo(i)}`;
         const displayName = this.generateName();
         const gender = this.rng.pick(GENDERS);
 
@@ -521,7 +533,11 @@ export class MockScenarioAdapter implements PlatformAdapter {
         const sessionName = `${schoolName}${division}${cls.gradeName}年级${cls.className} ${suffix}`;
 
         sessions.push({
-          externalId: `${cls.externalSchoolId}:${cls.gradeName}:${cls.className}:session${i}`,
+          externalId: `${this.buildClassKey(
+            cls.externalSchoolId,
+            cls.gradeName,
+            cls.className,
+          )}:session${i}`,
           externalSchoolId: cls.externalSchoolId,
           gradeName: cls.gradeName,
           className: cls.className,
@@ -548,25 +564,27 @@ export class MockScenarioAdapter implements PlatformAdapter {
     sessions: NormalizedSession[],
     knowledges: NormalizedKnowledge[],
   ): NormalizedStudentKnowledgeRelation[] {
-    const sessionByClassKey = new Map<string, NormalizedSession>();
-    for (const session of sessions) {
-      const key = `${session.externalSchoolId}:${session.gradeName}:${session.className}`;
-      sessionByClassKey.set(key, session);
-    }
+    const sessionByClassKey = this.buildSessionByClassKey(sessions);
 
     const relations: NormalizedStudentKnowledgeRelation[] = [];
 
     for (const student of students) {
-      const sessionKey = `${student.externalSchoolId}:${student.gradeName}:${student.className}`;
-      const session = sessionByClassKey.get(sessionKey);
-      if (!session) continue;
+      const sessionKey = this.buildClassKey(
+        student.externalSchoolId,
+        student.gradeName,
+        student.className,
+      );
+      const classSessions = sessionByClassKey.get(sessionKey);
+      if (!classSessions || classSessions.length === 0) continue;
+      // Preserve the previous overwrite behavior by using the last session.
+      const session = classSessions[classSessions.length - 1];
 
       const relationCount = this.rng.nextInt(2, 4);
       const shuffled = this.shuffleArray([...knowledges]);
       const selected = shuffled.slice(0, relationCount);
 
       for (const knowledge of selected) {
-        const strength = Number((this.rng.next() * 0.5 + 0.5).toFixed(2));
+        const strength = this.randomStrength(0.5, 1);
         relations.push({
           studentExternalId: student.externalId,
           knowledgeExternalId: knowledge.externalId,
@@ -585,15 +603,15 @@ export class MockScenarioAdapter implements PlatformAdapter {
     teachers: TeacherDef[],
     sessions: NormalizedSession[],
   ): NormalizedInteraction[] {
-    const sessionByClassKey = new Map<string, NormalizedSession>();
-    for (const session of sessions) {
-      const key = `${session.externalSchoolId}:${session.gradeName}:${session.className}`;
-      sessionByClassKey.set(key, session);
-    }
+    const sessionByClassKey = this.buildSessionByClassKey(sessions);
 
     const studentsByClass = new Map<string, StudentDef[]>();
     for (const student of students) {
-      const key = `${student.externalSchoolId}:${student.gradeName}:${student.className}`;
+      const key = this.buildClassKey(
+        student.externalSchoolId,
+        student.gradeName,
+        student.className,
+      );
       const list = studentsByClass.get(key) ?? [];
       list.push(student);
       studentsByClass.set(key, list);
@@ -601,7 +619,11 @@ export class MockScenarioAdapter implements PlatformAdapter {
 
     const teachersByClass = new Map<string, TeacherDef>();
     for (const teacher of teachers) {
-      const key = `${teacher.externalSchoolId}:${teacher.gradeName}:${teacher.className}`;
+      const key = this.buildClassKey(
+        teacher.externalSchoolId,
+        teacher.gradeName,
+        teacher.className,
+      );
       teachersByClass.set(key, teacher);
     }
 
@@ -629,13 +651,15 @@ export class MockScenarioAdapter implements PlatformAdapter {
     };
 
     for (const [classKey, classStudents] of Array.from(studentsByClass.entries())) {
-      const session = sessionByClassKey.get(classKey);
+      const classSessions = sessionByClassKey.get(classKey);
       const teacher = teachersByClass.get(classKey);
-      if (!session || !teacher) continue;
+      if (!classSessions || classSessions.length === 0 || !teacher) continue;
+      // Preserve the previous overwrite behavior by using the last session.
+      const session = classSessions[classSessions.length - 1];
 
-      // Teacher -> Student: TEACHING，每位学生一条
+      // Teacher -> Student: TEACHING, one interaction per student.
       for (const student of classStudents) {
-        const strength = Number((this.rng.next() * 0.4 + 0.6).toFixed(2));
+        const strength = this.randomStrength(0.6, 1);
         addInteraction(
           teacher.externalId,
           student.externalId,
@@ -645,13 +669,13 @@ export class MockScenarioAdapter implements PlatformAdapter {
         );
       }
 
-      // Student -> Teacher: HELP_SEEKING，约 30% 学生
+      // Student -> Teacher: HELP_SEEKING, roughly 30% of students.
       const helpSeekers = this.shuffleArray([...classStudents]).slice(
         0,
         Math.max(1, Math.floor(classStudents.length * 0.3)),
       );
       for (const student of helpSeekers) {
-        const strength = Number((this.rng.next() * 0.4 + 0.6).toFixed(2));
+        const strength = this.randomStrength(0.6, 1);
         addInteraction(
           student.externalId,
           teacher.externalId,
@@ -661,7 +685,7 @@ export class MockScenarioAdapter implements PlatformAdapter {
         );
       }
 
-      // Student -> Student: COLLABORATION，约 20% 学生对的稀疏边
+      // Student -> Student: COLLABORATION, sparse edges for about 20% of pairs.
       const pairCount = Math.max(
         0,
         Math.floor((classStudents.length * (classStudents.length - 1)) / 2) *
@@ -677,7 +701,7 @@ export class MockScenarioAdapter implements PlatformAdapter {
         ) {
           const source = shuffledStudents[i];
           const target = shuffledStudents[j];
-          const strength = Number((this.rng.next() * 0.5 + 0.5).toFixed(2));
+          const strength = this.randomStrength(0.5, 1);
           addInteraction(
             source.externalId,
             target.externalId,
@@ -725,7 +749,8 @@ export class MockScenarioAdapter implements PlatformAdapter {
   }
 
   /**
-   * 使用 Fisher-Yates 算法原地打乱数组，依赖局部随机数生成器。
+   * Shuffles the array in-place using the Fisher-Yates algorithm and the
+   * local random number generator.
    */
   private shuffleArray<T>(array: T[]): T[] {
     for (let i = array.length - 1; i > 0; i--) {
@@ -733,5 +758,41 @@ export class MockScenarioAdapter implements PlatformAdapter {
       [array[i], array[j]] = [array[j], array[i]];
     }
     return array;
+  }
+
+  /** Builds a deterministic key for a class scoped by school and grade. */
+  private buildClassKey(
+    externalSchoolId: string,
+    gradeName: number,
+    className: string,
+  ): string {
+    return `${externalSchoolId}:${gradeName}:${className}`;
+  }
+
+  /** Groups sessions by their class key. */
+  private buildSessionByClassKey(
+    sessions: NormalizedSession[],
+  ): Map<string, NormalizedSession[]> {
+    const map = new Map<string, NormalizedSession[]>();
+    for (const session of sessions) {
+      const key = this.buildClassKey(
+        session.externalSchoolId,
+        session.gradeName,
+        session.className,
+      );
+      const list = map.get(key) ?? [];
+      list.push(session);
+      map.set(key, list);
+    }
+    return map;
+  }
+
+  /** Returns a random strength value in the range [min, max). */
+  private randomStrength(
+    min: number,
+    max: number,
+    decimals = 2,
+  ): number {
+    return Number((this.rng.next() * (max - min) + min).toFixed(decimals));
   }
 }
