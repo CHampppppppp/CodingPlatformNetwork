@@ -1274,8 +1274,8 @@ const App: React.FC = () => {
                       {isChatbotIncrementEligible && (
                         <button
                           onClick={handleChatbotIncrement}
-                          disabled={chatbotIncrementLoading}
-                          title="增量更新"
+                          disabled={chatbotIncrementLoading || isIncrementApplied}
+                          title={isIncrementApplied ? "已更新" : "增量更新"}
                           className="flex items-center justify-center w-7 h-7 bg-transparent text-white rounded-lg transition-colors backdrop-blur-sm disabled:opacity-70"
                         >
                           {chatbotIncrementLoading ? (
