@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../../shared/utils/prisma.service";
+import { OrgService } from "../../org/org.service";
 import {
   NormalizedClassGroup,
   NormalizedInteraction,
@@ -97,7 +98,10 @@ async function parallelLimit<T>(
 
 @Injectable()
 export class IngestionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly orgService: OrgService,
+  ) {}
 
   async importPlatformData(
     data: NormalizedPlatformData,
@@ -208,6 +212,9 @@ export class IngestionService {
       result,
       concurrency,
     );
+
+    // Invalidate org cache so newly imported schools / grades / classes are visible immediately.
+    this.orgService.clearCache();
 
     return result;
   }

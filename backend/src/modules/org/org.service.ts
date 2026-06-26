@@ -55,6 +55,10 @@ export class OrgService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  clearCache(): void {
+    this.cache.clear();
+  }
+
   async getSchools(scenarioCode?: string) {
     const cacheKey = scenarioCode ? `schools:${scenarioCode}` : 'schools';
     const cachedData = this.cache.get(cacheKey);
