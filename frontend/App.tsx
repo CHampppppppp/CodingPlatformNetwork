@@ -1266,10 +1266,12 @@ const App: React.FC = () => {
                     <div className="flex items-center gap-2">
                       {isChatbotIncrementEligible && (
                         <button
-                          onClick={handleChatbotIncrement}
-                          disabled={chatbotIncrementLoading || isIncrementApplied}
+                          onClick={() => {
+                            if (isIncrementApplied) return;
+                            handleChatbotIncrement();
+                          }}
                           title={isIncrementApplied ? "已更新" : "增量更新"}
-                          className="flex items-center justify-center w-7 h-7 bg-transparent text-white rounded-lg transition-colors backdrop-blur-sm disabled:opacity-70"
+                          className="flex items-center justify-center w-7 h-7 bg-transparent text-white rounded-lg transition-colors backdrop-blur-sm"
                         >
                           {chatbotIncrementLoading ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
