@@ -116,11 +116,15 @@ model StudentProfile {
   posterSatisfaction    String?
   teachingPreference    String?
   helpSource            String?
+  inDegree              Int       @default(0)
+  outDegree             Int       @default(0)
+  totalDegree           Int       @default(0)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   node                  GraphNode @relation(fields: [nodeId], references: [id])
 
   @@index([externalUserId])
+  @@index([totalDegree])
   @@map("student_profiles_test")
 }
 

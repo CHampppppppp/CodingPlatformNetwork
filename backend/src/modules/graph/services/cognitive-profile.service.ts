@@ -19,14 +19,21 @@ export class CognitiveProfileService {
     const studentNodes = nodes.filter((node) => node.type === "STUDENT");
     if (studentNodes.length === 0) return;
 
-    const latestProfileMap = await this.getLatestProfileMap(
-      studentNodes.map((node) => node.id),
-    );
+    const [latestProfileMap, degreeMap] = await Promise.all([
+      this.getLatestProfileMap(studentNodes.map((node) => node.id)),
+      this.getStudentDegreeMap(studentNodes.map((node) => node.id)),
+    ]);
 
     for (const node of studentNodes) {
       const profile = latestProfileMap.get(node.id);
+      const degree = degreeMap.get(node.id) ?? 0;
+      const learningEngagementFromDegree = Math.min(5, degree / 10);
 
       if (!profile || profile.dimensionScores.length === 0) {
+        node.studentProfile = {
+          ...node.studentProfile,
+          learningEngagement: learningEngagementFromDegree,
+        };
         continue;
       }
 
@@ -41,7 +48,8 @@ export class CognitiveProfileService {
         node.studentProfile = {
           ...node.studentProfile,
           knowledgeReserve: dimMap.get("knowledgeReserve"),
-          learningEngagement: dimMap.get("learningEngagement"),
+          learningEngagement:
+            dimMap.get("learningEngagement") ?? learningEngagementFromDegree,
           cognitiveLoad: dimMap.get("cognitiveLoad"),
           learningMotivation: dimMap.get("learningMotivation"),
           computationalThinking: dimMap.get("computationalThinking"),
@@ -123,6 +131,21 @@ export class CognitiveProfileService {
 
   emptyStats(): CognitiveStats {
     return emptyAggregateDimensionScores();
+  }
+
+  private async getStudentDegreeMap(studentNodeIds: string[]) {
+    if (studentNodeIds.length === 0) {
+      return new Map<string, number>();
+    }
+
+    const profiles = await this.prisma.studentProfile.findMany({
+      where: { nodeId: { in: studentNodeIds } },
+      select: { nodeId: true, totalDegree: true },
+    });
+
+    return new Map(
+      profiles.map((p) => [p.nodeId, p.totalDegree]),
+    );
   }
 
   private async getLatestProfileMap(studentNodeIds: string[]) {
