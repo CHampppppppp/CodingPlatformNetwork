@@ -15,11 +15,11 @@ const HIGH_THRESHOLD = 4;
 /** 不同活跃度对应的推荐资源数量。 */
 const COUNT_BY_ENGAGEMENT = { high: 6, medium: 4, low: 3 } as const;
 
-/** 资源类型偏好：活跃度越高越倾向轻量快速的内容，活跃度越低越倾向趣味游戏。 */
+/** 活跃度 → 偏好的资源类型（按优先级排列）。 */
 const TYPE_PREFERENCE_BY_ENGAGEMENT = {
-  high: new Set(["VIDEO", "ARTICLE"]),
-  medium: new Set(["PRACTICE", "DOCUMENT"]),
-  low: new Set(["GAME"]),
+  high: ["VIDEO", "ARTICLE"],
+  medium: ["PRACTICE", "DOCUMENT"],
+  low: ["GAME"],
 } as const;
 
 /** difficulty 与中文难度档的映射。 */
@@ -41,24 +41,6 @@ function preferredDifficulty(
   return "LOW";
 }
 
-/** 计算 difficulty 与偏好之间的匹配权重。 */
-function difficultyFitWeight(
-  actual: string | null,
-  preferred: "LOW" | "MEDIUM" | "HIGH",
-): number {
-  if (!actual) return 0.5; // 无难度数据时给中性权重
-
-  const order = ["LOW", "MEDIUM", "HIGH"] as const;
-  const actualIndex = order.indexOf(actual as (typeof order)[number]);
-  const preferredIndex = order.indexOf(preferred);
-  if (actualIndex === -1 || preferredIndex === -1) return 0.3;
-
-  const distance = Math.abs(actualIndex - preferredIndex);
-  if (distance === 0) return 1.0;
-  if (distance === 1) return 0.5;
-  return 0.2;
-}
-
 /** 根据活跃度决定推荐数量。 */
 function countByEngagement(engagement: number): number {
   if (engagement >= HIGH_THRESHOLD) return COUNT_BY_ENGAGEMENT.high;
@@ -66,18 +48,15 @@ function countByEngagement(engagement: number): number {
   return COUNT_BY_ENGAGEMENT.low;
 }
 
-/** 根据活跃度决定偏好的资源类型集合。 */
-function preferredTypes(
-  engagement: number,
-): Set<(typeof TYPE_PREFERENCE_BY_ENGAGEMENT)[keyof typeof TYPE_PREFERENCE_BY_ENGAGEMENT] extends Set<infer T> ? T : never> {
-  if (engagement >= HIGH_THRESHOLD) return TYPE_PREFERENCE_BY_ENGAGEMENT.high;
-  if (engagement > LOW_THRESHOLD) return TYPE_PREFERENCE_BY_ENGAGEMENT.medium;
-  return TYPE_PREFERENCE_BY_ENGAGEMENT.low;
-}
-
-/** 计算资源类型与活跃度偏好之间的匹配权重。 */
-function typeFitWeight(resourceType: string, preferred: Set<string>): number {
-  return preferred.has(resourceType) ? 1.0 : 0.3;
+/** 根据活跃度决定偏好的资源类型。 */
+function preferredTypes(engagement: number): string[] {
+  if (engagement >= HIGH_THRESHOLD) {
+    return [...TYPE_PREFERENCE_BY_ENGAGEMENT.high];
+  }
+  if (engagement > LOW_THRESHOLD) {
+    return [...TYPE_PREFERENCE_BY_ENGAGEMENT.medium];
+  }
+  return [...TYPE_PREFERENCE_BY_ENGAGEMENT.low];
 }
 
 /** 按资源 difficulty 字段给资源打难度标签。 */
@@ -86,6 +65,37 @@ function difficultyLabelOf(
 ): RecommendedResource["difficultyLabel"] {
   if (!difficulty) return "进阶";
   return DIFFICULTY_TO_LABEL[difficulty] ?? "进阶";
+}
+
+/** 计算类型匹配分数：命中偏好类型得 1 分，否则 0 分。 */
+function typeMatchScore(resourceType: string, preferred: string[]): number {
+  return preferred.includes(resourceType) ? 1 : 0;
+}
+
+/** 计算难度匹配分数：同档 1 分，差一档 0.5 分，差两档 0 分。 */
+function difficultyMatchScore(
+  actual: string | null,
+  preferred: "LOW" | "MEDIUM" | "HIGH",
+): number {
+  if (!actual) return 0.5;
+
+  const order = ["LOW", "MEDIUM", "HIGH"] as const;
+  const actualIndex = order.indexOf(actual as (typeof order)[number]);
+  const preferredIndex = order.indexOf(preferred);
+  if (actualIndex === -1 || preferredIndex === -1) return 0.3;
+
+  const distance = Math.abs(actualIndex - preferredIndex);
+  if (distance === 0) return 1;
+  if (distance === 1) return 0.5;
+  return 0;
+}
+
+/** Fisher-Yates 洗牌，原地打乱数组。 */
+function shuffleArray<T>(arr: T[]): void {
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
 }
 
 /** 生成推荐理由文案。 */
@@ -120,45 +130,21 @@ function buildReason(
   return `${reserveDesc}、${engagementDesc}，推荐${difficulty}${typeDesc}类资源巩固提升`;
 }
 
-/**
- * 加权随机不放回抽样：weight 越大被抽中的概率越高。
- * 注意：依赖 `Math.random()`，仅在浏览器/运行时调用，不可用于 Workflow 脚本。
- */
-function weightedSampleWithoutReplacement<T>(
-  items: Array<{ item: T; weight: number }>,
-  count: number,
-): T[] {
-  const pool = items.map((entry) => ({ ...entry }));
-  const picked: T[] = [];
-  const take = Math.min(count, pool.length);
-
-  for (let i = 0; i < take; i += 1) {
-    const totalWeight = pool.reduce((sum, entry) => sum + entry.weight, 0);
-    if (totalWeight <= 0) {
-      // 全部权重为 0 时退化为均匀随机
-      const idx = Math.floor(Math.random() * pool.length);
-      picked.push(pool[idx].item);
-      pool.splice(idx, 1);
-      continue;
-    }
-    let threshold = Math.random() * totalWeight;
-    let chosenIndex = pool.length - 1;
-    for (let j = 0; j < pool.length; j += 1) {
-      threshold -= pool[j].weight;
-      if (threshold <= 0) {
-        chosenIndex = j;
-        break;
-      }
-    }
-    picked.push(pool[chosenIndex].item);
-    pool.splice(chosenIndex, 1);
-  }
-
-  return picked;
+interface ScoredResource {
+  item: Resource;
+  typeScore: number;
+  diffScore: number;
+  baseScore: number;
 }
 
 /**
- * 依据学生的知识储备与活跃度，从资源池中随机推荐若干合适的资源。
+ * 依据学生的知识储备与活跃度，从资源池中按规则映射推荐若干资源。
+ *
+ * 规则：
+ * - 活跃度决定偏好的资源类型：高→视频/文章，中→练习/文档，低→游戏化。
+ * - 知识储备决定偏好的难度：高→挑战，中→进阶，低→基础。
+ * - 资源先按「类型匹配 + 难度匹配」综合得分分组排序，同分段内随机打乱，
+ *   再按活跃度对应的数量取前 N 个，避免每次推荐完全固定，同时允许降级展示。
  *
  * @param pool 候选资源（通常为当前图谱关联的资源）
  * @param knowledgeReserve 知识储备得分 0-5
@@ -175,15 +161,35 @@ export function recommendResources(
   const count = countByEngagement(engagement);
   const preferredTypeSet = preferredTypes(engagement);
 
-  // 资源与偏好难度、偏好类型越接近，权重越高；并叠加随机扰动避免结果过于固定。
-  const weighted = pool.map((resource) => {
-    const diffWeight = difficultyFitWeight(resource.difficulty, preferredDiff);
-    const typeWeight = typeFitWeight(resource.type, preferredTypeSet);
-    const jitter = 0.5 + Math.random();
-    return { item: resource, weight: diffWeight * typeWeight * jitter };
+  // 类型匹配权重更高（0.6），难度匹配次之（0.4）。
+  const scored: ScoredResource[] = pool.map((resource) => {
+    const typeScore = typeMatchScore(resource.type, preferredTypeSet);
+    const diffScore = difficultyMatchScore(resource.difficulty, preferredDiff);
+    return {
+      item: resource,
+      typeScore,
+      diffScore,
+      baseScore: typeScore * 0.6 + diffScore * 0.4,
+    };
   });
 
-  const selected = weightedSampleWithoutReplacement(weighted, count);
+  // 按基础分数分组，组内随机打乱，再按分数降序拼接。
+  const groups = new Map<number, ScoredResource[]>();
+  for (const entry of scored) {
+    const list = groups.get(entry.baseScore) ?? [];
+    list.push(entry);
+    groups.set(entry.baseScore, list);
+  }
+
+  for (const list of groups.values()) {
+    shuffleArray(list);
+  }
+
+  const sorted = Array.from(groups.entries())
+    .sort(([scoreA], [scoreB]) => scoreB - scoreA)
+    .flatMap(([, list]) => list);
+
+  const selected = sorted.slice(0, count).map((entry) => entry.item);
 
   return selected.map((resource) => {
     const difficultyLabel = difficultyLabelOf(resource.difficulty);
