@@ -498,6 +498,16 @@ const App: React.FC = () => {
     setSelectedResource(null);
     setStudentRates({});
 
+    // 在个人画板展开时，console.log 当前学生节点的度数（来自后端 StudentProfile.totalDegree）。
+    if (node.type === NodeType.STUDENT) {
+      console.log(
+        `[Node Degree] ${node.name} (${node.id}):`,
+        node.studentProfile?.learningEngagement != null
+          ? Math.round(node.studentProfile.learningEngagement * 10)
+          : 0,
+      );
+    }
+
     if (node.type === NodeType.KNOWLEDGE) {
       const connectedStudentIds: string[] = [];
       const studentIdSet = new Set(
