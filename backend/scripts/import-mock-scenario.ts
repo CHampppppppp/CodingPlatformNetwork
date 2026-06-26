@@ -13,15 +13,15 @@ type ScenarioCode = (typeof ALLOWED_SCENARIOS)[number];
 
 function printUsage(): void {
   process.stdout.write(
-    `用法：npx ts-node scripts/import-mock-scenario.ts <scenarioCode> [options]\n\n` +
+    `Usage: npx ts-node scripts/import-mock-scenario.ts <scenarioCode> [options]\n\n` +
       `scenarioCode: TEACHER_QA | HOME_LEARNING\n\n` +
-      `选项：\n` +
-      `  --execute              真正写入数据库（默认仅 dry-run）\n` +
-      `  --schools=N            学校数量（默认 2）\n` +
-      `  --classes-per-school=N 每校班级上限（默认 3）\n` +
-      `  --min-students=N       每班最少学生（默认 20）\n` +
-      `  --max-students=N       每班最多学生（默认 40）\n` +
-      `  --seed=N               随机种子（默认 42）\n`,
+      `Options:\n` +
+      `  --execute              Actually write to the database (default: dry-run only)\n` +
+      `  --schools=N            Number of schools (default: 2)\n` +
+      `  --classes-per-school=N Max classes per school (default: 3)\n` +
+      `  --min-students=N       Minimum students per class (default: 20)\n` +
+      `  --max-students=N       Maximum students per class (default: 40)\n` +
+      `  --seed=N               Random seed (default: 42)\n`,
   );
 }
 
@@ -31,25 +31,48 @@ function parseNumberFlag(
   defaultValue: number,
 ): number {
   const prefix = `${name}=`;
+  let rawValue: string | undefined;
+
   for (let i = 0; i < flags.length; i++) {
     const arg = flags[i];
     if (arg === name) {
       const next = flags[i + 1];
       if (next && !next.startsWith("--")) {
-        const value = Number(next);
-        if (!Number.isNaN(value)) return value;
+        rawValue = next;
+        break;
       }
+      throw new Error(`Error: ${name} requires a numeric value.`);
     }
     if (arg.startsWith(prefix)) {
-      const value = Number(arg.slice(prefix.length));
-      if (!Number.isNaN(value)) return value;
+      rawValue = arg.slice(prefix.length);
+      break;
     }
   }
-  return defaultValue;
-}
 
-function hasFlag(flags: string[], name: string): boolean {
-  return flags.some((arg) => arg === name || arg.startsWith(`${name}=`));
+  if (rawValue === undefined) {
+    return defaultValue;
+  }
+
+  if (rawValue === "" || !/^-?\d+$/.test(rawValue)) {
+    throw new Error(
+      `Error: ${name} must be a non-negative integer, got "${rawValue}".`,
+    );
+  }
+
+  const value = Number(rawValue);
+  if (Number.isNaN(value)) {
+    throw new Error(
+      `Error: ${name} must be a valid number, got "${rawValue}".`,
+    );
+  }
+  if (!Number.isInteger(value)) {
+    throw new Error(`Error: ${name} must be an integer, got "${rawValue}".`);
+  }
+  if (value < 0) {
+    throw new Error(`Error: ${name} must be non-negative, got ${value}.`);
+  }
+
+  return value;
 }
 
 function parseArgs(): {
@@ -63,19 +86,18 @@ function parseArgs(): {
 
   if (positional.length === 0) {
     printUsage();
-    process.exit(1);
+    throw new Error("Error: scenario code is required.");
   }
 
   const scenarioCode = positional[0];
   if (!ALLOWED_SCENARIOS.includes(scenarioCode as ScenarioCode)) {
-    process.stderr.write(
-      `Error: unsupported scenario code "${scenarioCode}". Allowed: ${ALLOWED_SCENARIOS.join(", ")}\n`,
-    );
     printUsage();
-    process.exit(1);
+    throw new Error(
+      `Error: unsupported scenario code "${scenarioCode}". Allowed: ${ALLOWED_SCENARIOS.join(", ")}`,
+    );
   }
 
-  const execute = hasFlag(flags, "--execute");
+  const execute = flags.includes("--execute");
 
   const options: MockScenarioOptions = {
     schoolCount: parseNumberFlag(flags, "--schools", 2),
@@ -84,6 +106,12 @@ function parseArgs(): {
     maxStudentsPerClass: parseNumberFlag(flags, "--max-students", 40),
     seed: parseNumberFlag(flags, "--seed", 42),
   };
+
+  if (options.minStudentsPerClass > options.maxStudentsPerClass) {
+    throw new Error(
+      `Error: --min-students (${options.minStudentsPerClass}) must be less than or equal to --max-students (${options.maxStudentsPerClass}).`,
+    );
+  }
 
   return { scenarioCode: scenarioCode as ScenarioCode, execute, options };
 }
@@ -146,7 +174,7 @@ async function main() {
       process.stderr.write(
         `Error: scenario "${scenarioCode}" not found in LearningScenario table.\n`,
       );
-      return;
+      process.exit(1);
     }
 
     process.stdout.write(`\nImporting into database...\n`);
