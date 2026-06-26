@@ -495,13 +495,11 @@ const App: React.FC = () => {
     setSelectedResource(null);
     setStudentRates({});
 
-    // 在个人画板展开时，console.log 当前学生节点的度数（来自后端 StudentProfile.totalDegree）。
+    // 在个人画板展开时，console.log 当前学生的学习投入（learningEngagement）原始值。
     if (node.type === NodeType.STUDENT) {
       console.log(
-        `[Node Degree] ${node.name} (${node.id}):`,
-        node.studentProfile?.learningEngagement != null
-          ? Math.round(node.studentProfile.learningEngagement * 10)
-          : 0,
+        `[learningEngagement] ${node.name} (${node.id}):`,
+        node.studentProfile?.learningEngagement ?? 0,
       );
     }
 
@@ -744,7 +742,7 @@ const App: React.FC = () => {
     const profile = selectedNode.studentProfile;
     if (!profile) return;
 
-    // 活跃度（learningEngagement）由后端 CognitiveProfileService 统一从
+    // 学习投入（learningEngagement）由后端 CognitiveProfileService 统一从
     // StudentProfile.totalDegree 计算并下发，前端直接使用，保证前后端口径一致。
     const engagement =
       typeof profile.learningEngagement === "number" ? profile.learningEngagement : 0;
@@ -1855,7 +1853,7 @@ const App: React.FC = () => {
                 <div>
                   <h2 className="text-lg font-bold text-slate-800">推荐资源</h2>
                   <p className="text-xs text-slate-500">
-                    {selectedNode.name} · 基于知识储备与活跃度的个性化资源推荐
+                    {selectedNode.name} · 基于知识储备与学习投入的个性化资源推荐
                   </p>
                 </div>
               </div>
