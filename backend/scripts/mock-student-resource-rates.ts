@@ -20,6 +20,7 @@ import { Prisma } from "@prisma/client";
 const DEFAULT_SCENARIO_CODE = "ONLINE_COURSE";
 const RATE_MIN = 1;
 const RATE_MAX = 5;
+const TARGET_ACCEPTANCE_RATE = 0.85; // 目标资源总接受度 85%
 
 interface ParsedArgs {
   scenarioCode: string;
@@ -60,6 +61,16 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+function generateRate(random: () => number): number {
+  // 接受度 = (rate / RATE_MAX) * 100，目标 85% 即平均分 4.25。
+  // 使用 Beta(α, 1) 分布并线性映射到 [RATE_MIN, RATE_MAX]。
+  // Beta(α, 1) 期望为 α/(α+1)，令 RATE_MIN + (RATE_MAX-RATE_MIN)*α/(α+1) = TARGET_ACCEPTANCE_RATE*RATE_MAX
+  const targetMean = TARGET_ACCEPTANCE_RATE * RATE_MAX;
+  const alpha = (targetMean - RATE_MIN) / (RATE_MAX - targetMean);
+  const betaSample = random() ** (1 / alpha);
+  return round2(RATE_MIN + (RATE_MAX - RATE_MIN) * betaSample);
+}
+
 function isUniqueConstraintError(error: unknown): boolean {
   return (
     error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"
@@ -89,7 +100,7 @@ async function mockRatesForScenario(
 
   if (studentKnowledgeRelations.length === 0) {
     console.log("  该场景下没有学生-知识点关系，无需生成评分。");
-    return { totalCount: 0, successCount: 0, duplicateCount: 0, studentCount: 0, knowledgeCount: 0, resourceCount: 0 };
+    return { totalCount: 0, successCount: 0, duplicateCount: 0, rateSum: 0, studentCount: 0, knowledgeCount: 0, resourceCount: 0 };
   }
 
   // 获取这些知识点关联的资源
@@ -122,40 +133,63 @@ async function mockRatesForScenario(
     }
   }
 
+  const rateRows: Array<{ studentId: string; resourceId: string; rate: number }> = [];
   let totalCount = 0;
   let successCount = 0;
   let duplicateCount = 0;
+  let rateSum = 0;
 
   for (const [studentNodeId, resourceIds] of resourcesByStudent) {
     for (const resourceId of resourceIds) {
-      const rate = round2(RATE_MIN + random() * (RATE_MAX - RATE_MIN));
+      const rate = generateRate(random);
+      rateSum += rate;
       totalCount += 1;
 
       if (execute) {
-        try {
-          await prisma.studentResourceRate.create({
-            data: {
-              studentId: studentNodeId,
-              resourceId,
-              rate: new Prisma.Decimal(rate.toFixed(2)),
-            },
-          });
-          successCount += 1;
-        } catch (error) {
-          if (isUniqueConstraintError(error)) {
-            duplicateCount += 1;
-          } else {
-            throw error;
-          }
+        rateRows.push({
+          studentId: studentNodeId,
+          resourceId,
+          rate: Number(rate.toFixed(2)),
+        });
+      }
+    }
+  }
+
+  if (execute && rateRows.length > 0) {
+    const batchSize = 1000;
+    for (let i = 0; i < rateRows.length; i += batchSize) {
+      const batch = rateRows.slice(i, i + batchSize);
+      try {
+        const { count } = await prisma.studentResourceRate.createMany({
+          data: batch.map((r) => ({
+            studentId: r.studentId,
+            resourceId: r.resourceId,
+            rate: new Prisma.Decimal(r.rate),
+          })),
+          skipDuplicates: true,
+        });
+        successCount += count;
+      } catch (error) {
+        if (isUniqueConstraintError(error)) {
+          duplicateCount += batch.length;
+        } else {
+          throw error;
         }
       }
     }
   }
 
+  const avgRate = totalCount > 0 ? round2(rateSum / totalCount) : null;
+  const acceptanceRate = avgRate != null ? round2((avgRate / RATE_MAX) * 100) : null;
+
   console.log(`  涉及学生数: ${resourcesByStudent.size}`);
   console.log(`  涉及知识点数: ${knowledgeIds.length}`);
   console.log(`  涉及资源数: ${resourceRelations.map((r) => r.resourceId).filter((v, i, a) => a.indexOf(v) === i).length}`);
   console.log(`  预计评分记录: ${totalCount}`);
+  if (avgRate != null) {
+    console.log(`  预计平均评分: ${avgRate} / ${RATE_MAX}`);
+    console.log(`  预计接受度: ${acceptanceRate}%`);
+  }
   if (execute) {
     console.log(`  成功写入: ${successCount}`);
     if (duplicateCount > 0) console.log(`  重复跳过: ${duplicateCount}`);
@@ -165,6 +199,7 @@ async function mockRatesForScenario(
     totalCount,
     successCount,
     duplicateCount,
+    rateSum,
     studentCount: resourcesByStudent.size,
     knowledgeCount: knowledgeIds.length,
     resourceCount: resourceRelations.map((r) => r.resourceId).filter((v, i, a) => a.indexOf(v) === i).length,
@@ -197,6 +232,7 @@ async function main() {
       let grandTotal = 0;
       let grandSuccess = 0;
       let grandDuplicate = 0;
+      let grandRateSum = 0;
 
       for (const scenario of scenarios) {
         const result = await mockRatesForScenario(
@@ -209,10 +245,18 @@ async function main() {
         grandTotal += result.totalCount;
         grandSuccess += result.successCount;
         grandDuplicate += result.duplicateCount;
+        grandRateSum += result.rateSum;
       }
+
+      const grandAvgRate = grandTotal > 0 ? round2(grandRateSum / grandTotal) : null;
+      const grandAcceptanceRate = grandAvgRate != null ? round2((grandAvgRate / RATE_MAX) * 100) : null;
 
       console.log(`\n全部场景汇总：`);
       console.log(`  预计评分记录总计: ${grandTotal}`);
+      if (grandAvgRate != null) {
+        console.log(`  预计平均评分: ${grandAvgRate} / ${RATE_MAX}`);
+        console.log(`  预计接受度: ${grandAcceptanceRate}%`);
+      }
       if (execute) {
         console.log(`  成功写入总计: ${grandSuccess}`);
         if (grandDuplicate > 0) console.log(`  重复跳过总计: ${grandDuplicate}`);

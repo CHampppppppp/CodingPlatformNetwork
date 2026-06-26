@@ -146,7 +146,7 @@ const handleCloseRecommend = () => {
 
 - [ ] **Step 4: 在推荐资源卡片中嵌入评分组件**
 
-找到「推荐资源」弹窗中 `recommendedResources.map((resource) => (...))` 的卡片渲染区域（约 1861 行），在卡片最底部（历史正确率 `span` 之后）插入：
+找到「推荐资源」弹窗中 `recommendedResources.map((resource) => (...))` 的卡片渲染区域（约 1861 行），在卡片最底部（资源接受度 `span` 之后）插入：
 
 ```tsx
 <div className="mt-2 pt-2 border-t border-slate-100">

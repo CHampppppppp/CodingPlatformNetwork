@@ -1,5 +1,13 @@
 import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import { createPool, Pool, RowDataPacket } from "mysql2/promise";
+import {
+  AGGREGATE_DIMENSION_CATEGORY,
+  AGGREGATE_DIMENSION_CODE_TO_BASE_CODES,
+  AGGREGATE_DIMENSION_KEYS,
+  AGGREGATE_DIMENSION_NAME_ZH,
+  AggregateDimensionKey,
+  computeAggregateDimensionScores,
+} from "../../shared/utils/cognitive-dimensions";
 
 const RECOGNIZED_BASE_DIMENSIONS = new Set([
   "COG_READING",
@@ -71,7 +79,7 @@ export interface ChatbotDimensionIncrementItem {
 
 export interface ChatbotDimensionIncrementResult {
   studentNodeId: string;
-  baseDimensions: ChatbotDimensionIncrementItem[];
+  aggregateDimensions: ChatbotDimensionIncrementItem[];
 }
 
 interface DimensionHistoryRow extends RowDataPacket {
@@ -85,6 +93,10 @@ interface DimensionHistoryRow extends RowDataPacket {
 
 interface UserIdRow extends RowDataPacket {
   id: number;
+}
+
+function roundOneDecimal(value: number): number {
+  return Math.round(value * 10) / 10;
 }
 
 @Injectable()
@@ -125,14 +137,16 @@ export class ChatbotDimensionService implements OnModuleDestroy {
     }
 
     const rows = await this.fetchLatestHistory(chatbotUserId);
-    const baseDimensions = rows
+    const baseItems = rows
       .filter((row) => RECOGNIZED_BASE_DIMENSIONS.has(row.dimension_key))
       .map((row) => this.mapRowToItem(row))
       .sort((a, b) => a.dimensionCode.localeCompare(b.dimensionCode));
 
+    const aggregateDimensions = this.buildAggregateDimensions(baseItems);
+
     return {
       studentNodeId,
-      baseDimensions,
+      aggregateDimensions,
     };
   }
 
@@ -192,5 +206,80 @@ export class ChatbotDimensionService implements OnModuleDestroy {
       reason: row.reason,
       updatedAt: row.created_at,
     };
+  }
+
+  private buildAggregateDimensions(
+    baseItems: ChatbotDimensionIncrementItem[],
+  ): ChatbotDimensionIncrementItem[] {
+    if (baseItems.length === 0) {
+      return [];
+    }
+
+    const previousScoreMap = new Map<string, number>();
+    const newScoreMap = new Map<string, number>();
+
+    for (const item of baseItems) {
+      if (item.previousValue !== null) {
+        previousScoreMap.set(item.dimensionCode, item.previousValue);
+      }
+      newScoreMap.set(item.dimensionCode, item.newValue);
+    }
+
+    const previousAggregate = computeAggregateDimensionScores(previousScoreMap);
+    const newAggregate = computeAggregateDimensionScores(newScoreMap);
+
+    const latestUpdatedAt = baseItems
+      .map((item) => item.updatedAt)
+      .filter((value): value is string => value !== null)
+      .sort()
+      .pop() ?? null;
+
+    const hasAnyPreviousValue = baseItems.some(
+      (item) => item.previousValue !== null,
+    );
+
+    return AGGREGATE_DIMENSION_KEYS.map((key) => {
+      const previousRaw = previousAggregate[key];
+      const newRaw = newAggregate[key];
+      const previousValue = hasAnyPreviousValue
+        ? roundOneDecimal(previousRaw)
+        : null;
+      const newValue = roundOneDecimal(newRaw);
+      const changeDelta = roundOneDecimal(newValue - (previousValue ?? newValue));
+
+      return {
+        dimensionCode: key,
+        dimensionNameZh: AGGREGATE_DIMENSION_NAME_ZH[key],
+        category: AGGREGATE_DIMENSION_CATEGORY[key],
+        previousValue,
+        newValue,
+        changeDelta,
+        reason: this.buildAggregateReason(key, baseItems),
+        updatedAt: latestUpdatedAt,
+      };
+    });
+  }
+
+  private buildAggregateReason(
+    aggregateKey: AggregateDimensionKey,
+    baseItems: ChatbotDimensionIncrementItem[],
+  ): string {
+    const baseCodes = AGGREGATE_DIMENSION_CODE_TO_BASE_CODES[aggregateKey];
+    const relatedItems = baseItems.filter((item) =>
+      baseCodes.includes(item.dimensionCode),
+    );
+    const changedItems = relatedItems.filter(
+      (item) => item.changeDelta !== 0,
+    );
+
+    if (changedItems.length === 0) {
+      return `${AGGREGATE_DIMENSION_NAME_ZH[aggregateKey]}保持稳定，继续当前学习节奏与干预策略即可。`;
+    }
+
+    const representative = changedItems.reduce((max, item) =>
+      Math.abs(item.changeDelta) > Math.abs(max.changeDelta) ? item : max,
+    );
+
+    return representative.reason;
   }
 }

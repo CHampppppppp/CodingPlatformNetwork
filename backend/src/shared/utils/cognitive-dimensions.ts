@@ -13,6 +13,32 @@ export const AGGREGATE_DIMENSION_KEYS = [
 
 export type AggregateDimensionKey = (typeof AGGREGATE_DIMENSION_KEYS)[number];
 
+export const AGGREGATE_DIMENSION_NAME_ZH: Record<AggregateDimensionKey, string> = {
+  knowledgeReserve: "知识储备",
+  learningEngagement: "学习投入",
+  cognitiveLoad: "认知负荷",
+  learningMotivation: "学习动机",
+  computationalThinking: "计算思维",
+  humanAiTrust: "人机信任度",
+  learningMethod: "学习方法倾向",
+  learningAttitude: "学习态度",
+  selfRegulatedLearning: "自我调节学习",
+  aiLiteracy: "人工智能素养",
+};
+
+export const AGGREGATE_DIMENSION_CATEGORY: Record<AggregateDimensionKey, string> = {
+  knowledgeReserve: "认知能力",
+  learningEngagement: "实践能力",
+  cognitiveLoad: "心理健康",
+  learningMotivation: "心理健康",
+  computationalThinking: "认知能力",
+  humanAiTrust: "认知能力",
+  learningMethod: "实践能力",
+  learningAttitude: "实践能力",
+  selfRegulatedLearning: "实践能力",
+  aiLiteracy: "认知能力",
+};
+
 export const AGGREGATE_DIMENSION_CODE_TO_BASE_CODES: Record<
   AggregateDimensionKey,
   string[]

@@ -249,5 +249,5 @@ export interface ChatbotDimensionIncrementItem {
 
 export interface ChatbotDimensionIncrementData {
   studentNodeId: string;
-  baseDimensions: ChatbotDimensionIncrementItem[];
+  aggregateDimensions: ChatbotDimensionIncrementItem[];
 }

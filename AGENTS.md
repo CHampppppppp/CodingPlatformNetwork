@@ -15,6 +15,7 @@
 - 大改动先给方案，确认后再动手。
 - 不要新增无关文档；用户明确要求写文档时才写。
 - 不要删除、覆盖、回滚用户已有改动。
+- **数据必须关联成闭环，禁止孤立/mock 式插入**：新增实体时要同步建立与上下级表的外键/关系（如班级-教师-学校-场景），避免只写主表而漏掉关联表。
 
 ## 红线
 
@@ -56,6 +57,7 @@ Excel/CSV/JSON
 - `backend/scripts/import-{platform}.ts` 只能做薄入口：加载 adapter、调用 `IngestionService`、打印结果。
 - 不要在平台脚本里直接写大量 `prisma.*.create()` 入库逻辑。
 - Excel/CSV 都应由 adapter 读取并转成 `NormalizedPlatformData`。
+- **入库时必须保证关系闭环**：班级必须关联年级/学校/场景，教师必须关联班级/学校/场景，交互必须关联会话与源/目标节点，不能只插主表而漏掉外键与扩展表。
 
 ## 场景约定
 
@@ -82,24 +84,6 @@ Excel/CSV/JSON
 - Prisma 金额/分数/强度等小数用 `Decimal`。
 - 前端使用函数组件 + Hooks；D3 图谱节点保持 `id/type/name/group/val` 基础结构。
 
-## 验证命令
-
-改后端后至少运行：
-
-```bash
-cd backend && npm run build
-```
-
-改前端后至少运行：
-
-```bash
-cd frontend && npm run build
-```
-
-改导入脚本但不执行真实导入时，优先做只编译检查。
 
 ## Git 纪律
-
-- 工作区可能已有用户改动；只处理本任务相关文件。
 - 改完小单元后要验证并commit，方便rollback。
-- 最终说明要列出改了什么、验证了什么、哪些事情没有做。

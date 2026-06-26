@@ -86,7 +86,7 @@
   .card--stage .label { margin-bottom: 12px; }
   .stage-chart {
     width: 100%;
-    max-width: 560px;
+    
   }
 
   /* Highlight cards — school/student/teacher */
@@ -155,7 +155,7 @@
 <div class="container">
   <div class="header">
     <h1>数据概况统计报告</h1>
-    <div class="meta">生成时间: 2026/5/14 12:30:29 · 数据来源: mysql://root@localhost:3306/interaction_network_test</div>
+    <div class="meta">生成时间: 2026/6/26 04:00:42 · 数据来源: mysql://root@localhost:3306/interaction_network_test</div>
   </div>
 
   <div class="grid">
@@ -189,16 +189,15 @@
       </svg>
     </div>
 
-    <div class="card card--highlight"><div class="label">学校数量</div><div class="value">379<span class="unit">所</span></div></div>
-    <div class="card card--highlight"><div class="label">学生数量</div><div class="value">99,469<span class="unit">人</span></div></div>
-    <div class="card card--highlight"><div class="label">教师数量</div><div class="value">15,673<span class="unit">人</span></div></div>
-    <div class="card"><div class="label">网络节点总数</div><div class="value">115,292</div></div>
-    <div class="card"><div class="label">交互记录数量</div><div class="value">225,702</div></div>
-    <div class="card"><div class="label">会话数量</div><div class="value">6,173</div></div>
-    <div class="card"><div class="label">学生作品数量</div><div class="value">16,144</div></div>
-    <div class="card"><div class="label">学生认知画像数量</div><div class="value">199,230</div></div>
-    <div class="card"><div class="label">学生资源评分数量</div><div class="value">1,676,646</div></div>
-    <div class="card"><div class="label">学生知识点关联数量</div><div class="value">18,217</div></div>
+    <div class="card card--highlight"><div class="label">学校数量</div><div class="value">400<span class="unit">所</span></div></div>
+    <div class="card card--highlight"><div class="label">学生数量</div><div class="value">107,568<span class="unit">人</span></div></div>
+    <div class="card card--highlight"><div class="label">教师数量</div><div class="value">2,404<span class="unit">人</span></div></div>
+    <div class="card"><div class="label">网络节点总数</div><div class="value">110,600</div></div>
+    <div class="card"><div class="label">交互记录数量</div><div class="value">375,888</div></div>
+    <div class="card"><div class="label">学生作品数量</div><div class="value">21,743</div></div>
+    <div class="card"><div class="label">有认知画像学生</div><div class="value">107,568</div></div>
+    <div class="card"><div class="label">学生资源评分数量</div><div class="value">21,255</div></div>
+    <div class="card"><div class="label">学生知识点关联数量</div><div class="value">146,002</div></div>
   </div>
 
   <div class="table-section">
@@ -206,9 +205,9 @@
     <table>
       <thead><tr><th>节点类型</th><th>数量</th></tr></thead>
       <tbody>
-        <tr><td>Knowledge</td><td>150</td></tr>
-        <tr><td>Student</td><td>99,469</td></tr>
-        <tr><td>Teacher</td><td>15,673</td></tr>
+        <tr><td>Knowledge</td><td>628</td></tr>
+        <tr><td>Student</td><td>107,568</td></tr>
+        <tr><td>Teacher</td><td>2,404</td></tr>
       </tbody>
     </table>
   </div>
@@ -218,8 +217,8 @@
     <table>
       <thead><tr><th>场景名称</th><th>代码</th><th>节点数</th><th>会话数</th></tr></thead>
       <tbody>
-        <tr><td>展示场景</td><td>SHOW_CASE</td><td>13,575</td><td>4</td></tr>
-        <tr><td>学科课程在线学习</td><td>ONLINE_COURSE</td><td>0</td><td>0</td></tr>
+        <tr><td>展示场景</td><td>SHOW_CASE</td><td>615</td><td>1</td></tr>
+        <tr><td>学科课程在线学习</td><td>ONLINE_COURSE</td><td>8,268</td><td>123</td></tr>
         <tr><td>课后线上教师授课答疑</td><td>TEACHER_QA</td><td>0</td><td>0</td></tr>
         <tr><td>家庭在线学习</td><td>HOME_LEARNING</td><td>0</td><td>0</td></tr>
         <tr><td>在线协作学习</td><td>COLLABORATIVE_LEARNING</td><td>253</td><td>19</td></tr>
@@ -233,26 +232,27 @@
     <table>
       <thead><tr><th>交互类型</th><th>数量</th></tr></thead>
       <tbody>
-        <tr><td>PLATFORM</td><td>225,702</td></tr>
+        <tr><td>PHYSICAL</td><td>2</td></tr>
+        <tr><td>PLATFORM</td><td>375,884</td></tr>
       </tbody>
     </table>
   </div>
 
   <div class="table-section">
-    <h2>学校 Top 10（按年级数）</h2>
+    <h2>学校 Top 10（按学生数）</h2>
     <table>
-      <thead><tr><th>学校名称</th><th>年级数</th><th>教师数</th><th>学生数</th></tr></thead>
+      <thead><tr><th>学校名称</th><th>学生数</th></tr></thead>
       <tbody>
-        <tr><td>舟山第一小学</td><td>7</td><td>50</td><td>181</td></tr>
-        <tr><td>龙游县樾园小学</td><td>6</td><td>51</td><td>170</td></tr>
-        <tr><td>三门县浦坝港镇沿江初级中学</td><td>6</td><td>45</td><td>134</td></tr>
-        <tr><td>上海外国语大学秀洲外国语学校</td><td>6</td><td>35</td><td>107</td></tr>
-        <tr><td>上海尚阳外国语学校桐乡实验学校</td><td>6</td><td>47</td><td>122</td></tr>
-        <tr><td>下陈中心小学</td><td>6</td><td>38</td><td>299</td></tr>
-        <tr><td>东阳市南马实验小学</td><td>6</td><td>41</td><td>128</td></tr>
-        <tr><td>东阳市南马镇中心小学</td><td>6</td><td>55</td><td>120</td></tr>
-        <tr><td>东阳市横店镇第二小学</td><td>6</td><td>56</td><td>205</td></tr>
-        <tr><td>临海市回浦实验中学</td><td>6</td><td>42</td><td>149</td></tr>
+        <tr><td>hsdfszpsyxx</td><td>1,383</td></tr>
+        <tr><td>xszx</td><td>1,070</td></tr>
+        <tr><td>hzsfdxfszpsyxx</td><td>906</td></tr>
+        <tr><td>xzxx</td><td>899</td></tr>
+        <tr><td>sdxx</td><td>510</td></tr>
+        <tr><td>hnzx</td><td>492</td></tr>
+        <tr><td>cxxx</td><td>464</td></tr>
+        <tr><td>杭州市采荷第一小学（杭州采荷第一小学教育集团）</td><td>450</td></tr>
+        <tr><td>永康市龙川学校</td><td>450</td></tr>
+        <tr><td>宁波市北仑区梅山学校</td><td>450</td></tr>
       </tbody>
     </table>
   </div>

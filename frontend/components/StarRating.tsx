@@ -26,7 +26,7 @@ const StarRating: React.FC<StarRatingProps> = ({
   const displayValue = hoverValue || value;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 z-10">
       {label && (
         <span className="text-[11px] text-slate-500 shrink-0">{label}</span>
       )}
@@ -38,12 +38,14 @@ const StarRating: React.FC<StarRatingProps> = ({
               key={score}
               type="button"
               disabled={readOnly}
-              onClick={() => onChange?.(score)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange?.(score);
+              }}
               onMouseEnter={() => !readOnly && setHoverValue(score)}
               onMouseLeave={() => !readOnly && setHoverValue(0)}
-              className={`p-0.5 transition-colors focus:outline-none ${
-                readOnly ? "cursor-default" : "cursor-pointer hover:scale-105"
-              }`}
+              className={`p-0.5 transition-colors focus:outline-none ${readOnly ? "cursor-default" : "cursor-pointer hover:scale-105"
+                }`}
               aria-label={`评分 ${score} 分`}
             >
               <Star

@@ -4,7 +4,7 @@ import { Resource } from "../types";
 export interface RecommendedResource extends Resource {
   /** 推荐理由（依据知识储备 / 活跃度生成）。 */
   recommendReason: string;
-  /** 资源难度档：基于历史正确率推断。 */
+  /** 资源难度档：基于资源接受度推断。 */
   difficultyLabel: "基础" | "进阶" | "挑战";
 }
 
@@ -29,7 +29,7 @@ function preferredAccuracy(knowledgeReserve: number): number {
   return 90 - (clamped / 5) * 50;
 }
 
-/** 按历史正确率给资源打难度标签。 */
+/** 按资源接受度给资源打难度标签。 */
 function difficultyLabelOf(accuracy: number | null): RecommendedResource["difficultyLabel"] {
   const value = accuracy ?? NEUTRAL_ACCURACY;
   if (value >= 70) return "基础";

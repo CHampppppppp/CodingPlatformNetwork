@@ -42,7 +42,7 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
     };
 
     const linkColor = (type: InteractionType) => {
-        return type === InteractionType.PHYSICAL ? "#64748b" : "#3b82f6";
+        return type === InteractionType.PHYSICAL ? "#f59e0b" : "#3b82f6";
     };
 
     const simulation = d3.forceSimulation(data.nodes)
@@ -262,7 +262,7 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
                 <div className="font-bold text-slate-500 mb-2 uppercase tracking-wider text-[10px]">交互类型</div>
                 <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
-                        <span className="w-8 h-0.5 bg-slate-500 rounded-full"></span> 
+                        <span className="w-8 h-0.5 bg-amber-500 rounded-full"></span> 
                         <span className="text-slate-600 font-medium">物理空间采集</span>
                     </div>
                     <div className="flex items-center gap-2">

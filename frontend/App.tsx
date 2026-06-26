@@ -37,7 +37,10 @@ import {
   fetchResourceStudentRates,
 } from "./services/dataService";
 import { fetchStudentCognitiveTemplate as fetchStudentCognitiveTemplateRaw, fetchStudentExpertIntervention, fetchChatbotDimensionIncrement } from "./services/apiService";
-import { generateDemoChatbotIncrementData } from "./services/chatbotDimensionDemo";
+import {
+  generateDemoChatbotIncrementData,
+  SEMESTER_BEFORE_SCORES,
+} from "./services/chatbotDimensionDemo";
 import { getStrategy, getLearningStyleStrategies } from "./services/strategies";
 import {
   recommendResources,
@@ -45,7 +48,6 @@ import {
 } from "./services/resourceRecommendation";
 import {
   computeAggregateDimensions,
-  buildTemplateDimensions,
 } from "./services/dimensionUtils";
 import {
   GraphData,
@@ -70,6 +72,44 @@ import {
 
 // 切换 chatbot 维度增量更新为演示模式（true=模拟数据，false=真实接口）
 const DEMO_CHATBOT_INCREMENT = true;
+
+const CHATBOT_INCREMENT_STORAGE_KEY = "chatbot-increment-scores";
+
+function readStoredIncrementScores(): Record<string, Partial<CognitiveAttributes>> {
+  try {
+    const raw = localStorage.getItem(CHATBOT_INCREMENT_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return typeof parsed === "object" && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeStoredIncrementScores(
+  scores: Record<string, Partial<CognitiveAttributes>>,
+): void {
+  try {
+    localStorage.setItem(CHATBOT_INCREMENT_STORAGE_KEY, JSON.stringify(scores));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function storeIncrementScore(
+  nodeId: string,
+  scores: Partial<CognitiveAttributes>,
+): void {
+  const all = readStoredIncrementScores();
+  all[nodeId] = scores;
+  writeStoredIncrementScores(all);
+}
+
+function getStoredIncrementScore(
+  nodeId: string,
+): Partial<CognitiveAttributes> | null {
+  return readStoredIncrementScores()[nodeId] ?? null;
+}
 
 const dimensionCodeToStrategyKey: Record<string, keyof CognitiveAttributes> = {
   knowledgeReserve: "knowledgeReserve",
@@ -180,6 +220,7 @@ const App: React.FC = () => {
     ChatbotDimensionIncrementData | null
   >(null);
   const [chatbotIncrementLoading, setChatbotIncrementLoading] = useState(false);
+  const [isIncrementApplied, setIsIncrementApplied] = useState(false);
 
   // Class options state (loaded async)
   const [classOptions, setClassOptions] = useState<{
@@ -456,6 +497,7 @@ const App: React.FC = () => {
 
   const handleNodeClick = async (node: GraphNode) => {
     setSelectedNode(node);
+    setIsIncrementApplied(false);
     setSelectedResource(null);
     setStudentRates({});
 
@@ -617,10 +659,10 @@ const App: React.FC = () => {
       newProfileData.template = {
         profileMeta: templateProfile.profile
           ? {
-              version: templateProfile.profile.version,
-              generatedAt: templateProfile.profile.generatedAt,
-              totalScore: templateProfile.profile.totalScore,
-            }
+            version: templateProfile.profile.version,
+            generatedAt: templateProfile.profile.generatedAt,
+            totalScore: templateProfile.profile.totalScore,
+          }
           : undefined,
         dimensions: sortedDimensions.map((d) => ({
           code: d.dimensionCode,
@@ -652,11 +694,16 @@ const App: React.FC = () => {
           aiLiteracy: 0,
         };
 
+        const storedScores = getStoredIncrementScore(node.id);
+        const hasStoredIncrement = storedScores !== null;
+        setIsIncrementApplied(hasStoredIncrement);
+
         return {
           ...prev,
           studentProfile: {
             ...baseProfile,
             ...newProfileData,
+            ...storedScores,
           },
         };
       });
@@ -676,6 +723,8 @@ const App: React.FC = () => {
     setExpertInterventionData(null);
     setIsRecommendOpen(false);
     setRecommendedResources([]);
+    setIsChatbotIncrementOpen(false);
+    setChatbotIncrementData(null);
   };
 
   const handleOpenExpertIntervention = async () => {
@@ -738,37 +787,16 @@ const App: React.FC = () => {
     setChatbotIncrementLoading(true);
     try {
       const data = DEMO_CHATBOT_INCREMENT
-        ? generateDemoChatbotIncrementData(
-            selectedNode.id,
-            selectedNode.studentProfile || {
-              school: "",
-              grade: "",
-              classId: "",
-              knowledgeReserve: 5,
-              learningEngagement: 5,
-              cognitiveLoad: 5,
-              learningMotivation: 5,
-              computationalThinking: 5,
-              humanAiTrust: 5,
-              learningMethod: 5,
-              learningAttitude: 5,
-              selfRegulatedLearning: 5,
-              aiLiteracy: 5,
-            },
-          )
+        ? generateDemoChatbotIncrementData(selectedNode.id)
         : await fetchChatbotDimensionIncrement(selectedNode.id);
       setChatbotIncrementData(data);
 
-      const baseScoreMap = data.baseDimensions.reduce<Record<string, number>>(
-        (acc, item) => {
-          acc[item.dimensionCode] = item.newValue;
-          return acc;
-        },
-        {},
-      );
-
-      const aggregateScores = computeAggregateDimensions(baseScoreMap);
-      const templateDimensions = buildTemplateDimensions(baseScoreMap);
+      const aggregateScores = data.aggregateDimensions.reduce<
+        Partial<CognitiveAttributes>
+      >((acc, item) => {
+        (acc as Record<string, number>)[item.dimensionCode] = item.newValue;
+        return acc;
+      }, {});
 
       setSelectedNode((prev) => {
         if (!prev || prev.id !== selectedNode.id || prev.type !== NodeType.STUDENT) {
@@ -791,19 +819,20 @@ const App: React.FC = () => {
           aiLiteracy: 0,
         };
 
+        const updatedProfile = {
+          ...baseProfile,
+          ...aggregateScores,
+        };
+
+        storeIncrementScore(prev.id, aggregateScores);
+
         return {
           ...prev,
-          studentProfile: {
-            ...baseProfile,
-            ...aggregateScores,
-            template: {
-              ...baseProfile.template,
-              dimensions: templateDimensions,
-            },
-          },
+          studentProfile: updatedProfile,
         };
       });
 
+      setIsIncrementApplied(true);
       setTimeout(() => {
         setIsChatbotIncrementOpen(true);
       }, 600);
@@ -891,11 +920,10 @@ const App: React.FC = () => {
                   <button
                     key={item.code}
                     onClick={() => setScenarioCode(item.code)}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg text-xs transition-all duration-200 flex items-center justify-between group ${
-                      scenarioCode === item.code
+                    className={`w-full text-left px-3 py-2.5 rounded-lg text-xs transition-all duration-200 flex items-center justify-between group ${scenarioCode === item.code
                         ? "bg-indigo-50 text-indigo-700 font-medium ring-1 ring-indigo-200"
                         : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                    }`}
+                      }`}
                   >
                     <span>{item.nameZh}</span>
                     {scenarioCode === item.code && (
@@ -917,11 +945,11 @@ const App: React.FC = () => {
                     className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-lg py-2 pl-3 pr-8 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer hover:border-slate-300"
                     value={classInfo.school}
                     onChange={(e) =>
-                      setClassInfo({ 
-                        ...classInfo, 
-                        school: e.target.value, 
-                        grade: "", 
-                        classId: "" 
+                      setClassInfo({
+                        ...classInfo,
+                        school: e.target.value,
+                        grade: "",
+                        classId: ""
                       })
                     }
                     disabled={optionsLoading.schools}
@@ -953,10 +981,10 @@ const App: React.FC = () => {
                       className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-lg py-2 pl-3 pr-8 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer hover:border-slate-300"
                       value={classInfo.grade}
                       onChange={(e) =>
-                        setClassInfo({ 
-                          ...classInfo, 
-                          grade: e.target.value, 
-                          classId: "" 
+                        setClassInfo({
+                          ...classInfo,
+                          grade: e.target.value,
+                          classId: ""
                         })
                       }
                       disabled={optionsLoading.grades || !classInfo.school}
@@ -1121,9 +1149,9 @@ const App: React.FC = () => {
 
               {/* Chatbot Dimension Increment Popover */}
               {isChatbotIncrementOpen && chatbotIncrementData && (
-                <div className="absolute top-5 right-[340px] w-64 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-30 animate-in fade-in slide-in-from-right-4 duration-200">
+                <div className="absolute top-5 right-[340px] w-72 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-30 animate-in fade-in slide-in-from-right-4 duration-200">
                   <div className="p-3 border-b border-slate-100 flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-slate-700">维度变化</h3>
+                    <h3 className="text-xs font-bold text-slate-700">维度得分依据</h3>
                     <button
                       onClick={handleCloseChatbotIncrement}
                       className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full p-1 transition-colors"
@@ -1131,55 +1159,43 @@ const App: React.FC = () => {
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <div className="max-h-64 overflow-y-auto p-3 space-y-2 custom-scrollbar">
-                    {chatbotIncrementData.baseDimensions
-                      .filter((item) => item.changeDelta !== 0)
-                      .map((item) => (
+                  <div className="max-h-80 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+                    {chatbotIncrementData.aggregateDimensions.map((item) => {
+                      const previousValue = item.previousValue ?? 0;
+                      const newValue = item.newValue;
+                      return (
                         <div
                           key={item.dimensionCode}
-                          className="text-xs border-b border-slate-50 last:border-0 pb-2 last:pb-0"
+                          className="text-xs border-b border-slate-50 last:border-0 pb-3 last:pb-0"
                         >
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-slate-600 truncate pr-2">
+                            <span className="font-medium text-slate-700 truncate pr-2">
                               {item.dimensionNameZh}
                             </span>
                             <div className="flex items-center gap-1.5 shrink-0">
-                              <span className="text-slate-400">
-                                {item.previousValue !== null
-                                  ? item.previousValue.toFixed(1)
-                                  : "—"}
-                              </span>
+                              <span className="text-slate-400">{previousValue.toFixed(1)}</span>
                               <span className="text-slate-300">→</span>
-                              <span className="font-medium text-slate-800">
-                                {item.newValue.toFixed(1)}
-                              </span>
+                              <span className="font-medium text-slate-800">{newValue.toFixed(1)}</span>
                               <span
                                 className={
-                                  item.changeDelta > 0
+                                  item.changeDelta >= 0
                                     ? "text-emerald-600"
                                     : "text-rose-600"
                                 }
                               >
-                                {item.changeDelta > 0 ? "+" : ""}
+                                {item.changeDelta >= 0 ? "+" : ""}
                                 {item.changeDelta.toFixed(1)}
                               </span>
                             </div>
                           </div>
                           {item.reason && (
                             <div className="text-[11px] text-slate-500 leading-relaxed">
-                              <span className="font-medium text-slate-600">更新依据：</span>
                               {item.reason}
                             </div>
                           )}
                         </div>
-                      ))}
-                    {chatbotIncrementData.baseDimensions.every(
-                      (item) => item.changeDelta === 0,
-                    ) && (
-                      <div className="text-xs text-slate-400 text-center py-2">
-                        暂无变化
-                      </div>
-                    )}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1189,13 +1205,12 @@ const App: React.FC = () => {
                 <div className="absolute top-5 right-5 w-80 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 ring-1 ring-slate-900/10 overflow-hidden animate-in fade-in slide-in-from-right-8 duration-300 z-20">
                   {/* Header based on Node Type */}
                   <div
-                    className={`p-5 flex justify-between items-start text-white bg-gradient-to-br ${
-                      selectedNode.type === NodeType.STUDENT
+                    className={`p-5 flex justify-between items-start text-white bg-gradient-to-br ${selectedNode.type === NodeType.STUDENT
                         ? "from-indigo-500 to-blue-600"
                         : selectedNode.type === NodeType.KNOWLEDGE
-                        ? "from-emerald-500 to-teal-600"
-                        : "from-violet-500 to-purple-600"
-                    }`}
+                          ? "from-emerald-500 to-teal-600"
+                          : "from-violet-500 to-purple-600"
+                      }`}
                   >
                     <div>
                       <div className="flex items-center gap-2 opacity-90 mb-1">
@@ -1203,8 +1218,8 @@ const App: React.FC = () => {
                           {selectedNode.type === NodeType.STUDENT
                             ? "STUDENT"
                             : selectedNode.type === NodeType.KNOWLEDGE
-                            ? "KNOWLEDGE"
-                            : "TEACHER"}
+                              ? "KNOWLEDGE"
+                              : "TEACHER"}
                         </span>
                       </div>
                       <h4 className="font-bold text-lg flex items-center gap-2 drop-shadow-sm">
@@ -1298,23 +1313,28 @@ const App: React.FC = () => {
                                 ([key, label]) => {
                                   const attributeKey =
                                     key as keyof CognitiveAttributes;
-                                  const valueRaw =
-                                    selectedNode.studentProfile![attributeKey];
-                                  if (typeof valueRaw !== "number" || valueRaw <= 0) {
+
+                                  const displayValueRaw = !isIncrementApplied
+                                    ? SEMESTER_BEFORE_SCORES[key]
+                                    : selectedNode.studentProfile![attributeKey];
+
+                                  if (
+                                    typeof displayValueRaw !== "number" ||
+                                    displayValueRaw <= 0
+                                  ) {
                                     return null;
                                   }
-                                  const value = valueRaw;
+                                  const value = displayValueRaw;
                                   const canShowStrategy =
                                     typeof dimensionCodeToStrategyKey[key] !==
                                     "undefined";
                                   return (
                                     <div
                                       key={key}
-                                      className={`space-y-1 group relative p-2 bg-slate-50 rounded-lg border border-slate-100 transition-colors duration-300 ${
-                                        canShowStrategy
+                                      className={`space-y-1 group relative p-2 bg-slate-50 rounded-lg border border-slate-100 transition-colors duration-300 ${canShowStrategy
                                           ? "cursor-help"
                                           : "cursor-default"
-                                      }`}
+                                        }`}
                                       onMouseEnter={(e) => {
                                         if (dimensionCodeToStrategyKey[key]) {
                                           handleAttributeEnter(
@@ -1339,13 +1359,12 @@ const App: React.FC = () => {
                                       </div>
                                       <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
                                         <div
-                                          className={`h-full rounded-full transition-all duration-500 ease-out ${
-                                            value >= 4
+                                          className={`h-full rounded-full transition-all duration-500 ease-out ${value >= 4
                                               ? "bg-emerald-500"
                                               : value >= 3
-                                              ? "bg-indigo-500"
-                                              : "bg-amber-500"
-                                          } group-hover:brightness-95`}
+                                                ? "bg-indigo-500"
+                                                : "bg-amber-500"
+                                            } group-hover:brightness-95`}
                                           style={{
                                             width: `${(value / 5) * 100}%`,
                                           }}
@@ -1364,92 +1383,90 @@ const App: React.FC = () => {
 
                           {scenarioCode === "SHOW_CASE" &&
                             selectedNode.studentProfile.template?.dimensions
-                            ?.length > 0 && (
-                            <>
-                              <div className="flex items-center gap-2 mt-5 mb-3 pb-2 border-b border-slate-100">
-                                <Activity className="w-4 h-4 text-indigo-500" />
-                                <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                  个人学情画像
-                                </h5>
-                              </div>
-                              {templateLoadingStudentId === selectedNode.id && (
-                                <div className="mb-4 flex items-center gap-2 text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  正在加载认知模板...
+                              ?.length > 0 && (
+                              <>
+                                <div className="flex items-center gap-2 mt-5 mb-3 pb-2 border-b border-slate-100">
+                                  <Activity className="w-4 h-4 text-indigo-500" />
+                                  <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                    个人学情画像
+                                  </h5>
                                 </div>
-                              )}
-                              <div className="grid grid-cols-2 gap-3">
-                                {selectedNode.studentProfile.template.dimensions.map(
-                                  (item) => {
-                                    const rawValue =
-                                      typeof item.score === "number"
-                                        ? item.score
-                                        : 0;
-                                    const value = rawValue;
-                                    const canShowStrategy =
-                                      typeof dimensionCodeToStrategyKey[
-                                        item.code
-                                      ] !== "undefined";
-                                    return (
-                                      <div
-                                        key={item.code}
-                                        className={`space-y-1 group relative p-2 bg-slate-50 rounded-lg border border-slate-100 transition-colors duration-300 ${
-                                          canShowStrategy
-                                            ? "cursor-help"
-                                            : "cursor-default"
-                                        }`}
-                                        onMouseEnter={(e) => {
-                                          if (
-                                            dimensionCodeToStrategyKey[item.code]
-                                          ) {
-                                            handleAttributeEnter(
-                                              e,
-                                              item.name,
-                                              value,
-                                              dimensionCodeToStrategyKey[
-                                                item.code
-                                              ],
-                                            );
-                                          }
-                                        }}
-                                        onMouseLeave={() => {
-                                          if (canShowStrategy) {
-                                            handleAttributeLeave();
-                                          }
-                                        }}
-                                      >
-                                        <div className="flex justify-between text-[11px] text-slate-600">
-                                          <span className="font-medium">
-                                            {item.name}
-                                          </span>
-                                          <span className="font-bold text-slate-800">
-                                            {value.toFixed(1)}/10
-                                          </span>
-                                        </div>
-                                        <div className="text-[9px] text-slate-400 truncate">
-                                          {item.category}
-                                        </div>
-                                        <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
-                                          <div
-                                            className={`h-full rounded-full transition-all duration-500 ease-out ${
-                                              value >= 8
-                                                ? "bg-emerald-500"
-                                                : value >= 6
-                                                ? "bg-indigo-500"
-                                                : "bg-amber-500"
-                                            } group-hover:brightness-95`}
-                                            style={{
-                                              width: `${Math.min((value / 10) * 100, 100)}%`,
-                                            }}
-                                          ></div>
-                                        </div>
-                                      </div>
-                                    );
-                                  },
+                                {templateLoadingStudentId === selectedNode.id && (
+                                  <div className="mb-4 flex items-center gap-2 text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    正在加载认知模板...
+                                  </div>
                                 )}
-                              </div>
-                            </>
-                          )}
+                                <div className="grid grid-cols-2 gap-3">
+                                  {selectedNode.studentProfile.template.dimensions.map(
+                                    (item) => {
+                                      const rawValue =
+                                        typeof item.score === "number"
+                                          ? item.score
+                                          : 0;
+                                      const value = rawValue;
+                                      const canShowStrategy =
+                                        typeof dimensionCodeToStrategyKey[
+                                        item.code
+                                        ] !== "undefined";
+                                      return (
+                                        <div
+                                          key={item.code}
+                                          className={`space-y-1 group relative p-2 bg-slate-50 rounded-lg border border-slate-100 transition-colors duration-300 ${canShowStrategy
+                                              ? "cursor-help"
+                                              : "cursor-default"
+                                            }`}
+                                          onMouseEnter={(e) => {
+                                            if (
+                                              dimensionCodeToStrategyKey[item.code]
+                                            ) {
+                                              handleAttributeEnter(
+                                                e,
+                                                item.name,
+                                                value,
+                                                dimensionCodeToStrategyKey[
+                                                item.code
+                                                ],
+                                              );
+                                            }
+                                          }}
+                                          onMouseLeave={() => {
+                                            if (canShowStrategy) {
+                                              handleAttributeLeave();
+                                            }
+                                          }}
+                                        >
+                                          <div className="flex justify-between text-[11px] text-slate-600">
+                                            <span className="font-medium">
+                                              {item.name}
+                                            </span>
+                                            <span className="font-bold text-slate-800">
+                                              {value.toFixed(1)}/10
+                                            </span>
+                                          </div>
+                                          <div className="text-[9px] text-slate-400 truncate">
+                                            {item.category}
+                                          </div>
+                                          <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                                            <div
+                                              className={`h-full rounded-full transition-all duration-500 ease-out ${value >= 8
+                                                  ? "bg-emerald-500"
+                                                  : value >= 6
+                                                    ? "bg-indigo-500"
+                                                    : "bg-amber-500"
+                                                } group-hover:brightness-95`}
+                                              style={{
+                                                width: `${Math.min((value / 10) * 100, 100)}%`,
+                                              }}
+                                            ></div>
+                                          </div>
+                                        </div>
+                                      );
+                                    },
+                                  )}
+                                </div>
+                              </>
+                            )}
                           <div className="mt-5 p-3 bg-indigo-50 rounded-lg border border-indigo-100 flex gap-2 items-start">
                             <Lightbulb className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
                             <p className="text-[10px] text-indigo-700 leading-relaxed">
@@ -1505,10 +1522,10 @@ const App: React.FC = () => {
                               {resources.filter((r) =>
                                 r.relatedKnowledgeIds.includes(selectedNode.id),
                               ).length === 0 && (
-                                <p className="text-xs text-slate-400 italic text-center py-4 bg-slate-50 rounded-lg border border-dashed border-slate-200">
-                                  暂无相关资源
-                                </p>
-                              )}
+                                  <p className="text-xs text-slate-400 italic text-center py-4 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                                    暂无相关资源
+                                  </p>
+                                )}
                             </div>
                           </div>
                         </div>
@@ -1567,19 +1584,18 @@ const App: React.FC = () => {
                 </h4>
                 <div className="flex items-center gap-2 mt-1">
                   <span
-                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white ${
-                      hoveredAttribute.score >= 4
+                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white ${hoveredAttribute.score >= 4
                         ? "bg-emerald-500"
                         : hoveredAttribute.score >= 3
-                        ? "bg-indigo-500"
-                        : "bg-amber-500"
-                    }`}
+                          ? "bg-indigo-500"
+                          : "bg-amber-500"
+                      }`}
                   >
                     {hoveredAttribute.score >= 4
                       ? "高水平"
                       : hoveredAttribute.score >= 3
-                      ? "中等水平"
-                      : "低水平"}
+                        ? "中等水平"
+                        : "低水平"}
                   </span>
                   <span className="text-[10px] text-slate-400">
                     专家干预策略
@@ -1631,11 +1647,10 @@ const App: React.FC = () => {
               <div
                 key={res.id}
                 onClick={() => handleResourceClick(res)}
-                className={`group cursor-pointer rounded-xl border p-4 transition-all duration-300 relative overflow-hidden ${
-                  selectedResource === res.id
+                className={`group cursor-pointer rounded-xl border p-4 transition-all duration-300 relative overflow-hidden ${selectedResource === res.id
                     ? "border-indigo-500 bg-white shadow-lg shadow-indigo-100 scale-[1.02] ring-1 ring-indigo-500/20"
                     : "border-slate-200 hover:border-indigo-300 hover:shadow-md bg-white hover:-translate-y-0.5"
-                }`}
+                  }`}
               >
                 {selectedResource === res.id && (
                   <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
@@ -1750,13 +1765,12 @@ const App: React.FC = () => {
                                 </h5>
                                 <div className="flex items-center gap-2">
                                   <span
-                                    className={`text-xs font-bold px-2 py-1 rounded-full ${
-                                      isLow
+                                    className={`text-xs font-bold px-2 py-1 rounded-full ${isLow
                                         ? "bg-red-50 text-red-600"
                                         : isHigh
                                           ? "bg-emerald-50 text-emerald-600"
                                           : "bg-amber-50 text-amber-600"
-                                    }`}
+                                      }`}
                                   >
                                     {levelLabel}水平 · {score.toFixed(1)}/5
                                   </span>
@@ -1854,7 +1868,7 @@ const App: React.FC = () => {
                     </span>
                     <button
                       onClick={handleOpenRecommend}
-                      className="flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                      className="hidden items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700"
                     >
                       <RefreshCw className="w-3 h-3" />
                       <span>换一批</span>
@@ -1877,13 +1891,12 @@ const App: React.FC = () => {
                             {resource.type}
                           </span>
                           <span
-                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                              resource.difficultyLabel === "基础"
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${resource.difficultyLabel === "基础"
                                 ? "text-emerald-600 bg-emerald-50"
                                 : resource.difficultyLabel === "进阶"
                                   ? "text-amber-600 bg-amber-50"
                                   : "text-red-600 bg-red-50"
-                            }`}
+                              }`}
                           >
                             {resource.difficultyLabel}
                           </span>
@@ -1901,7 +1914,7 @@ const App: React.FC = () => {
                         )}
                         {resource.accuracy != null && (
                           <span className="text-[10px] text-slate-400">
-                            历史正确率 {Math.round(resource.accuracy)}%
+                            资源接受度 {Math.round(resource.accuracy)}%
                           </span>
                         )}
                         <div className="mt-2 pt-2 border-t border-slate-100">
