@@ -101,7 +101,7 @@ const SCHOOL_NAMES: Record<string, string[]> = {
   HOME_LEARNING: ["杭州市星洲小学", "竺可桢学校"],
 };
 
-const GRADE_POOL = [3, 4, 5, 7, 8];
+const GRADE_POOL = [3, 4, 5, 6, 7, 8, 9];
 
 const SUBJECTS = ["语文", "数学", "英语", "科学"];
 
@@ -341,15 +341,42 @@ export class MockScenarioAdapter implements PlatformAdapter {
 
   private buildClasses(schools: NormalizedSchool[]): NormalizedClassGroup[] {
     const classes: NormalizedClassGroup[] = [];
+    const maxClasses = Math.max(2, this.options.classesPerSchool);
+
+    const counts: number[] = [];
     for (const school of schools) {
-      const classCount =
-        this.options.classesPerSchool >= 2 && this.options.classesPerSchool <= 3
-          ? this.options.classesPerSchool
-          : this.rng.nextInt(2, 3);
+      const classCount = this.rng.nextInt(2, maxClasses);
+      counts.push(classCount);
+    }
+
+    // 确保每场景总班数在 4-6 之间
+    let totalClasses = counts.reduce((sum, c) => sum + c, 0);
+    while (totalClasses < 4) {
+      const candidates = counts
+        .map((c, i) => ({ c, i }))
+        .filter(({ c }) => c < maxClasses);
+      if (candidates.length === 0) break;
+      const picked = this.rng.pick(candidates);
+      counts[picked.i]++;
+      totalClasses++;
+    }
+    while (totalClasses > 6) {
+      const candidates = counts
+        .map((c, i) => ({ c, i }))
+        .filter(({ c }) => c > 2);
+      if (candidates.length === 0) break;
+      const picked = this.rng.pick(candidates);
+      counts[picked.i]--;
+      totalClasses--;
+    }
+
+    for (let s = 0; s < schools.length; s++) {
+      const school = schools[s];
+      const classCount = counts[s];
       for (let i = 0; i < classCount; i++) {
         const gradeName = this.rng.pick(GRADE_POOL);
         const classNumber = i + 1;
-        const className = `${gradeName}${padTwo(classNumber)}班`;
+        const className = `${classNumber}班`;
         classes.push({
           externalSchoolId: school.externalId,
           gradeName,
@@ -481,7 +508,11 @@ export class MockScenarioAdapter implements PlatformAdapter {
     const sessions: NormalizedSession[] = [];
 
     for (const cls of classes) {
-      for (let i = 1; i <= this.options.sessionsPerClass; i++) {
+      const sessionCount = this.rng.nextInt(
+        1,
+        Math.max(1, this.options.sessionsPerClass),
+      );
+      for (let i = 1; i <= sessionCount; i++) {
         const schoolName =
           schoolNameById.get(cls.externalSchoolId) ?? cls.externalSchoolId;
         const division = cls.gradeName <= 6 ? "小学部" : "初中部";
