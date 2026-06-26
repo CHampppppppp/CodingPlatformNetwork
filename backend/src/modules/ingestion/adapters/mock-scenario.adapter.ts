@@ -24,6 +24,17 @@ export interface MockScenarioOptions {
   knowledgesCount?: number;
   sessionsPerClass?: number;
   seed?: number;
+  /**
+   * Existing knowledge nodes to sample from. When provided, the adapter will
+   * randomly pick `knowledgesCount` items from this list instead of using the
+   * built-in mock knowledge templates.
+   */
+  existingKnowledges?: Array<{
+    externalId: string;
+    displayName: string;
+    content?: string | null;
+    category?: string | null;
+  }>;
 }
 
 interface ClassDef {
@@ -272,6 +283,7 @@ export class MockScenarioAdapter implements PlatformAdapter {
       knowledgesCount: options.knowledgesCount ?? 10,
       sessionsPerClass: options.sessionsPerClass ?? 1,
       seed: options.seed ?? 42,
+      existingKnowledges: options.existingKnowledges ?? [],
     };
     this.rng = new SeededRandom(this.options.seed);
   }
@@ -494,6 +506,26 @@ export class MockScenarioAdapter implements PlatformAdapter {
 
   private buildKnowledges(): NormalizedKnowledge[] {
     const count = this.options.knowledgesCount;
+
+    if (
+      this.options.existingKnowledges &&
+      this.options.existingKnowledges.length > 0
+    ) {
+      const shuffled = this.shuffleArray([...this.options.existingKnowledges]);
+      const selected = shuffled.slice(0, Math.min(count, shuffled.length));
+      return selected.map((k) => ({
+        externalId: k.externalId,
+        displayName: k.displayName,
+        content: k.content ?? null,
+        knowledgeType: null,
+        category: k.category ?? null,
+        externalSchoolId: null,
+        gradeName: null,
+        gradeNames: [],
+        resourceExternalId: null,
+      }));
+    }
+
     const knowledges: NormalizedKnowledge[] = [];
     for (let i = 1; i <= count; i++) {
       const template = KNOWLEDGE_TEMPLATES[(i - 1) % KNOWLEDGE_TEMPLATES.length];

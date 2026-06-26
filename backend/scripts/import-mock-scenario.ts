@@ -138,6 +138,27 @@ function printDataStats(data: NormalizedPlatformData): void {
   process.stdout.write(`  Student works: ${data.studentWorks?.length ?? 0}\n`);
 }
 
+async function fetchExistingKnowledges(prisma: PrismaService): Promise<
+  Array<{
+    externalId: string;
+    displayName: string;
+    content: string | null;
+    category: string | null;
+  }>
+> {
+  const nodes = await prisma.graphNode.findMany({
+    where: { nodeType: "Knowledge" },
+    include: { knowledgeProfile: true },
+  });
+
+  return nodes.map((node) => ({
+    externalId: node.id,
+    displayName: node.displayName,
+    content: node.knowledgeProfile?.content ?? null,
+    category: node.knowledgeProfile?.category ?? null,
+  }));
+}
+
 async function main() {
   const { scenarioCode, execute, options } = parseArgs();
 
@@ -150,9 +171,27 @@ async function main() {
     process.stdout.write(
       `Mode: ${execute ? "EXECUTE (write to DB)" : "DRY-RUN (no DB writes)"}\n`,
     );
-    process.stdout.write(`Options: ${JSON.stringify(options)}\n`);
 
-    const adapter = new MockScenarioAdapter(scenarioCode, options);
+    const prisma = app.get(PrismaService);
+    const existingKnowledges = await fetchExistingKnowledges(prisma);
+    if (existingKnowledges.length === 0) {
+      process.stderr.write(
+        "Error: no existing knowledge nodes found in the database.\n",
+      );
+      process.exit(1);
+    }
+
+    const optionsWithKnowledges: MockScenarioOptions = {
+      ...options,
+      existingKnowledges,
+    };
+
+    process.stdout.write(`Options: ${JSON.stringify(options)}\n`);
+    process.stdout.write(
+      `Existing knowledges available: ${existingKnowledges.length}\n`,
+    );
+
+    const adapter = new MockScenarioAdapter(scenarioCode, optionsWithKnowledges);
     const data = await adapter.parse();
 
     printDataStats(data);
@@ -164,7 +203,6 @@ async function main() {
       return;
     }
 
-    const prisma = app.get(PrismaService);
     const ingestionService = app.get(IngestionService);
 
     const scenario = await prisma.learningScenario.findFirst({
