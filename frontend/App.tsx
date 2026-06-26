@@ -764,6 +764,11 @@ const App: React.FC = () => {
           ? profile.knowledgeReserve
           : 0;
 
+    console.log(
+      `[Recommend Input] ${selectedNode.name} (${selectedNode.id}):`,
+      { knowledgeReserve, engagement },
+    );
+
     setRecommendedResources(
       recommendResources(resources, knowledgeReserve, engagement),
     );
