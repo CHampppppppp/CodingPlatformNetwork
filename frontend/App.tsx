@@ -749,12 +749,32 @@ const App: React.FC = () => {
     const profile = selectedNode.studentProfile;
     if (!profile) return;
 
+    // 如果刚完成 AI 辅导维度增量，优先使用增量后的最新得分；
+    // 否则使用个人画板中当前展示的学生画像数据。
+    const incrementData =
+      chatbotIncrementData?.studentNodeId === selectedNode.id
+        ? chatbotIncrementData
+        : null;
+
+    const knowledgeReserveDim = incrementData?.aggregateDimensions.find(
+      (d) => d.dimensionCode === "knowledgeReserve",
+    );
+    const engagementDim = incrementData?.aggregateDimensions.find(
+      (d) => d.dimensionCode === "learningEngagement",
+    );
+
     const knowledgeReserve =
-      typeof profile.knowledgeReserve === "number" ? profile.knowledgeReserve : 0;
+      typeof knowledgeReserveDim?.newValue === "number"
+        ? knowledgeReserveDim.newValue
+        : typeof profile.knowledgeReserve === "number"
+          ? profile.knowledgeReserve
+          : 0;
     const engagement =
-      typeof profile.learningEngagement === "number"
-        ? profile.learningEngagement
-        : 0;
+      typeof engagementDim?.newValue === "number"
+        ? engagementDim.newValue
+        : typeof profile.learningEngagement === "number"
+          ? profile.learningEngagement
+          : 0;
 
     setRecommendedResources(
       recommendResources(resources, knowledgeReserve, engagement),
