@@ -23,12 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# Excel files
-*.xlsx
-*.xls
-~$*.xlsx
-~$*.xls
-
 # Vite generated files
 .vite/
 
@@ -39,15 +33,24 @@ dist-ssr
 .env.test.local
 .env.production.local
 
-# Backend generated data files
-backend/datas/
 
 # Large data files — should not be tracked in git
 Real Data/
 *.docx
 *.doc
+*.xlsx
+*.xls
+~$*.xlsx
+~$*.xls
+*.jsonl
+*.csv
 frontend/playwright-report/
 .codegraph/*.db
 .codegraph/*.pid
+backend/datas/
 *.sql
 !backend/prisma/migrations/**/*.sql
+
+# Data backup and dump files
+interaction_network_test_*.sql
+backup_*.sql
