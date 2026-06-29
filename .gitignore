@@ -41,5 +41,13 @@ dist-ssr
 
 # Backend generated data files
 backend/datas/
+
+# Large data files — should not be tracked in git
+Real Data/
+*.docx
+*.doc
+frontend/playwright-report/
+.codegraph/*.db
+.codegraph/*.pid
 *.sql
 !backend/prisma/migrations/**/*.sql
