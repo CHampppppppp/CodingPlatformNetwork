@@ -114,8 +114,8 @@ const SCENARIO_META: Record<
 };
 
 const SCHOOL_NAMES: Record<string, string[]> = {
-  TEACHER_QA: ["三门县实验学校", "杭州市答疑实验中学"],
-  HOME_LEARNING: ["杭州市星洲小学", "竺可桢学校"],
+  TEACHER_QA: ["云和县实验小学", "平阳县建兰学校"],
+  HOME_LEARNING: ["义乌市佛堂镇第三小学", "杭州市采荷实验学校"],
 };
 
 const GRADE_POOL = [3, 4, 5, 6, 7, 8, 9];

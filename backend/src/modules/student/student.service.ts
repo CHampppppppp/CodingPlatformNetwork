@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../shared/utils/prisma.service";
+import { computeAggregateDimensionScores } from "../../shared/utils/cognitive-dimensions";
+import { ResourceRecommendationService } from "./services/resource-recommendation.service";
 
 const dimensionCodeToStrategyKey: Record<string, string> = {
   COG_READING: "knowledgeReserve",
@@ -30,64 +32,12 @@ const dimensionCodeToStrategyKey: Record<string, string> = {
   aiLiteracy: "aiLiteracy",
 };
 
-const strategyKeyToResourceTypes: Record<string, string[]> = {
-  knowledgeReserve: ["DOCUMENT", "VIDEO", "ARTICLE"],
-  learningEngagement: ["GAME", "VIDEO", "PRACTICE"],
-  cognitiveLoad: ["DOCUMENT", "VIDEO", "GAME"],
-  learningMotivation: ["GAME", "VIDEO"],
-  computationalThinking: ["PRACTICE", "GAME", "DOCUMENT"],
-  humanAiTrust: ["ARTICLE", "VIDEO", "DOCUMENT"],
-  learningMethod: ["GAME", "PRACTICE", "VIDEO"],
-  learningAttitude: ["GAME", "VIDEO", "PRACTICE"],
-  selfRegulatedLearning: ["DOCUMENT", "PRACTICE"],
-  aiLiteracy: ["ARTICLE", "VIDEO", "DOCUMENT"],
-};
-
-const strategyKeyToDimensionName: Record<string, string> = {
-  knowledgeReserve: "知识储备",
-  learningEngagement: "学习投入",
-  cognitiveLoad: "认知负荷",
-  learningMotivation: "学习动机",
-  computationalThinking: "计算思维",
-  humanAiTrust: "人机信任度",
-  learningMethod: "学习方法与协作",
-  learningAttitude: "学习态度",
-  selfRegulatedLearning: "自我调节学习",
-  aiLiteracy: "人工智能素养",
-};
-
-function buildSearchUrl(title: string, resourceType: string): string {
-  const encoded = encodeURIComponent(title);
-  switch (resourceType) {
-    case "VIDEO":
-      return `https://duckduckgo.com/?q=!ducky+site%3Abilibili.com+${encoded}`;
-    case "ARTICLE":
-      return `https://duckduckgo.com/?q=!ducky+site%3Azhihu.com+${encoded}`;
-    case "DOCUMENT":
-      return `https://duckduckgo.com/?q=!ducky+site%3Awenku.baidu.com+${encoded}`;
-    case "PRACTICE":
-      return `https://duckduckgo.com/?q=!ducky+${encoded}`;
-    case "GAME":
-      return `https://duckduckgo.com/?q=!ducky+${encoded}`;
-    default:
-      return `https://duckduckgo.com/?q=!ducky+${encoded}`;
-  }
-}
-
-function resolveResourceUrl(
-  title: string,
-  resourceType: string,
-  existingUrl: string | null,
-): string {
-  if (existingUrl && !existingUrl.includes("example.com")) {
-    return existingUrl;
-  }
-  return buildSearchUrl(title, resourceType);
-}
-
 @Injectable()
 export class StudentService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private resourceRecommendationService: ResourceRecommendationService,
+  ) {}
 
   async getExpertIntervention(studentNodeId: string) {
     const cognitiveTemplate = await this.getLatestCognitiveTemplate(studentNodeId);
@@ -101,7 +51,7 @@ export class StudentService {
 
     const studentData = cognitiveTemplate.data;
     const weakDimensions = studentData.dimensions.filter(
-      (d: any) => d.scoreValue <= 2 || d.scoreLevel?.includes("低")
+      (d: any) => d.scoreValue <= 2 || d.scoreLevel?.includes("低"),
     );
 
     const interactions = await this.prisma.interaction.findMany({
@@ -144,223 +94,17 @@ export class StudentService {
       },
     });
 
-    const knowledgeNodeIds = knowledgeNodes.map((n) => n.id);
-
-    const weakDimMap = new Map<
-      string,
-      { strategyKey: string; dimensionName: string; scoreValue: number }
-    >();
-    for (const dim of weakDimensions) {
-      const strategyKey = dimensionCodeToStrategyKey[dim.dimensionCode];
-      if (strategyKey) {
-        weakDimMap.set(dim.dimensionCode, {
-          strategyKey,
-          dimensionName: dim.dimensionNameZh,
-          scoreValue: dim.scoreValue,
-        });
-      }
-    }
-
-    const weakStrategyKeys = new Set<string>();
-    for (const { strategyKey } of weakDimMap.values()) {
-      weakStrategyKeys.add(strategyKey);
-    }
-
-    const prioritizedTypes: string[] = [];
-    for (const key of weakStrategyKeys) {
-      const types = strategyKeyToResourceTypes[key] || [];
-      for (const t of types) {
-        if (!prioritizedTypes.includes(t)) {
-          prioritizedTypes.push(t);
-        }
-      }
-    }
-
-    let resources: any[] = [];
-    const dimensionNames = Array.from(weakDimMap.values()).map(
-      (d) => d.dimensionName,
+    const knowledgeReserveScore = this.resolveKnowledgeReserve(
+      studentData.dimensions,
     );
+    const totalDegree = studentData.student.totalDegree ?? 0;
 
-    if (knowledgeNodeIds.length > 0) {
-      const dimSpecificLinkedResources = await this.prisma.resource.findMany({
-        where: {
-          OR: dimensionNames.flatMap((name) => [
-            { title: { contains: name } },
-            { description: { contains: name } },
-          ]),
-          knowledgeRelations: {
-            some: {
-              knowledgeNodeId: { in: knowledgeNodeIds },
-            },
-          },
-        },
-        include: {
-          knowledgeRelations: {
-            include: {
-              knowledgeNode: {
-                select: {
-                  id: true,
-                  displayName: true,
-                },
-              },
-            },
-          },
-        },
-        take: 10,
+    const recommendedResources =
+      await this.resourceRecommendationService.recommend({
+        knowledgeReserveScore,
+        totalDegree,
+        limit: 10,
       });
-
-      const linkedIds = new Set(dimSpecificLinkedResources.map((r) => r.id));
-
-      const dimSpecificUnlinkedResources = await this.prisma.resource.findMany({
-        where: {
-          OR: dimensionNames.flatMap((name) => [
-            { title: { contains: name } },
-            { description: { contains: name } },
-          ]),
-          id: { notIn: Array.from(linkedIds) },
-        },
-        include: {
-          knowledgeRelations: {
-            include: {
-              knowledgeNode: {
-                select: {
-                  id: true,
-                  displayName: true,
-                },
-              },
-            },
-          },
-        },
-        take: 8,
-      });
-
-      const dimSpecificIds = new Set([
-        ...dimSpecificLinkedResources.map((r) => r.id),
-        ...dimSpecificUnlinkedResources.map((r) => r.id),
-      ]);
-
-      const typeMatchedResources = await this.prisma.resource.findMany({
-        where: {
-          id: { notIn: Array.from(dimSpecificIds) },
-          resourceType: { in: prioritizedTypes },
-          knowledgeRelations: {
-            some: {
-              knowledgeNodeId: { in: knowledgeNodeIds },
-            },
-          },
-          NOT: {
-            title: { contains: "教学资源" },
-          },
-        },
-        include: {
-          knowledgeRelations: {
-            include: {
-              knowledgeNode: {
-                select: {
-                  id: true,
-                  displayName: true,
-                },
-              },
-            },
-          },
-        },
-        take: 8,
-      });
-
-      resources = [
-        ...dimSpecificLinkedResources,
-        ...dimSpecificUnlinkedResources,
-        ...typeMatchedResources,
-      ];
-    } else if (dimensionNames.length > 0) {
-      const genericResources = await this.prisma.resource.findMany({
-        where: {
-          OR: dimensionNames.flatMap((name) => [
-            { title: { contains: name } },
-            { description: { contains: name } },
-          ]),
-          NOT: {
-            title: { contains: "教学资源" },
-          },
-        },
-        include: {
-          knowledgeRelations: {
-            include: {
-              knowledgeNode: {
-                select: {
-                  id: true,
-                  displayName: true,
-                },
-              },
-            },
-          },
-        },
-        take: 15,
-      });
-
-      resources = genericResources;
-    }
-
-    const resourceIds = resources.map((r) => r.id);
-    const rateGroups = await this.prisma.studentResourceRate.groupBy({
-      by: ["resourceId"],
-      where: { resourceId: { in: resourceIds } },
-      _avg: { rate: true },
-    });
-
-    const rateMap = new Map(
-      rateGroups.map((g) => [
-        g.resourceId,
-        g._avg.rate != null ? Number(g._avg.rate) : null,
-      ]),
-    );
-
-    const enrichedResources = resources.map((resource) => {
-      const avgRate = rateMap.get(resource.id) ?? null;
-
-      const matchedDimensions: string[] = [];
-      for (const [dimCode, dimInfo] of weakDimMap.entries()) {
-        const types = strategyKeyToResourceTypes[dimInfo.strategyKey] || [];
-        if (types.includes(resource.resourceType)) {
-          matchedDimensions.push(dimInfo.dimensionName);
-        }
-      }
-
-      for (const [dimCode, dimInfo] of weakDimMap.entries()) {
-        const name = dimInfo.dimensionName;
-        if (
-          !matchedDimensions.includes(name) &&
-          (resource.title?.includes(name) || resource.description?.includes(name))
-        ) {
-          matchedDimensions.push(name);
-        }
-      }
-
-      const recommendReason =
-        matchedDimensions.length > 0
-          ? `针对${matchedDimensions.join("、")}薄弱维度推荐`
-          : weakDimMap.size > 0
-            ? "辅助学习资源"
-            : "关联知识点资源";
-
-      return {
-        id: resource.id,
-        title: resource.title,
-        description: resource.description,
-        url: resolveResourceUrl(
-          resource.title,
-          resource.resourceType,
-          resource.url,
-        ),
-        resourceType: resource.resourceType,
-        acceptanceRate: avgRate != null ? (avgRate / 5) * 100 : null,
-        knowledgeNodes: resource.knowledgeRelations.map((rel: any) => ({
-          id: rel.knowledgeNode.id,
-          name: rel.knowledgeNode.displayName,
-        })),
-        recommendReason,
-      };
-    });
 
     return {
       data: {
@@ -380,11 +124,30 @@ export class StudentService {
           name: n.displayName,
           category: n.knowledgeProfile?.category || "",
         })),
-        resources: enrichedResources,
+        resources: recommendedResources,
       },
       meta: null,
       error: null,
     };
+  }
+
+  private resolveKnowledgeReserve(dimensions: any[]): number {
+    const direct = dimensions.find(
+      (d: any) => d.dimensionCode === "knowledgeReserve",
+    );
+    if (direct) {
+      return direct.scoreValue;
+    }
+
+    const dimMap = new Map<string, number>();
+    for (const d of dimensions) {
+      if (typeof d.scoreValue === "number") {
+        dimMap.set(d.dimensionCode, d.scoreValue);
+      }
+    }
+
+    const aggregate = computeAggregateDimensionScores(dimMap);
+    return aggregate.knowledgeReserve;
   }
 
   async getLatestCognitiveTemplate(studentNodeId: string) {
@@ -453,6 +216,7 @@ export class StudentService {
               ? `${grade.gradeName}年级`
               : studentNode.gradeId ?? null,
           classId: classRecord?.className ?? studentNode.classId ?? null,
+          totalDegree: studentNode.studentProfile?.totalDegree ?? 0,
         },
         profile: latestProfile
           ? {

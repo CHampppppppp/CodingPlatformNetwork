@@ -29,8 +29,11 @@ export class CognitiveProfileService {
       const degree = degreeMap.get(node.id) ?? 0;
       const learningEngagementFromDegree = Math.min(5, degree / 10);
 
+      // Map activity level (0-5) to node radius (6-16) for visualization
+      node.val = 6 + learningEngagementFromDegree * 2;
+
       console.log(
-        `[CognitiveProfile] ${node.name} (${node.id}): degree=${degree}, activityLevel=${learningEngagementFromDegree}`,
+        `[CognitiveProfile] ${node.name} (${node.id}): degree=${degree}, activityLevel=${learningEngagementFromDegree}, val=${node.val}`,
       );
 
       if (!profile || profile.dimensionScores.length === 0) {

@@ -36,13 +36,26 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
       switch (d.type) {
         case NodeType.TEACHER: return "#7c3aed";
         case NodeType.KNOWLEDGE: return "#059669";
-        case NodeType.STUDENT: return "#94a3b8";
+        case NodeType.STUDENT: {
+          const activity = d.studentProfile?.activityLevel;
+          if (activity === undefined || activity === null) return "#94a3b8";
+          // Low activity -> light gray; high activity -> dark slate
+          const t = Math.max(0, Math.min(1, activity / 5));
+          return d3.interpolate("#94a3b8", "#1e293b")(t);
+        }
         default: return "#ccc";
       }
     };
 
     const linkColor = (type: InteractionType) => {
-        return type === InteractionType.PHYSICAL ? "#f59e0b" : "#3b82f6";
+      return type === InteractionType.PHYSICAL ? "#f59e0b" : "#3b82f6";
+    };
+
+    const linkWidth = (d: any) => {
+      if (d.actionType === ActionType.HELP_SEEKING) return 3;
+      const value = typeof d.value === "number" ? d.value : 1;
+      // Map strength 0.5~5 to stroke width 1~4
+      return 1 + Math.min(3, Math.max(0, ((value - 0.5) / 4.5) * 3));
     };
 
     const simulation = d3.forceSimulation(data.nodes)
@@ -55,10 +68,7 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
       .selectAll("line")
       .data(data.links)
       .join("line")
-      .attr("stroke-width", (d: any) => {
-        if (d.actionType === ActionType.HELP_SEEKING) return 2.5;
-        return Math.sqrt(d.value);
-      })
+      .attr("stroke-width", (d: any) => linkWidth(d))
       .attr("stroke", (d) => linkColor(d.type))
       .attr("stroke-opacity", (d: any) => {
         if (d.actionType === ActionType.HELP_SEEKING) return 0.5;
@@ -181,7 +191,12 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
         switch (d.type) {
             case NodeType.TEACHER: return "#7c3aed";
             case NodeType.KNOWLEDGE: return "#059669";
-            case NodeType.STUDENT: return "#94a3b8";
+            case NodeType.STUDENT: {
+                const activity = d.studentProfile?.activityLevel;
+                if (activity === undefined || activity === null) return "#94a3b8";
+                const t = Math.max(0, Math.min(1, activity / 5));
+                return d3.interpolate("#94a3b8", "#1e293b")(t);
+            }
             default: return "#ccc";
         }
     };
@@ -272,6 +287,20 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ data, highlightedNodeIds, s
                             <span className="w-2 h-0.5 bg-blue-500 rounded-full"></span>
                         </div>
                         <span className="text-slate-600 font-medium">平台采集</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200/60">
+                <div className="font-bold text-slate-500 mb-2 uppercase tracking-wider text-[10px]">学生活跃度</div>
+                <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-slate-800 shadow-sm"></span>
+                        <span className="text-slate-600 font-medium">高活跃（节点大、颜色深）</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-slate-400 shadow-sm"></span>
+                        <span className="text-slate-600 font-medium">低活跃（节点小、颜色浅）</span>
                     </div>
                 </div>
             </div>

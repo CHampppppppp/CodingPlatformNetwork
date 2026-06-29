@@ -430,6 +430,27 @@ export class IngestionService {
     await parallelLimit(
       knowledges,
       async (knowledge) => {
+        // When the adapter provides an existing knowledge node id as the
+        // externalId, reuse that node directly instead of creating a new one.
+        // This preserves existing ResourceKnowledgeRelation links.
+        const existingNodeId = knowledge.externalId;
+        const existingNode = await this.prisma.graphNode.findFirst({
+          where: {
+            id: existingNodeId,
+            nodeType: "Knowledge",
+          },
+          include: { knowledgeProfile: true },
+        });
+
+        if (existingNode) {
+          maps.nodeIdByKnowledgeExternalId.set(
+            knowledge.externalId,
+            existingNode.id,
+          );
+          result.knowledgeCount += 1;
+          return;
+        }
+
         const schoolId = knowledge.externalSchoolId
           ? maps.schoolIdByExternalId.get(knowledge.externalSchoolId)
           : undefined;
