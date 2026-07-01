@@ -1,6 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../shared/utils/prisma.service";
-import { computeAggregateDimensionScores } from "../../shared/utils/cognitive-dimensions";
+import {
+  computeAggregateDimensionScores,
+  scoreLevel,
+  AGGREGATE_DIMENSION_KEYS,
+  AGGREGATE_DIMENSION_NAME_ZH,
+  AGGREGATE_DIMENSION_CATEGORY,
+  generateMockBaseDimensionScores,
+  BASE_DIMENSION_CODES,
+  AggregateDimensionScores,
+} from "../../shared/utils/cognitive-dimensions";
 import { ResourceRecommendationService } from "./services/resource-recommendation.service";
 
 const dimensionCodeToStrategyKey: Record<string, string> = {
@@ -165,7 +174,7 @@ export class StudentService {
       return null;
     }
 
-    const latestProfile = await this.prisma.studentCognitiveProfile.findFirst({
+    let latestProfile = await this.prisma.studentCognitiveProfile.findFirst({
       where: { studentNodeId },
       orderBy: {
         generatedAt: "desc",
@@ -183,6 +192,52 @@ export class StudentService {
         },
       },
     });
+
+    const hasBaseDimensions = latestProfile?.dimensionScores.some((item) =>
+      BASE_DIMENSION_CODES.includes(item.dimensionCode as any),
+    );
+
+    const aggregateScoreMap = new Map<string, number>();
+    for (const item of latestProfile?.dimensionScores ?? []) {
+      if (AGGREGATE_DIMENSION_KEYS.includes(item.dimensionCode as any)) {
+        aggregateScoreMap.set(item.dimensionCode, Number(item.scoreValue));
+      }
+    }
+
+    if (!hasBaseDimensions && aggregateScoreMap.size > 0) {
+      const aggregateScores = Object.fromEntries(
+        AGGREGATE_DIMENSION_KEYS.map((key) => [key, aggregateScoreMap.get(key) ?? 0]),
+      ) as Partial<AggregateDimensionScores>;
+
+      const baseScores = generateMockBaseDimensionScores(
+        aggregateScores,
+        studentNodeId,
+      );
+
+      const newProfile = await this.prisma.studentCognitiveProfile.create({
+        data: {
+          studentNodeId,
+          profileVersion: "mock-v1",
+          generatedAt: new Date(),
+          totalScore: latestProfile?.totalScore ?? 0,
+          dimensionScores: {
+            create: Array.from(baseScores.entries()).map(([dimensionCode, scoreValue]) => ({
+              dimensionCode,
+              scoreValue,
+              scoreLevel: scoreLevel(scoreValue, 0, 10),
+            })),
+          },
+        },
+        include: {
+          dimensionScores: {
+            include: { dimensionDef: true },
+            orderBy: { dimensionDef: { sortOrder: "asc" } },
+          },
+        },
+      });
+
+      latestProfile = newProfile;
+    }
 
     const [school, grade, classRecord] = await Promise.all([
       studentNode.schoolId
