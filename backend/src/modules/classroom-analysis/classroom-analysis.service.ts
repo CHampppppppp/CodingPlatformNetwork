@@ -60,16 +60,15 @@ export class ClassroomAnalysisService {
     if (params.classId) where.classId = params.classId;
 
     const session = await this.prisma.interactionSession.findFirst({
-      where,
+      where: {
+        ...where,
+        classroomAnalysis: { isNot: null },
+      },
       orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
       include: { classroomAnalysis: true },
     });
 
     if (!session) {
-      return { data: null, meta: null, error: "NOT_FOUND" };
-    }
-
-    if (!session.classroomAnalysis) {
       return { data: null, meta: null, error: "NOT_FOUND" };
     }
 
