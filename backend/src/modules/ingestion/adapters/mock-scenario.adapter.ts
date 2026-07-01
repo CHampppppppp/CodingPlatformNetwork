@@ -251,8 +251,8 @@ const GIVEN_NAMES = [
 ];
 
 function resolveScoreLevel(score: number): string {
-  if (score >= 80) return "高";
-  if (score >= 60) return "中";
+  if (score >= 4) return "高";
+  if (score >= 3) return "中";
   return "低";
 }
 
@@ -759,7 +759,7 @@ export class MockScenarioAdapter implements PlatformAdapter {
       let totalScore = 0;
 
       for (const dimensionCode of DIMENSION_CODES) {
-        const scoreValue = this.rng.nextInt(0, 100);
+        const scoreValue = Number((this.rng.next() * 5).toFixed(2));
         totalScore += scoreValue;
         dimensions.push({
           dimensionCode,
