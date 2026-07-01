@@ -8,11 +8,14 @@ export const resourceTypeSchema = z.enum([
   "DOCUMENT",
 ]);
 
+export const difficultySchema = z.enum(["LOW", "MEDIUM", "HIGH"]);
+
 export const createResourceSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional().nullable(),
   url: z.string().optional().nullable(),
   resourceType: resourceTypeSchema,
+  difficulty: difficultySchema.optional().nullable(),
   acceptanceRate: z.coerce.number().min(0).max(100).optional().nullable(),
   knowledgeNodeIds: z.array(z.string().trim()).optional(),
 });

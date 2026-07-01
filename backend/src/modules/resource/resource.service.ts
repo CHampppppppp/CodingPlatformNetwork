@@ -121,6 +121,7 @@ export class ResourceService {
           description: dto.description ?? null,
           url: dto.url ?? null,
           resourceType: dto.resourceType,
+          difficulty: dto.difficulty ?? null,
           acceptanceRate: dto.acceptanceRate ?? null,
         },
       });
