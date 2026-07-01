@@ -5,35 +5,38 @@ import { Prisma } from "@prisma/client";
 
 function classifyInteraction(interaction: any) {
   const action = (interaction.actionType || "").toLowerCase();
+  const tokens = action.split(/[^a-z0-9]+/).filter(Boolean);
+  const hasToken = (keywords: string[]) => tokens.some((t) => keywords.includes(t));
+
   const srcStudent = interaction.sourceNode?.nodeType === "Student";
   const srcTeacher = interaction.sourceNode?.nodeType === "Teacher";
   const tgtStudent = interaction.targetNode?.nodeType === "Student";
   const tgtTeacher = interaction.targetNode?.nodeType === "Teacher";
 
-  const isQuestion = /\b(question|ask|quiz|probe)\b/.test(action);
-  const isFeedback = /\b(feedback|comment|reply)\b/.test(action) ||
-    (interaction.interactionType === "PLATFORM" && srcTeacher && tgtStudent && !action);
-  const isCollaboration = /\b(collaborate|peer|group|discuss)\b/.test(action) ||
+  const isQuestion = hasToken(["question", "ask", "quiz", "probe"]);
+  const isFeedback = hasToken(["feedback", "comment", "reply"]) ||
+    (interaction.interactionType === "PLATFORM" && srcTeacher && tgtStudent && tokens.length === 0);
+  const isCollaboration = hasToken(["collaborate", "peer", "group", "discuss"]) ||
     (interaction.interactionType === "PHYSICAL" && srcStudent && tgtStudent);
-  const isTool = /\b(tool|resource|material|device)\b/.test(action);
-  const isConstructive =
-    /\b(explain|reason|argue|construct|elaborate|analyze|discuss|reflect|justify|evaluate)\b/.test(
-      action,
-    );
+  const isTool = hasToken(["tool", "resource", "material", "device"]);
+  const isConstructive = hasToken([
+    "explain", "reason", "argue", "construct", "elaborate",
+    "analyze", "discuss", "reflect", "justify", "evaluate",
+  ]);
 
   let questionType: "closed" | "application" | "open" | null = null;
   if (isQuestion) {
-    if (/closed|close|yes_no/.test(action)) questionType = "closed";
-    else if (/open|inquiry|explore/.test(action)) questionType = "open";
+    if (hasToken(["closed", "close", "yes_no"])) questionType = "closed";
+    else if (hasToken(["open", "inquiry", "explore"])) questionType = "open";
     else questionType = "application";
   }
 
   let feedbackType: "accept" | "praise" | "extend" | "correct" | null = null;
   if (isFeedback) {
-    if (/accept|adopt/.test(action)) feedbackType = "accept";
-    else if (/praise|encourage/.test(action)) feedbackType = "praise";
-    else if (/extend|expand/.test(action)) feedbackType = "extend";
-    else if (/correct|revise/.test(action)) feedbackType = "correct";
+    if (hasToken(["accept", "adopt"])) feedbackType = "accept";
+    else if (hasToken(["praise", "encourage"])) feedbackType = "praise";
+    else if (hasToken(["extend", "expand"])) feedbackType = "extend";
+    else if (hasToken(["correct", "revise"])) feedbackType = "correct";
     else feedbackType = "praise";
   }
 
@@ -289,7 +292,7 @@ async function main() {
           correctFeedbackCount: stats.correctFeedback,
           studentUtteranceCount: stats.studentUtterance,
           teacherFluencyLevel: level4(stats.teacherStudent, 50, 20, 5),
-          toolVarietyCount: Math.min(stats.toolTypes.size, 10),
+          toolVarietyCount: Math.min(Math.max(stats.toolTypes.size, 1), 10),
           selfAwarenessLevel: level4(
             stats.teacherStudent / Math.max(studentCount, 1),
             3,
