@@ -16,6 +16,10 @@ function classifyInteraction(interaction: any) {
   const isCollaboration = /collaborate|peer|group|discuss/.test(action) ||
     (interaction.interactionType === "PHYSICAL" && srcStudent && tgtStudent);
   const isTool = /tool|resource|material|device/.test(action);
+  const isConstructive =
+    /explain|reason|argue|construct|elaborate|analyze|discuss|reflect|justify|evaluate/.test(
+      action,
+    );
 
   let questionType: "closed" | "application" | "open" | null = null;
   if (isQuestion) {
@@ -33,7 +37,7 @@ function classifyInteraction(interaction: any) {
     else feedbackType = "praise";
   }
 
-  return { isQuestion, questionType, isFeedback, feedbackType, isCollaboration, isTool };
+  return { isQuestion, questionType, isFeedback, feedbackType, isCollaboration, isTool, isConstructive };
 }
 
 function level3(value: number, high: number, mid: number): string {
@@ -132,36 +136,13 @@ async function main() {
       const teachersByClassId = groupBy(teachers, (t) => t.classId ?? "");
       const knowledgeIds = new Set(knowledges.map((k) => k.id));
 
-      const sessionIdsWithClasses = new Set<string>();
+      const classSessionMap = new Map<string, any>();
       for (const cls of classes) {
-        const classSessions = sessionsByClassId[cls.id] || [];
-        const session = pickLatestSession(classSessions);
-        if (session) {
-          sessionIdsWithClasses.add(session.id);
-        }
-      }
-
-      const interactions = sessionIdsWithClasses.size > 0
-        ? await prisma.interaction.findMany({
-            where: { sessionId: { in: Array.from(sessionIdsWithClasses) } },
-            include: { sourceNode: true, targetNode: true },
-          })
-        : [];
-
-      const interactionsBySessionId = groupBy(interactions, (i) => i.sessionId);
-
-      for (const cls of classes) {
-        totalClasses += 1;
-        process.stdout.write(`  Class: ${cls.className}\n`);
-
         const classSessions = sessionsByClassId[cls.id] || [];
         let session = pickLatestSession(classSessions);
 
         if (!session) {
           if (!execute) {
-            process.stdout.write(
-              `    [DRY-RUN] 将创建会话: ${cls.className} 课堂视频分析会话\n`,
-            );
             continue;
           }
 
@@ -179,6 +160,31 @@ async function main() {
           process.stdout.write(
             `    Created session: ${session.sessionName} (${session.id})\n`,
           );
+        }
+
+        classSessionMap.set(cls.id, session);
+      }
+
+      const sessionIds = Array.from(classSessionMap.values()).map((s) => s.id);
+      const interactions = sessionIds.length > 0
+        ? await prisma.interaction.findMany({
+            where: { sessionId: { in: sessionIds } },
+            include: { sourceNode: true, targetNode: true },
+          })
+        : [];
+
+      const interactionsBySessionId = groupBy(interactions, (i) => i.sessionId);
+
+      for (const cls of classes) {
+        totalClasses += 1;
+        process.stdout.write(`  Class: ${cls.className}\n`);
+
+        const session = classSessionMap.get(cls.id);
+        if (!session) {
+          process.stdout.write(
+            `    [DRY-RUN] 将创建会话: ${cls.className} 课堂视频分析会话\n`,
+          );
+          continue;
         }
 
         const classStudents = studentsByClassId[cls.id] || [];
@@ -210,6 +216,7 @@ async function main() {
           const tgtTeacher = i.targetNode?.nodeType === "Teacher";
 
           if (srcStudent) stats.studentUtterance += 1;
+          if (srcStudent && clsResult.isConstructive) stats.constructive += 1;
           if ((srcTeacher && tgtStudent) || (srcStudent && tgtTeacher)) {
             stats.teacherStudent += 1;
           }
@@ -231,8 +238,6 @@ async function main() {
 
           if (clsResult.isTool && i.actionType) stats.toolTypes.add(i.actionType);
         }
-
-        stats.constructive = Math.round(stats.studentUtterance * 0.35);
 
         const totalQuestions =
           stats.closedQuestions + stats.appQuestions + stats.openQuestions;
