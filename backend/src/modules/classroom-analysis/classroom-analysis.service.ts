@@ -2,11 +2,17 @@ import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../shared/utils/prisma.service";
 
+type ClassroomAnalysisResponse = {
+  data: any;
+  meta: null;
+  error: string | null;
+};
+
 @Injectable()
 export class ClassroomAnalysisService {
   constructor(private prisma: PrismaService) {}
 
-  async getClassroomAnalysis(sessionId: string) {
+  async getClassroomAnalysis(sessionId: string): Promise<ClassroomAnalysisResponse> {
     const analysis = await this.prisma.sessionClassroomAnalysis.findUnique({
       where: { sessionId },
     });
@@ -31,7 +37,7 @@ export class ClassroomAnalysisService {
     schoolId?: string;
     gradeId?: string;
     classId?: string;
-  }) {
+  }): Promise<ClassroomAnalysisResponse> {
     const where: Prisma.InteractionSessionWhereInput = {};
 
     if (params.scenarioCode) {
@@ -56,7 +62,7 @@ export class ClassroomAnalysisService {
     const sessions = await this.prisma.interactionSession.findMany({
       where,
       select: { id: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     });
 
     if (sessions.length === 0) {
@@ -71,7 +77,7 @@ export class ClassroomAnalysisService {
       where: {
         sessionId: { in: sessions.map((s) => s.id) },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     });
 
     if (analyses.length === 0) {
