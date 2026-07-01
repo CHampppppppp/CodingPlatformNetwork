@@ -157,26 +157,26 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
   }, [isOpen, defaultTab]);
 
   useEffect(() => {
-    if (activeTab === 'classroom-analysis' && canShowClassroomAnalysis && !classroomAnalysisLoading) {
-      setClassroomAnalysisLoading(true);
-      fetchClassroomAnalysis(scenarioCode, classInfo)
-        .then((analysis) => {
-          setClassroomAnalysis(analysis);
-        })
-        .catch((err) => {
-          console.error('加载课堂视频分析数据失败:', err);
-          setClassroomAnalysis(null);
-        })
-        .finally(() => {
-          setClassroomAnalysisLoading(false);
-        });
-    }
-  }, [activeTab, canShowClassroomAnalysis, scenarioCode, classInfo, classroomAnalysisLoading]);
+    if (activeTab !== 'classroom-analysis' || !canShowClassroomAnalysis) return;
 
-  useEffect(() => {
-    setClassroomAnalysis(null);
-    setClassroomAnalysisLoading(false);
-  }, [classInfo]);
+    let ignore = false;
+    setClassroomAnalysisLoading(true);
+    fetchClassroomAnalysis(scenarioCode, classInfo)
+      .then((analysis) => {
+        if (!ignore) setClassroomAnalysis(analysis);
+      })
+      .catch((err) => {
+        console.error('加载课堂视频分析数据失败:', err);
+        if (!ignore) setClassroomAnalysis(null);
+      })
+      .finally(() => {
+        if (!ignore) setClassroomAnalysisLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [activeTab, canShowClassroomAnalysis, scenarioCode, classInfo]);
 
   // --- Data Calculations ---
   
