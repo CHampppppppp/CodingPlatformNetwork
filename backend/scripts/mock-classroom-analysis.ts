@@ -4,8 +4,9 @@ import { PrismaService } from "../src/shared/utils/prisma.service";
 import { Prisma } from "@prisma/client";
 
 function classifyInteraction(interaction: any) {
-  const action = (interaction.actionType || "").toLowerCase();
-  const tokens = action.split(/[^a-z0-9]+/).filter(Boolean);
+  const rawAction = (interaction.actionType || "");
+  const normalized = rawAction.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
+  const tokens = normalized.split(/[^a-z0-9]+/).filter(Boolean);
   const hasToken = (keywords: string[]) => tokens.some((t) => keywords.includes(t));
 
   const srcStudent = interaction.sourceNode?.nodeType === "Student";
@@ -26,7 +27,8 @@ function classifyInteraction(interaction: any) {
 
   let questionType: "closed" | "application" | "open" | null = null;
   if (isQuestion) {
-    if (hasToken(["closed", "close", "yes_no"])) questionType = "closed";
+    const yesNoPair = hasToken(["yes"]) && hasToken(["no"]);
+    if (hasToken(["closed", "close"]) || yesNoPair) questionType = "closed";
     else if (hasToken(["open", "inquiry", "explore"])) questionType = "open";
     else questionType = "application";
   }
