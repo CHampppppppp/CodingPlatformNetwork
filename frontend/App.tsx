@@ -72,6 +72,25 @@ const DEMO_CHATBOT_INCREMENT = true;
 
 const CHATBOT_INCREMENT_STORAGE_KEY = "chatbot-increment-scores";
 
+const BASE_DIMENSION_CODES = [
+  "COG_READING",
+  "COG_LANGUAGE",
+  "COG_SCIENCE_KNOWLEDGE",
+  "COG_SCIENCE_INQUIRY",
+  "COG_COMPUTATIONAL",
+  "COG_TECH_LITERACY",
+  "PSY_ANXIETY",
+  "PSY_DEPRESSION",
+  "PSY_PRESSURE",
+  "PSY_LIFE_SATISFACTION",
+  "PSY_RESILIENCE",
+  "PSY_INTEREST_STABILITY",
+  "PRAC_INNOVATION",
+  "PRAC_PROBLEM_SOLVING",
+  "PRAC_COLLABORATION",
+  "PRAC_PRACTICE",
+];
+
 function readStoredIncrementScores(): Record<string, Partial<CognitiveAttributes>> {
   try {
     const raw = localStorage.getItem(CHATBOT_INCREMENT_STORAGE_KEY);
@@ -1403,86 +1422,101 @@ const App: React.FC = () => {
                             selectedNode.studentProfile.template?.dimensions
                               ?.length > 0 && (
                               <>
-                                <div className="flex items-center gap-2 mt-5 mb-3 pb-2 border-b border-slate-100">
-                                  <Activity className="w-4 h-4 text-indigo-500" />
-                                  <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                    个人学情画像
-                                  </h5>
-                                </div>
-                                {templateLoadingStudentId === selectedNode.id && (
-                                  <div className="mb-4 flex items-center gap-2 text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    正在加载认知模板...
-                                  </div>
-                                )}
-                                <div className="grid grid-cols-2 gap-3">
-                                  {selectedNode.studentProfile.template.dimensions.map(
-                                    (item) => {
-                                      const rawValue =
-                                        typeof item.score === "number"
-                                          ? item.score
-                                          : 0;
-                                      const value = rawValue;
-                                      const canShowStrategy =
-                                        typeof dimensionCodeToStrategyKey[
-                                        item.code
-                                        ] !== "undefined";
-                                      return (
-                                        <div
-                                          key={item.code}
-                                          className={`space-y-1 group relative p-2 bg-slate-50 rounded-lg border border-slate-100 transition-colors duration-300 ${canShowStrategy
-                                              ? "cursor-help"
-                                              : "cursor-default"
-                                            }`}
-                                          onMouseEnter={(e) => {
-                                            if (
-                                              dimensionCodeToStrategyKey[item.code]
-                                            ) {
-                                              handleAttributeEnter(
-                                                e,
-                                                item.name,
-                                                value,
-                                                dimensionCodeToStrategyKey[
-                                                item.code
-                                                ],
-                                              );
-                                            }
-                                          }}
-                                          onMouseLeave={() => {
-                                            if (canShowStrategy) {
-                                              handleAttributeLeave();
-                                            }
-                                          }}
-                                        >
-                                          <div className="flex justify-between text-[11px] text-slate-600">
-                                            <span className="font-medium">
-                                              {item.name}
-                                            </span>
-                                            <span className="font-bold text-slate-800">
-                                              {value.toFixed(1)}/10
-                                            </span>
-                                          </div>
-                                          <div className="text-[9px] text-slate-400 truncate">
-                                            {item.category}
-                                          </div>
-                                          <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
-                                            <div
-                                              className={`h-full rounded-full transition-all duration-500 ease-out ${value >= 8
-                                                  ? "bg-emerald-500"
-                                                  : value >= 6
-                                                    ? "bg-indigo-500"
-                                                    : "bg-amber-500"
-                                                } group-hover:brightness-95`}
-                                              style={{
-                                                width: `${Math.min((value / 10) * 100, 100)}%`,
-                                              }}
-                                            ></div>
-                                          </div>
+                                {(() => {
+                                  const baseDimensions =
+                                    selectedNode.studentProfile.template.dimensions.filter(
+                                      (item) =>
+                                        BASE_DIMENSION_CODES.includes(item.code),
+                                    );
+                                  if (baseDimensions.length === 0) return null;
+                                  return (
+                                    <>
+                                      <div className="flex items-center gap-2 mt-5 mb-3 pb-2 border-b border-slate-100">
+                                        <Activity className="w-4 h-4 text-indigo-500" />
+                                        <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                          个人学情画像
+                                        </h5>
+                                      </div>
+                                      {templateLoadingStudentId ===
+                                        selectedNode.id && (
+                                        <div className="mb-4 flex items-center gap-2 text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+                                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                          正在加载认知模板...
                                         </div>
-                                      );
-                                    },
-                                  )}
-                                </div>
+                                      )}
+                                      <div className="grid grid-cols-2 gap-3">
+                                        {baseDimensions.map((item) => {
+                                          const rawValue =
+                                            typeof item.score === "number"
+                                              ? item.score
+                                              : 0;
+                                          const value = rawValue;
+                                          const canShowStrategy =
+                                            typeof dimensionCodeToStrategyKey[
+                                              item.code
+                                            ] !== "undefined";
+                                          return (
+                                            <div
+                                              key={item.code}
+                                              className={`space-y-1 group relative p-2 bg-slate-50 rounded-lg border border-slate-100 transition-colors duration-300 ${
+                                                canShowStrategy
+                                                  ? "cursor-help"
+                                                  : "cursor-default"
+                                              }`}
+                                              onMouseEnter={(e) => {
+                                                if (
+                                                  dimensionCodeToStrategyKey[
+                                                    item.code
+                                                  ]
+                                                ) {
+                                                  handleAttributeEnter(
+                                                    e,
+                                                    item.name,
+                                                    value,
+                                                    dimensionCodeToStrategyKey[
+                                                      item.code
+                                                    ],
+                                                  );
+                                                }
+                                              }}
+                                              onMouseLeave={() => {
+                                                if (canShowStrategy) {
+                                                  handleAttributeLeave();
+                                                }
+                                              }}
+                                            >
+                                              <div className="flex justify-between text-[11px] text-slate-600">
+                                                <span className="font-medium">
+                                                  {item.name}
+                                                </span>
+                                                <span className="font-bold text-slate-800">
+                                                  {value.toFixed(1)}/10
+                                                </span>
+                                              </div>
+                                              <div className="text-[9px] text-slate-400 truncate">
+                                                {item.category}
+                                              </div>
+                                              <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                                                <div
+                                                  className={`h-full rounded-full transition-all duration-500 ease-out ${
+                                                    value >= 8
+                                                      ? "bg-emerald-500"
+                                                      : value >= 6
+                                                        ? "bg-indigo-500"
+                                                        : "bg-amber-500"
+                                                  } group-hover:brightness-95`}
+                                                  style={{
+                                                    width: `${Math.min((value / 10) * 100, 100)}%`,
+                                                  }}
+                                                ></div>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </>
+                                  );
+                                })()}
                               </>
                             )}
                           <div className="mt-5 p-3 bg-indigo-50 rounded-lg border border-indigo-100 flex gap-2 items-start">
