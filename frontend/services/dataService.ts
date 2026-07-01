@@ -225,17 +225,16 @@ export const fetchClassroomAnalysis = async (
 
     if (!raw) return null;
 
-    const normalizedRate =
-      raw.knowledgeActivationRate != null
-        ? Number(raw.knowledgeActivationRate)
-        : null;
+    const rawRate = raw.knowledgeActivationRate;
+    const parsed =
+      rawRate != null && typeof rawRate === "string" && rawRate.trim() === ""
+        ? NaN
+        : Number(rawRate);
+    const normalizedRate = Number.isNaN(parsed) ? null : parsed;
 
     const data: ClassroomAnalysis = {
       ...raw,
-      knowledgeActivationRate:
-        normalizedRate != null && !Number.isNaN(normalizedRate)
-          ? normalizedRate
-          : null,
+      knowledgeActivationRate: normalizedRate,
     };
 
     return data;
