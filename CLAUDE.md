@@ -39,48 +39,6 @@
 
 新增目录前先明确：放什么、不放什么、命名规则。
 
-### 后端模块
-
-```
-backend/src/modules/
-├── classroom-analysis/   # 课堂视频自动分析（九维度评估）
-├── graph/                # 图谱数据查询、认知画像、问卷统计
-├── ingestion/            # 数据导入（adapters / types / services）
-├── interaction/          # 交互记录增删查
-├── interaction-session/  # 交互会话管理
-├── node/                 # 图谱节点增删查
-├── org/                  # 组织结构（学校/年级/班级）
-├── resource/             # 学习资源管理
-├── scenario/             # 学习场景管理
-├── student/              # 学生服务（认知画像、资源推荐、chatbot维度增量）
-└── student-knowledge-relation/  # 学生-知识点关联
-```
-
-### 前端结构
-
-```
-frontend/
-├── App.tsx                      # 单页应用主入口
-├── types.ts                     # 前端类型定义（GraphNode/GraphLink/CognitiveAttributes/ClassroomAnalysis等）
-├── constants.ts                 # 常量（维度标签、场景配置等）
-├── components/
-│   ├── NetworkGraph.tsx         # D3 力导向图谱
-│   ├── AnalysisPanel.tsx        # 学生详情面板（含学情画像、资源推荐、chatbot增量）
-│   ├── ClassroomAnalysisView.tsx # 课堂分析视图
-│   └── StarRating.tsx           # 星级评分组件
-└── services/
-    ├── apiService.ts            # 后端 API 调用
-    ├── dataService.ts           # 图谱数据获取与缓存
-    ├── dataParser.ts            # 图谱数据解析
-    ├── dataValidator.ts         # 数据校验
-    ├── resourceRecommendation.ts # 资源推荐算法
-    ├── strategies.ts            # 干预策略匹配
-    ├── strategyData.ts          # 干预策略语料
-    ├── dimensionUtils.ts        # 认知维度计算工具
-    ├── chatbotDimensionDemo.ts  # Chatbot 维度增量演示数据
-    └── performanceUtils.ts      # 性能工具
-```
-
 ## 数据库核心表
 
 | 表 | 说明 |
