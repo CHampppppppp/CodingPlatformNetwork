@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../shared/utils/prisma.service";
 
 @Injectable()
@@ -31,16 +32,21 @@ export class ClassroomAnalysisService {
     gradeId?: string;
     classId?: string;
   }) {
-    const where: any = {};
+    const where: Prisma.InteractionSessionWhereInput = {};
 
     if (params.scenarioCode) {
       const scenario = await this.prisma.learningScenario.findUnique({
         where: { code: params.scenarioCode },
         select: { id: true },
       });
-      if (scenario) {
-        where.scenarioId = scenario.id;
+      if (!scenario) {
+        return {
+          data: null,
+          meta: null,
+          error: "SCENARIO_NOT_FOUND",
+        };
       }
+      where.scenarioId = scenario.id;
     }
 
     if (params.schoolId) where.schoolId = params.schoolId;
