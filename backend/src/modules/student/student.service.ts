@@ -4,8 +4,6 @@ import {
   computeAggregateDimensionScores,
   scoreLevel,
   AGGREGATE_DIMENSION_KEYS,
-  AGGREGATE_DIMENSION_NAME_ZH,
-  AGGREGATE_DIMENSION_CATEGORY,
   generateMockBaseDimensionScores,
   BASE_DIMENSION_CODES,
   AggregateDimensionScores,
