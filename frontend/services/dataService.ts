@@ -215,12 +215,19 @@ export const fetchClassroomAnalysis = async (
   classInfo: ClassInfo,
 ): Promise<ClassroomAnalysis | null> => {
   try {
-    const data = await fetchClassroomAnalysisFromApi({
+    const raw = await fetchClassroomAnalysisFromApi({
       scenarioCode,
       school: classInfo.school,
       grade: classInfo.grade,
       classId: classInfo.classId,
     });
+
+    if (!raw) return null;
+
+    const data = raw as ClassroomAnalysis;
+    if (data.knowledgeActivationRate != null) {
+      data.knowledgeActivationRate = Number(data.knowledgeActivationRate);
+    }
 
     return data;
   } catch (error) {
