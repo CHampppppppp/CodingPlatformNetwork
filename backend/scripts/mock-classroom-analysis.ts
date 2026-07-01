@@ -294,7 +294,7 @@ async function main() {
           correctFeedbackCount: stats.correctFeedback,
           studentUtteranceCount: stats.studentUtterance,
           teacherFluencyLevel: level4(stats.teacherStudent, 50, 20, 5),
-          toolVarietyCount: Math.min(Math.max(stats.toolTypes.size, 1), 10),
+          toolVarietyCount: Math.min(stats.toolTypes.size, 10),
           selfAwarenessLevel: level4(
             stats.teacherStudent / Math.max(studentCount, 1),
             3,
