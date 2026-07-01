@@ -1,4 +1,9 @@
-import { GraphData, LearningScenarioOption, ChatbotDimensionIncrementData } from "../types";
+import {
+  GraphData,
+  LearningScenarioOption,
+  ChatbotDimensionIncrementData,
+  ClassroomAnalysis,
+} from "../types";
 import { API_BASE_URL } from "../constants";
 
 export interface StudentCognitiveTemplateApiResponse {
@@ -700,7 +705,7 @@ export const fetchClassroomAnalysis = async (params: {
   school?: string;
   grade?: string;
   classId?: string;
-}): Promise<any> => {
+}): Promise<ClassroomAnalysis | null> => {
   try {
     const queryParams = new URLSearchParams();
     if (params.scenarioCode) queryParams.append("scenario_code", params.scenarioCode);

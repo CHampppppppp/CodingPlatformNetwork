@@ -222,7 +222,7 @@ export const fetchClassroomAnalysis = async (
       classId: classInfo.classId,
     });
 
-    return data as ClassroomAnalysis | null;
+    return data;
   } catch (error) {
     console.error("获取课堂视频分析数据失败:", error);
     return null;
