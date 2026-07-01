@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../shared/utils/prisma.service";
 
 type ClassroomAnalysisResponse = {
-  data: any;
+  data: Prisma.SessionClassroomAnalysisGetPayload<{}> | null;
   meta: null;
   error: string | null;
 };
@@ -59,37 +59,22 @@ export class ClassroomAnalysisService {
     if (params.gradeId) where.gradeId = params.gradeId;
     if (params.classId) where.classId = params.classId;
 
-    const sessions = await this.prisma.interactionSession.findMany({
+    const session = await this.prisma.interactionSession.findFirst({
       where,
-      select: { id: true },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
+      include: { classroomAnalysis: true },
     });
 
-    if (sessions.length === 0) {
-      return {
-        data: null,
-        meta: null,
-        error: "NOT_FOUND",
-      };
+    if (!session) {
+      return { data: null, meta: null, error: "NOT_FOUND" };
     }
 
-    const analyses = await this.prisma.sessionClassroomAnalysis.findMany({
-      where: {
-        sessionId: { in: sessions.map((s) => s.id) },
-      },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    });
-
-    if (analyses.length === 0) {
-      return {
-        data: null,
-        meta: null,
-        error: "NOT_FOUND",
-      };
+    if (!session.classroomAnalysis) {
+      return { data: null, meta: null, error: "NOT_FOUND" };
     }
 
     return {
-      data: analyses[0],
+      data: session.classroomAnalysis,
       meta: null,
       error: null,
     };
