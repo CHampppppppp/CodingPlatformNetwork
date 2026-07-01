@@ -147,6 +147,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
   const [classroomAnalysis, setClassroomAnalysis] = useState<ClassroomAnalysis | null>(null);
   const [classroomAnalysisLoading, setClassroomAnalysisLoading] = useState(false);
 
+  // 保持 SHOW_CASE-only：当前数据库中只有 SHOW_CASE 有 SessionClassroomAnalysis 记录
   const isShowCase = scenarioCode === 'SHOW_CASE';
 
   // Sync activeTab with defaultTab when panel opens
