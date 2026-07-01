@@ -697,16 +697,31 @@ export const fetchResourceStudentRates = async (
 
 export const fetchClassroomAnalysis = async (params: {
   scenarioCode?: string;
-  schoolId?: string;
-  gradeId?: string;
+  school?: string;
+  grade?: string;
   classId?: string;
 }): Promise<any> => {
   try {
     const queryParams = new URLSearchParams();
     if (params.scenarioCode) queryParams.append("scenario_code", params.scenarioCode);
-    if (params.schoolId) queryParams.append("school_id", params.schoolId);
-    if (params.gradeId) queryParams.append("grade_id", params.gradeId);
-    if (params.classId) queryParams.append("class_id", params.classId);
+
+    const schoolId = params.school ? schoolNameToId.get(params.school) : undefined;
+    const rawGrade = params.grade
+      ? (gradeDisplayToRaw.get(params.grade) || params.grade)
+      : undefined;
+    const rawClassId = params.classId
+      ? (classDisplayToRaw.get(params.classId) || params.classId)
+      : undefined;
+    const gradeId = params.school && rawGrade
+      ? gradeKeyToId.get(`${params.school}::${rawGrade}`)
+      : undefined;
+    const classId = params.school && rawGrade && rawClassId
+      ? classKeyToId.get(`${params.school}::${rawGrade}::${rawClassId}`)
+      : undefined;
+
+    if (schoolId) queryParams.append("school_id", schoolId);
+    if (gradeId) queryParams.append("grade_id", gradeId);
+    if (classId) queryParams.append("class_id", classId);
 
     const url = `${API_BASE_URL}/classroom-analysis${
       queryParams.toString() ? `?${queryParams.toString()}` : ""
@@ -715,9 +730,7 @@ export const fetchClassroomAnalysis = async (params: {
 
     const response = await fetchWithRetry(url, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
@@ -725,12 +738,11 @@ export const fetchClassroomAnalysis = async (params: {
     }
 
     const payload = await response.json();
-    
     if (payload.error) {
       console.log("课堂视频分析数据未找到:", payload.error);
       return null;
     }
-    
+
     const data = payload?.data ?? null;
     console.log("获取课堂视频分析数据成功:", data ? "有数据" : "无数据");
     return data;

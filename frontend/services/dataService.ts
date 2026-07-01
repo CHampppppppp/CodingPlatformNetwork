@@ -217,6 +217,9 @@ export const fetchClassroomAnalysis = async (
   try {
     const data = await fetchClassroomAnalysisFromApi({
       scenarioCode,
+      school: classInfo.school,
+      grade: classInfo.grade,
+      classId: classInfo.classId,
     });
 
     return data as ClassroomAnalysis | null;
