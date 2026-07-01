@@ -192,12 +192,14 @@ export class StudentService {
     });
 
     const hasBaseDimensions = latestProfile?.dimensionScores.some((item) =>
-      BASE_DIMENSION_CODES.includes(item.dimensionCode as any),
+      BASE_DIMENSION_CODES.some((code) => code === item.dimensionCode),
     );
 
     const aggregateScoreMap = new Map<string, number>();
     for (const item of latestProfile?.dimensionScores ?? []) {
-      if (AGGREGATE_DIMENSION_KEYS.includes(item.dimensionCode as any)) {
+      if (
+        AGGREGATE_DIMENSION_KEYS.some((key) => key === item.dimensionCode)
+      ) {
         aggregateScoreMap.set(item.dimensionCode, Number(item.scoreValue));
       }
     }

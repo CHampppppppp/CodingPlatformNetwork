@@ -65,31 +65,13 @@ import {
   LIKERT_SCALE_MAP,
   buildSearchUrl,
   FALLBACK_SCENARIOS,
+  BASE_DIMENSION_CODES,
 } from "./constants";
 
 // 切换 chatbot 维度增量更新为演示模式（true=模拟数据，false=真实接口）
 const DEMO_CHATBOT_INCREMENT = true;
 
 const CHATBOT_INCREMENT_STORAGE_KEY = "chatbot-increment-scores";
-
-const BASE_DIMENSION_CODES = [
-  "COG_READING",
-  "COG_LANGUAGE",
-  "COG_SCIENCE_KNOWLEDGE",
-  "COG_SCIENCE_INQUIRY",
-  "COG_COMPUTATIONAL",
-  "COG_TECH_LITERACY",
-  "PSY_ANXIETY",
-  "PSY_DEPRESSION",
-  "PSY_PRESSURE",
-  "PSY_LIFE_SATISFACTION",
-  "PSY_RESILIENCE",
-  "PSY_INTEREST_STABILITY",
-  "PRAC_INNOVATION",
-  "PRAC_PROBLEM_SOLVING",
-  "PRAC_COLLABORATION",
-  "PRAC_PRACTICE",
-];
 
 function readStoredIncrementScores(): Record<string, Partial<CognitiveAttributes>> {
   try {

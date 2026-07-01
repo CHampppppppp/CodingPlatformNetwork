@@ -6,6 +6,25 @@ export const API_BASE_URL =
     ? "http://interaction-network.mgsai.cn/api/v1"
     : "http://localhost:3334/api/v1");
 
+export const BASE_DIMENSION_CODES = [
+  "COG_READING",
+  "COG_LANGUAGE",
+  "COG_SCIENCE_KNOWLEDGE",
+  "COG_SCIENCE_INQUIRY",
+  "COG_COMPUTATIONAL",
+  "COG_TECH_LITERACY",
+  "PSY_ANXIETY",
+  "PSY_DEPRESSION",
+  "PSY_PRESSURE",
+  "PSY_LIFE_SATISFACTION",
+  "PSY_RESILIENCE",
+  "PSY_INTEREST_STABILITY",
+  "PRAC_INNOVATION",
+  "PRAC_PROBLEM_SOLVING",
+  "PRAC_COLLABORATION",
+  "PRAC_PRACTICE",
+] as const;
+
 export const PORTRAIT_FEATURE_SCENARIOS = [
   "SHOW_CASE",
   "ONLINE_COURSE",
