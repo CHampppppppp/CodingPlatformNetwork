@@ -320,7 +320,7 @@ export class StudentKnowledgeRelationService {
 
   /**
    * 创建或更新资源评分
-   * 如果用户未提供评分，则使用默认评分 3.0
+   * 如果用户未提供评分，则根据资源难度计算默认评分
    */
   private async upsertResourceRates(
     studentNodeId: string,
@@ -351,19 +351,23 @@ export class StudentKnowledgeRelationService {
     // 未提供评分：查找该知识点关联的所有资源，创建默认评分
     const resourceRelations = await this.prisma.resourceKnowledgeRelation.findMany({
       where: { knowledgeNodeId },
-      select: { resourceId: true },
+      select: {
+        resourceId: true,
+        resource: { select: { difficulty: true } },
+      },
     });
 
-    const defaultRate = new Prisma.Decimal(3.0);
+    for (const { resourceId, resource } of resourceRelations) {
+      const difficulty = resource.difficulty || "MEDIUM";
+      const baseAcceptance =
+        difficulty === "LOW" ? 95 : difficulty === "HIGH" ? 60 : 80;
+      const rate = new Prisma.Decimal(
+        Math.round(((baseAcceptance / 100) * 5) * 100) / 100,
+      );
 
-    for (const { resourceId } of resourceRelations) {
       try {
         await this.prisma.studentResourceRate.create({
-          data: {
-            studentId: studentNodeId,
-            resourceId,
-            rate: defaultRate,
-          },
+          data: { studentId: studentNodeId, resourceId, rate },
         });
       } catch (error: any) {
         if (error?.code === "P2002") {
