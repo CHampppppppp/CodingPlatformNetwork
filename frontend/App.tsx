@@ -1305,7 +1305,14 @@ const App: React.FC = () => {
                                 个人维度分析
                               </h5>
                             </div>
-                            {scenarioCode === "SHOW_CASE" && (
+                            {[
+                              "SHOW_CASE",
+                              "ONLINE_COURSE",
+                              "TEACHER_QA",
+                              "HOME_LEARNING",
+                              "COLLABORATIVE_LEARNING",
+                              "INFORMAL_LEARNING",
+                            ].includes(scenarioCode) && (
                               <div className="flex items-center gap-1.5 shrink-0">
                                 <button
                                   onClick={handleOpenRecommend}
