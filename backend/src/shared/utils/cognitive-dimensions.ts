@@ -232,6 +232,14 @@ export function generateMockBaseDimensionScores(
   const rand = seededRandom(seed);
   const baseScores = new Map<string, number>();
 
+  // 非 SHOW_CASE 场景的聚合维度得分可能是 0-100（百分比）或 1-5（Likert）。
+  // 统一将其归一化到 0-10 基础维度满分后再加扰动。
+  const values = AGGREGATE_DIMENSION_KEYS
+    .map((key) => aggregateScores[key])
+    .filter((v): v is number => typeof v === "number" && v > 0);
+  const maxAggregate = values.length > 0 ? Math.max(...values) : 0;
+  const scaleFactor = maxAggregate > 10 ? 0.1 : 2;
+
   for (const key of AGGREGATE_DIMENSION_KEYS) {
     const aggregateScore = aggregateScores[key];
     if (typeof aggregateScore !== "number" || aggregateScore <= 0) {
@@ -240,7 +248,7 @@ export function generateMockBaseDimensionScores(
     const baseCodes = AGGREGATE_TO_BASE_CODES[key];
     for (const code of baseCodes) {
       const noise = rand() * 2 - 1; // [-1, 1]
-      const score = Math.max(0, Math.min(10, aggregateScore * 2 + noise));
+      const score = Math.max(0, Math.min(10, aggregateScore * scaleFactor + noise));
       baseScores.set(code, Number(score.toFixed(2)));
     }
   }
