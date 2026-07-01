@@ -22,6 +22,25 @@ const RATE_MIN = 1;
 const RATE_MAX = 5;
 const TARGET_ACCEPTANCE_RATE = 0.85; // 目标资源总接受度 85%
 
+const DIFFICULTY_RANGES: Record<string, { minAcceptance: number; maxAcceptance: number }> = {
+  LOW: { minAcceptance: 90, maxAcceptance: 100 },
+  MEDIUM: { minAcceptance: 70, maxAcceptance: 90 },
+  HIGH: { minAcceptance: 50, maxAcceptance: 70 },
+};
+
+const TARGET_OVERALL_ACCEPTANCE = 85;
+const RATING_NOISE_STD = 0.25;
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, n));
+}
+
+function sampleNormal(random: () => number): number {
+  const u1 = random();
+  const u2 = random();
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
+
 interface ParsedArgs {
   scenarioCode: string;
   all: boolean;
@@ -61,14 +80,50 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-function generateRate(random: () => number): number {
-  // 接受度 = (rate / RATE_MAX) * 100，目标 85% 即平均分 4.25。
-  // 使用 Beta(α, 1) 分布并线性映射到 [RATE_MIN, RATE_MAX]。
-  // Beta(α, 1) 期望为 α/(α+1)，令 RATE_MIN + (RATE_MAX-RATE_MIN)*α/(α+1) = TARGET_ACCEPTANCE_RATE*RATE_MAX
-  const targetMean = TARGET_ACCEPTANCE_RATE * RATE_MAX;
-  const alpha = (targetMean - RATE_MIN) / (RATE_MAX - targetMean);
-  const betaSample = random() ** (1 / alpha);
-  return round2(RATE_MIN + (RATE_MAX - RATE_MIN) * betaSample);
+interface TargetAcceptance {
+  LOW: number;
+  MEDIUM: number;
+  HIGH: number;
+}
+
+function solveTargetAcceptance(counts: Record<string, number>): TargetAcceptance {
+  const total = counts.LOW + counts.MEDIUM + counts.HIGH;
+  if (total === 0) {
+    throw new Error("没有可用资源，无法计算目标接受度。");
+  }
+
+  const pLow = counts.LOW / total;
+  const pMedium = counts.MEDIUM / total;
+  const pHigh = counts.HIGH / total;
+
+  let aLow = 95;
+  let aHigh = 60;
+  let aMedium = (TARGET_OVERALL_ACCEPTANCE - pLow * aLow - pHigh * aHigh) / pMedium;
+
+  if (aMedium >= 70 && aMedium <= 90) {
+    return { LOW: aLow, MEDIUM: aMedium, HIGH: aHigh };
+  }
+
+  if (aMedium > 90) {
+    aLow = 90;
+    aHigh = 70;
+    aMedium = (TARGET_OVERALL_ACCEPTANCE - pLow * aLow - pHigh * aHigh) / pMedium;
+    if (aMedium >= 70 && aMedium <= 90) {
+      return { LOW: aLow, MEDIUM: aMedium, HIGH: aHigh };
+    }
+  }
+
+  throw new Error(
+    `无法在当前资源难度分布下达到目标接受度 ${TARGET_OVERALL_ACCEPTANCE}%。` +
+    `当前分布：LOW=${counts.LOW}, MEDIUM=${counts.MEDIUM}, HIGH=${counts.HIGH}。` +
+    `请调整回填规则或放宽目标均值。`,
+  );
+}
+
+function generateRate(random: () => number, baseAcceptance: number): number {
+  const baseRate = (baseAcceptance / 100) * RATE_MAX;
+  const noise = sampleNormal(random) * RATING_NOISE_STD;
+  return round2(clamp(baseRate + noise, RATE_MIN, RATE_MAX));
 }
 
 function isUniqueConstraintError(error: unknown): boolean {
@@ -109,7 +164,11 @@ async function mockRatesForScenario(
   );
   const resourceRelations = await prisma.resourceKnowledgeRelation.findMany({
     where: { knowledgeNodeId: { in: knowledgeIds } },
-    select: { resourceId: true, knowledgeNodeId: true },
+    select: {
+      resourceId: true,
+      knowledgeNodeId: true,
+      resource: { select: { difficulty: true } },
+    },
   });
 
   const resourcesByKnowledge = new Map<string, string[]>();
@@ -118,6 +177,25 @@ async function mockRatesForScenario(
     list.push(rel.resourceId);
     resourcesByKnowledge.set(rel.knowledgeNodeId, list);
   }
+
+  // 统计资源难度分布并求解各难度目标接受度
+  const difficultyCounts: Record<string, number> = { LOW: 0, MEDIUM: 0, HIGH: 0 };
+  const seenResourceIds = new Set<string>();
+  const resourceDifficultyById = new Map<string, string | null>();
+  for (const rel of resourceRelations) {
+    const difficulty = rel.resource?.difficulty?.toUpperCase() || null;
+    if (!seenResourceIds.has(rel.resourceId)) {
+      seenResourceIds.add(rel.resourceId);
+      resourceDifficultyById.set(rel.resourceId, difficulty);
+      if (difficulty && difficulty in difficultyCounts) {
+        difficultyCounts[difficulty] += 1;
+      }
+    }
+  }
+  const targetAcceptance = solveTargetAcceptance(difficultyCounts);
+
+  console.log(`  资源难度分布: LOW=${difficultyCounts.LOW}, MEDIUM=${difficultyCounts.MEDIUM}, HIGH=${difficultyCounts.HIGH}`);
+  console.log(`  目标接受度: LOW=${round2(targetAcceptance.LOW)}%, MEDIUM=${round2(targetAcceptance.MEDIUM)}%, HIGH=${round2(targetAcceptance.HIGH)}%`);
 
   // 汇总每个学生对应的资源（去重）
   const resourcesByStudent = new Map<string, Set<string>>();
@@ -138,12 +216,21 @@ async function mockRatesForScenario(
   let successCount = 0;
   let duplicateCount = 0;
   let rateSum = 0;
+  const difficultyRateSums: Record<string, number> = { LOW: 0, MEDIUM: 0, HIGH: 0 };
+  const difficultyRateCounts: Record<string, number> = { LOW: 0, MEDIUM: 0, HIGH: 0 };
 
   for (const [studentNodeId, resourceIds] of resourcesByStudent) {
     for (const resourceId of resourceIds) {
-      const rate = generateRate(random);
+      const difficulty = resourceDifficultyById.get(resourceId) || "MEDIUM";
+      const baseAcceptance = targetAcceptance[difficulty] ?? targetAcceptance.MEDIUM;
+      const rate = generateRate(random, baseAcceptance);
       rateSum += rate;
       totalCount += 1;
+
+      if (difficulty in difficultyRateCounts) {
+        difficultyRateSums[difficulty] += rate;
+        difficultyRateCounts[difficulty] += 1;
+      }
 
       if (execute) {
         rateRows.push({
@@ -186,6 +273,14 @@ async function mockRatesForScenario(
   console.log(`  涉及知识点数: ${knowledgeIds.length}`);
   console.log(`  涉及资源数: ${resourceRelations.map((r) => r.resourceId).filter((v, i, a) => a.indexOf(v) === i).length}`);
   console.log(`  预计评分记录: ${totalCount}`);
+  for (const difficulty of ["LOW", "MEDIUM", "HIGH"] as const) {
+    const count = difficultyRateCounts[difficulty];
+    if (count > 0) {
+      const avg = round2(difficultyRateSums[difficulty] / count);
+      const acceptance = round2((avg / RATE_MAX) * 100);
+      console.log(`    ${difficulty} 难度平均评分: ${avg} / ${RATE_MAX} (接受度 ${acceptance}%)`);
+    }
+  }
   if (avgRate != null) {
     console.log(`  预计平均评分: ${avgRate} / ${RATE_MAX}`);
     console.log(`  预计接受度: ${acceptanceRate}%`);
