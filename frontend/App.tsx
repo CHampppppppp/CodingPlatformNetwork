@@ -59,6 +59,7 @@ import {
   ChatbotDimensionIncrementData,
 } from "./types";
 import {
+  PORTRAIT_FEATURE_SCENARIOS,
   COGNITIVE_DIMENSION_LABELS,
   COGNITIVE_DIMENSION_KEYS,
   LIKERT_SCALE_MAP,
@@ -1305,14 +1306,7 @@ const App: React.FC = () => {
                                 个人维度分析
                               </h5>
                             </div>
-                            {[
-                              "SHOW_CASE",
-                              "ONLINE_COURSE",
-                              "TEACHER_QA",
-                              "HOME_LEARNING",
-                              "COLLABORATIVE_LEARNING",
-                              "INFORMAL_LEARNING",
-                            ].includes(scenarioCode) && (
+                            {PORTRAIT_FEATURE_SCENARIOS.includes(scenarioCode) && (
                               <div className="flex items-center gap-1.5 shrink-0">
                                 <button
                                   onClick={handleOpenRecommend}
@@ -1405,7 +1399,7 @@ const App: React.FC = () => {
                             </div>
                           )}
 
-                          {scenarioCode === "SHOW_CASE" &&
+                          {PORTRAIT_FEATURE_SCENARIOS.includes(scenarioCode) &&
                             selectedNode.studentProfile.template?.dimensions
                               ?.length > 0 && (
                               <>

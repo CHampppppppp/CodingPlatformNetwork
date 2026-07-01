@@ -6,6 +6,15 @@ export const API_BASE_URL =
     ? "http://interaction-network.mgsai.cn/api/v1"
     : "http://localhost:3334/api/v1");
 
+export const PORTRAIT_FEATURE_SCENARIOS = [
+  "SHOW_CASE",
+  "ONLINE_COURSE",
+  "TEACHER_QA",
+  "HOME_LEARNING",
+  "COLLABORATIVE_LEARNING",
+  "INFORMAL_LEARNING",
+] as const;
+
 export const FALLBACK_SCENARIOS = [
   { code: "SHOW_CASE", nameZh: "展示场景", sortOrder: 0, isActive: true },
   { code: "ONLINE_COURSE", nameZh: "学科课程在线学习", sortOrder: 1, isActive: true },
