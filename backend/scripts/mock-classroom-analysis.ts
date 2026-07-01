@@ -84,12 +84,10 @@ async function main() {
 
     const prisma = app.get(PrismaService);
 
-    const scenarios = await prisma.learningScenario.findMany({
-      where: { code: { not: "SHOW_CASE" } },
-    });
+    const scenarios = await prisma.learningScenario.findMany();
 
     if (scenarios.length === 0) {
-      process.stdout.write("No non-SHOW_CASE scenarios found.\n");
+      process.stdout.write("No scenarios found.\n");
       return;
     }
 
