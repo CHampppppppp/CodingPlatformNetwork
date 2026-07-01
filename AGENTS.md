@@ -4,14 +4,14 @@
 
 教育交互网络可视化平台：把不同教育平台的数据统一映射为三元交互网络（学生-教师-知识点），再通过后端 API 提供给 React + D3 前端展示。
 
-**多源平台边界**：当前系统中的五个场景分别对应五个不同的外部教学平台。各平台数据相互独立，仅共享统一的数据模型与可视化能力，不跨平台聚合或比较。
+**多源平台边界**：当前系统中的六个场景（含一个展示场景）中，五个正式场景分别对应五个不同的外部教学平台。各平台数据相互独立，仅共享统一的数据模型与可视化能力，不跨平台聚合或比较。
 
 技术栈：NestJS + Prisma + MySQL/SQL Server + React + TypeScript + Vite + D3。
 
 ## 工作原则
 
 - 默认中文沟通，代码、命令、变量名用英文。
-- 先判断根因，再改代码；不要为了“能跑”绕过问题。
+- 先判断根因，再改代码；不要为了"能跑"绕过问题。
 - 大改动先给方案，确认后再动手。
 - 不要新增无关文档；用户明确要求写文档时才写。
 - 不要删除、覆盖、回滚用户已有改动。
@@ -34,10 +34,74 @@
 - 后端模块：`backend/src/modules/{module-name}`
 - Prisma schema：`backend/prisma/schema.prisma`
 - 脚本：`backend/scripts`
-- 原始/生成数据：`backend/datas/script_filterd`
-- 前端源码：`frontend`
+- 原始/生成数据：`backend/datas/`
+- 前端源码：`frontend`（主入口 `App.tsx`，组件 `components/`，服务 `services/`）
 
 新增目录前先明确：放什么、不放什么、命名规则。
+
+### 后端模块
+
+```
+backend/src/modules/
+├── classroom-analysis/   # 课堂视频自动分析（九维度评估）
+├── graph/                # 图谱数据查询、认知画像、问卷统计
+├── ingestion/            # 数据导入（adapters / types / services）
+├── interaction/          # 交互记录增删查
+├── interaction-session/  # 交互会话管理
+├── node/                 # 图谱节点增删查
+├── org/                  # 组织结构（学校/年级/班级）
+├── resource/             # 学习资源管理
+├── scenario/             # 学习场景管理
+├── student/              # 学生服务（认知画像、资源推荐、chatbot维度增量）
+└── student-knowledge-relation/  # 学生-知识点关联
+```
+
+### 前端结构
+
+```
+frontend/
+├── App.tsx                      # 单页应用主入口
+├── types.ts                     # 前端类型定义（GraphNode/GraphLink/CognitiveAttributes/ClassroomAnalysis等）
+├── constants.ts                 # 常量（维度标签、场景配置等）
+├── components/
+│   ├── NetworkGraph.tsx         # D3 力导向图谱
+│   ├── AnalysisPanel.tsx        # 学生详情面板（含学情画像、资源推荐、chatbot增量）
+│   ├── ClassroomAnalysisView.tsx # 课堂分析视图
+│   └── StarRating.tsx           # 星级评分组件
+└── services/
+    ├── apiService.ts            # 后端 API 调用
+    ├── dataService.ts           # 图谱数据获取与缓存
+    ├── dataParser.ts            # 图谱数据解析
+    ├── dataValidator.ts         # 数据校验
+    ├── resourceRecommendation.ts # 资源推荐算法
+    ├── strategies.ts            # 干预策略匹配
+    ├── strategyData.ts          # 干预策略语料
+    ├── dimensionUtils.ts        # 认知维度计算工具
+    ├── chatbotDimensionDemo.ts  # Chatbot 维度增量演示数据
+    └── performanceUtils.ts      # 性能工具
+```
+
+## 数据库核心表
+
+| 表 | 说明 |
+|---|---|
+| `learning_scenarios` | 学习场景 |
+| `schools` / `grades` / `classes` | 组织层级 |
+| `graph_nodes` | 三元网络节点（Student / Teacher / Knowledge） |
+| `student_profiles` | 学生扩展属性 |
+| `teacher_profiles` | 教师扩展属性 |
+| `knowledge_profiles` | 知识点扩展属性 |
+| `interaction_sessions` | 交互会话 |
+| `interactions` | 三元有向边 |
+| `student_cognitive_profiles` | 学生认知能力画像 |
+| `student_cognitive_dimension_scores` | 认知维度得分 |
+| `cognitive_dimension_defs` | 认知维度定义 |
+| `resources` | 学习资源 |
+| `resource_knowledge_relations` | 资源-知识点关联 |
+| `student_resource_rates` | 学生对资源评分 |
+| `student_knowledge_relations` | 学生-知识点学习关系 |
+| `student_works` | 学生作品 |
+| `session_classroom_analyses` | 课堂视频自动分析报告 |
 
 ## 数据导入约定
 
@@ -64,8 +128,7 @@ Excel/CSV/JSON
 - 场景以数据库 `LearningScenario.code` 为准。
 - 前端不要硬编码真实场景数据；可展示后端返回的 `nameZh`。
 - `SHOW_CASE` 视为演示/展示场景；正式平台场景独立处理。
-- **五个场景分别对应五个外部教学平台，平台间数据部分独立。**
-- **学生、教师、班级、交互必须按 `scenarioId` 隔离，禁止跨场景聚合。**
+- **六个场景（含 SHOW_CASE）中学生、教师、班级、交互必须按 `scenarioId` 隔离，禁止跨场景聚合。**
 - **知识点与资源可跨场景共享**，以缓解单平台数据稀疏问题。
 - 外部平台原始 ID（如 `externalUserId`、班级名称）仅在同一 `scenarioId` 内保证唯一性，查询时必须带场景作用域。
 
@@ -83,7 +146,7 @@ Excel/CSV/JSON
 聚合维度得分 = 参与计算的基础维度有效得分平均值 × 0.5
 ```
 
-其中“有效得分”指该基础维度得分存在且大于 0；若全部缺失或均为 0，则该聚合维度得分为 0。
+其中"有效得分"指该基础维度得分存在且大于 0；若全部缺失或均为 0，则该聚合维度得分为 0。
 
 | 个人维度分析 | 聚合维度代码 | 参与计算的基础维度 | 具体公式 |
 |---|---|---|---|
@@ -100,6 +163,33 @@ Excel/CSV/JSON
 
 实现位置：`backend/src/shared/utils/cognitive-dimensions.ts`。
 
+## 课堂视频分析
+
+课堂视频分析引擎对每个 `InteractionSession` 生成九维度自动评估报告（`SessionClassroomAnalysis`），覆盖：
+
+- 知识激活率（`knowledgeActivationRate`）
+- 行为参与度（`behavioralEngagementLevel`）
+- 认知参与度（`cognitiveEngagementLevel`）
+- 概念发展水平（`conceptDevelopmentLevel`）
+- 反馈质量（`feedbackQualityLevel`）
+- 学业期望（`academicExpectationLevel`）
+- 教师流畅度（`teacherFluencyLevel`）
+- 社交情感指标（倦怠 `hasBurnout`、沮丧 `hasFrustration`）
+- 课堂管理维度（自我意识、自我管理、集体管理、规则明确度、正向强化、负向消减）
+- 提问类型统计（封闭/应用/开放）
+- 反馈类型统计（接纳/表扬/拓展/纠正）
+
+脚本入口：`backend/scripts/verify-classroom-analysis.ts`、`backend/scripts/mock-classroom-analysis.ts`。
+
+## Chatbot 维度增量
+
+学生与 AI 聊天机器人互动后，系统支持 10 个聚合维度的增量更新。前端 `AnalysisPanel` 展示每个维度的变化 delta 和理由。
+
+- 后端：`backend/src/modules/student/chatbot-dimension.service.ts`
+- 前端：`services/apiService.ts`（真实接口）、`services/chatbotDimensionDemo.ts`（演示模式）
+- 前端通过 `DEMO_CHATBOT_INCREMENT` 开关切换演示/真实模式
+- 增量数据缓存在 `localStorage` 中（key: `chatbot-increment-scores`）
+
 ## 代码规范
 
 - 禁止：`as any`、`@ts-ignore`、空 `catch`、注释掉报错代码、删除测试掩盖问题。
@@ -107,9 +197,26 @@ Excel/CSV/JSON
 - DTO 请求校验使用 `zod`。
 - API 返回保持 `{ data, meta, error }`。
 - Prisma 金额/分数/强度等小数用 `Decimal`。
-- 前端使用函数组件 + Hooks；D3 图谱节点保持 `id/type/name/group/val` 基础结构。
-- 前后端改动后自动运行npm run build重构
+- 前端使用函数组件 + Hooks；D3 图谱节点保持 `id/type/name/group/val` 基础结构，`type` 取值 `STUDENT | TEACHER | KNOWLEDGE`。
 
+## 验证命令
+
+改后端后至少运行：
+
+```bash
+cd backend && npm run build
+```
+
+改前端后至少运行：
+
+```bash
+cd frontend && npm run build
+```
+
+改导入脚本但不执行真实导入时，优先做只编译检查。
 
 ## Git 纪律
-- 改完小单元后要验证并commit，方便rollback。
+
+- 工作区可能已有用户改动；只处理本任务相关文件。
+- 改完小单元后要验证并 commit，方便 rollback。
+- 最终说明要列出改了什么、验证了什么、哪些事情没有做。
