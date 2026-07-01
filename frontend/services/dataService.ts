@@ -227,7 +227,8 @@ export const fetchClassroomAnalysis = async (
 
     const rawRate = raw.knowledgeActivationRate;
     const parsed =
-      rawRate != null && typeof rawRate === "string" && rawRate.trim() === ""
+      rawRate == null ||
+      (typeof rawRate === "string" && rawRate.trim() === "")
         ? NaN
         : Number(rawRate);
     const normalizedRate = Number.isNaN(parsed) ? null : parsed;
