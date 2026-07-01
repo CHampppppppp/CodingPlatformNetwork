@@ -10,14 +10,14 @@ function classifyInteraction(interaction: any) {
   const tgtStudent = interaction.targetNode?.nodeType === "Student";
   const tgtTeacher = interaction.targetNode?.nodeType === "Teacher";
 
-  const isQuestion = /question|ask|quiz|probe/.test(action);
-  const isFeedback = /feedback|comment|reply/.test(action) ||
+  const isQuestion = /\b(question|ask|quiz|probe)\b/.test(action);
+  const isFeedback = /\b(feedback|comment|reply)\b/.test(action) ||
     (interaction.interactionType === "PLATFORM" && srcTeacher && tgtStudent && !action);
-  const isCollaboration = /collaborate|peer|group|discuss/.test(action) ||
+  const isCollaboration = /\b(collaborate|peer|group|discuss)\b/.test(action) ||
     (interaction.interactionType === "PHYSICAL" && srcStudent && tgtStudent);
-  const isTool = /tool|resource|material|device/.test(action);
+  const isTool = /\b(tool|resource|material|device)\b/.test(action);
   const isConstructive =
-    /explain|reason|argue|construct|elaborate|analyze|discuss|reflect|justify|evaluate/.test(
+    /\b(explain|reason|argue|construct|elaborate|analyze|discuss|reflect|justify|evaluate)\b/.test(
       action,
     );
 
@@ -291,12 +291,17 @@ async function main() {
           teacherFluencyLevel: level4(stats.teacherStudent, 50, 20, 5),
           toolVarietyCount: Math.min(stats.toolTypes.size, 10),
           selfAwarenessLevel: level4(
-            stats.teacherStudent / Math.max(classTeachers.length, 1),
-            30,
-            20,
-            10,
+            stats.teacherStudent / Math.max(studentCount, 1),
+            3,
+            2,
+            1,
           ),
-          selfManagementLevel: level4(totalFeedback / studentCount, 2, 1, 0.5),
+          selfManagementLevel: level4(
+            totalFeedback / Math.max(classTeachers.length, 1),
+            10,
+            5,
+            2,
+          ),
           collectiveManagementLevel: level4(
             (stats.teacherStudent + stats.peerCollab) / studentCount,
             5,
@@ -309,7 +314,12 @@ async function main() {
               : behavioralLevel === "中"
                 ? "良好"
                 : "中等",
-          positiveReinforcementLevel: level4(totalFeedback / studentCount, 2, 1, 0.5),
+          positiveReinforcementLevel: level4(
+            stats.praiseFeedback / Math.max(studentCount, 1),
+            1,
+            0.5,
+            0.2,
+          ),
           negativeReductionLevel: hasFrustration
             ? "待提升"
             : behavioralLevel === "低"
