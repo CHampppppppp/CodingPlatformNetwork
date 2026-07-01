@@ -56,6 +56,7 @@ export class ClassroomAnalysisService {
     const sessions = await this.prisma.interactionSession.findMany({
       where,
       select: { id: true },
+      orderBy: { createdAt: "desc" },
     });
 
     if (sessions.length === 0) {
@@ -70,6 +71,7 @@ export class ClassroomAnalysisService {
       where: {
         sessionId: { in: sessions.map((s) => s.id) },
       },
+      orderBy: { createdAt: "desc" },
     });
 
     if (analyses.length === 0) {
