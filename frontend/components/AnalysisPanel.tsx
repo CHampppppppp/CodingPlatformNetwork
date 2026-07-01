@@ -143,40 +143,35 @@ const TrendChart: React.FC<{ points: TrendPoint[] }> = ({ points }) => {
 }
 
 const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, resources, scenarioCode, classInfo, defaultTab = 'overview' }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'subgraph' | 'classroom-analysis'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'subgraph' | 'classroom-analysis'>(defaultTab);
   const [classroomAnalysis, setClassroomAnalysis] = useState<ClassroomAnalysis | null>(null);
   const [classroomAnalysisLoading, setClassroomAnalysisLoading] = useState(false);
 
+  const { school, grade, classId } = classInfo;
+
   const canShowClassroomAnalysis = true;
 
-  // Sync activeTab with defaultTab when panel opens
   useEffect(() => {
-    if (isOpen) {
-        setActiveTab(defaultTab);
-    }
-  }, [isOpen, defaultTab]);
+    if (!isOpen || activeTab !== 'classroom-analysis' || !canShowClassroomAnalysis) return;
 
-  useEffect(() => {
-    if (activeTab !== 'classroom-analysis' || !canShowClassroomAnalysis) return;
-
-    let ignore = false;
+    const controller = new AbortController();
     setClassroomAnalysisLoading(true);
-    fetchClassroomAnalysis(scenarioCode, classInfo)
+    fetchClassroomAnalysis(scenarioCode, { school, grade, classId })
       .then((analysis) => {
-        if (!ignore) setClassroomAnalysis(analysis);
+        if (!controller.signal.aborted) setClassroomAnalysis(analysis);
       })
       .catch((err) => {
         console.error('加载课堂视频分析数据失败:', err);
-        if (!ignore) setClassroomAnalysis(null);
+        if (!controller.signal.aborted) setClassroomAnalysis(null);
       })
       .finally(() => {
-        if (!ignore) setClassroomAnalysisLoading(false);
+        if (!controller.signal.aborted) setClassroomAnalysisLoading(false);
       });
 
     return () => {
-      ignore = true;
+      controller.abort();
     };
-  }, [activeTab, canShowClassroomAnalysis, scenarioCode, classInfo]);
+  }, [isOpen, activeTab, canShowClassroomAnalysis, scenarioCode, school, grade, classId]);
 
   // --- Data Calculations ---
   
