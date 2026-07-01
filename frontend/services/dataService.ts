@@ -224,10 +224,13 @@ export const fetchClassroomAnalysis = async (
 
     if (!raw) return null;
 
-    const data = raw as ClassroomAnalysis;
-    if (data.knowledgeActivationRate != null) {
-      data.knowledgeActivationRate = Number(data.knowledgeActivationRate);
-    }
+    const data: ClassroomAnalysis = {
+      ...raw,
+      knowledgeActivationRate:
+        raw.knowledgeActivationRate != null
+          ? Number(raw.knowledgeActivationRate)
+          : null,
+    };
 
     return data;
   } catch (error) {
