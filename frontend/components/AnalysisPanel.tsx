@@ -147,8 +147,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
   const [classroomAnalysis, setClassroomAnalysis] = useState<ClassroomAnalysis | null>(null);
   const [classroomAnalysisLoading, setClassroomAnalysisLoading] = useState(false);
 
-  // 保持 SHOW_CASE-only：当前数据库中只有 SHOW_CASE 有 SessionClassroomAnalysis 记录
-  const isShowCase = scenarioCode === 'SHOW_CASE';
+  const canShowClassroomAnalysis = true;
 
   // Sync activeTab with defaultTab when panel opens
   useEffect(() => {
@@ -158,7 +157,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
   }, [isOpen, defaultTab]);
 
   useEffect(() => {
-    if (activeTab === 'classroom-analysis' && isShowCase && !classroomAnalysis && !classroomAnalysisLoading) {
+    if (activeTab === 'classroom-analysis' && canShowClassroomAnalysis && !classroomAnalysisLoading) {
       setClassroomAnalysisLoading(true);
       fetchClassroomAnalysis(scenarioCode, classInfo)
         .then((analysis) => {
@@ -166,12 +165,18 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
         })
         .catch((err) => {
           console.error('加载课堂视频分析数据失败:', err);
+          setClassroomAnalysis(null);
         })
         .finally(() => {
           setClassroomAnalysisLoading(false);
         });
     }
-  }, [activeTab, isShowCase, scenarioCode, classInfo, classroomAnalysis, classroomAnalysisLoading]);
+  }, [activeTab, canShowClassroomAnalysis, scenarioCode, classInfo, classroomAnalysisLoading]);
+
+  useEffect(() => {
+    setClassroomAnalysis(null);
+    setClassroomAnalysisLoading(false);
+  }, [classInfo]);
 
   // --- Data Calculations ---
   
@@ -381,7 +386,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
                 >
                     <GitGraph className="w-4 h-4" /> 子图透视
                 </button>
-                {isShowCase && (
+                {canShowClassroomAnalysis && (
                     <button 
                         onClick={() => setActiveTab('classroom-analysis')}
                         className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'classroom-analysis' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
@@ -609,7 +614,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
                 </div>
             )}
 
-            {activeTab === 'classroom-analysis' && isShowCase && (
+            {activeTab === 'classroom-analysis' && canShowClassroomAnalysis && (
                 <div className="animate-in slide-in-from-bottom-2 duration-300">
                     {classroomAnalysisLoading ? (
                         <div className="flex items-center justify-center h-64 text-gray-400">
