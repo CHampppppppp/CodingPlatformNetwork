@@ -10,8 +10,7 @@ function classifyInteraction(interaction: any) {
   const tgtStudent = interaction.targetNode?.nodeType === "Student";
   const tgtTeacher = interaction.targetNode?.nodeType === "Teacher";
 
-  const isQuestion = /question|ask|quiz|probe/.test(action) ||
-    (interaction.interactionType === "PLATFORM" && srcTeacher && tgtStudent && !action);
+  const isQuestion = /question|ask|quiz|probe/.test(action);
   const isFeedback = /feedback|comment|reply/.test(action) ||
     (interaction.interactionType === "PLATFORM" && srcTeacher && tgtStudent && !action);
   const isCollaboration = /collaborate|peer|group|discuss/.test(action) ||
@@ -223,9 +222,7 @@ async function main() {
             if (clsResult.questionType === "closed") stats.closedQuestions += 1;
             else if (clsResult.questionType === "application") stats.appQuestions += 1;
             else if (clsResult.questionType === "open") stats.openQuestions += 1;
-          }
-
-          if (clsResult.isFeedback) {
+          } else if (clsResult.isFeedback) {
             if (clsResult.feedbackType === "accept") stats.acceptFeedback += 1;
             else if (clsResult.feedbackType === "praise") stats.praiseFeedback += 1;
             else if (clsResult.feedbackType === "extend") stats.extendFeedback += 1;
@@ -255,6 +252,9 @@ async function main() {
         const behavioralLevel = level3(classInteractions.length / studentCount, 8, 4);
         const cognitiveLevel = level3(stats.constructive / studentCount, 3, 1);
 
+        const hasBurnout = behavioralLevel === "低" && cognitiveLevel === "低" && stats.studentUtterance === 0;
+        const hasFrustration = behavioralLevel === "低" && stats.peerCollab === 0 && stats.constructive === 0;
+
         const analysisData = {
           sessionId: session.id,
           knowledgeActivationRate: new Prisma.Decimal(activationRate),
@@ -265,8 +265,8 @@ async function main() {
           peerCollaborationCount: stats.peerCollab,
           cognitiveEngagementLevel: cognitiveLevel,
           constructiveUtteranceCount: stats.constructive,
-          hasBurnout: false,
-          hasFrustration: false,
+          hasBurnout,
+          hasFrustration,
           conceptDevelopmentLevel: level4(activationRate, 70, 50, 30),
           feedbackQualityLevel: level4(totalFeedback / studentCount, 2, 1, 0.5),
           academicExpectationLevel: level4(
@@ -284,7 +284,7 @@ async function main() {
           correctFeedbackCount: stats.correctFeedback,
           studentUtteranceCount: stats.studentUtterance,
           teacherFluencyLevel: level4(stats.teacherStudent, 50, 20, 5),
-          toolVarietyCount: Math.min(Math.max(stats.toolTypes.size, 1), 10),
+          toolVarietyCount: Math.min(stats.toolTypes.size, 10),
           selfAwarenessLevel: level4(
             stats.teacherStudent / Math.max(classTeachers.length, 1),
             30,
@@ -305,7 +305,11 @@ async function main() {
                 ? "良好"
                 : "中等",
           positiveReinforcementLevel: level4(totalFeedback / studentCount, 2, 1, 0.5),
-          negativeReductionLevel: "良好",
+          negativeReductionLevel: hasFrustration
+            ? "待提升"
+            : behavioralLevel === "低"
+              ? "中等"
+              : "优秀",
         };
 
         if (!execute) {
