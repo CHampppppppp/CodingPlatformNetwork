@@ -154,22 +154,23 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ isOpen, onClose, data, re
   useEffect(() => {
     if (!isOpen || activeTab !== 'classroom-analysis' || !canShowClassroomAnalysis) return;
 
-    const controller = new AbortController();
+    let ignore = false;
+    setClassroomAnalysis(null);
     setClassroomAnalysisLoading(true);
     fetchClassroomAnalysis(scenarioCode, { school, grade, classId })
       .then((analysis) => {
-        if (!controller.signal.aborted) setClassroomAnalysis(analysis);
+        if (!ignore) setClassroomAnalysis(analysis);
       })
       .catch((err) => {
         console.error('加载课堂视频分析数据失败:', err);
-        if (!controller.signal.aborted) setClassroomAnalysis(null);
+        if (!ignore) setClassroomAnalysis(null);
       })
       .finally(() => {
-        if (!controller.signal.aborted) setClassroomAnalysisLoading(false);
+        if (!ignore) setClassroomAnalysisLoading(false);
       });
 
     return () => {
-      controller.abort();
+      ignore = true;
     };
   }, [isOpen, activeTab, canShowClassroomAnalysis, scenarioCode, school, grade, classId]);
 
