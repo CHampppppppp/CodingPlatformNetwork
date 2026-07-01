@@ -231,7 +231,7 @@ export const fetchClassroomAnalysis = async (
       (typeof rawRate === "string" && rawRate.trim() === "")
         ? NaN
         : Number(rawRate);
-    const normalizedRate = Number.isNaN(parsed) ? null : parsed;
+    const normalizedRate = Number.isFinite(parsed) ? parsed : null;
 
     const data: ClassroomAnalysis = {
       ...raw,
