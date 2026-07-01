@@ -64,6 +64,50 @@ export const AGGREGATE_DIMENSION_CODE_TO_BASE_CODES: Record<
   aiLiteracy: ["COG_TECH_LITERACY"],
 };
 
+export const BASE_DIMENSION_CODES = [
+  "COG_READING",
+  "COG_LANGUAGE",
+  "COG_SCIENCE_KNOWLEDGE",
+  "COG_SCIENCE_INQUIRY",
+  "COG_COMPUTATIONAL",
+  "COG_TECH_LITERACY",
+  "PSY_ANXIETY",
+  "PSY_DEPRESSION",
+  "PSY_PRESSURE",
+  "PSY_LIFE_SATISFACTION",
+  "PSY_RESILIENCE",
+  "PSY_INTEREST_STABILITY",
+  "PRAC_INNOVATION",
+  "PRAC_PROBLEM_SOLVING",
+  "PRAC_COLLABORATION",
+  "PRAC_PRACTICE",
+] as const;
+
+export const AGGREGATE_TO_BASE_CODES: Record<
+  AggregateDimensionKey,
+  readonly string[]
+> = {
+  knowledgeReserve: ["COG_READING", "COG_LANGUAGE", "COG_SCIENCE_KNOWLEDGE"],
+  learningEngagement: [
+    "COG_SCIENCE_INQUIRY",
+    "PRAC_PRACTICE",
+    "PRAC_COLLABORATION",
+  ],
+  cognitiveLoad: [
+    "PSY_ANXIETY",
+    "PSY_DEPRESSION",
+    "PSY_PRESSURE",
+    "PSY_LIFE_SATISFACTION",
+  ],
+  learningMotivation: ["PSY_RESILIENCE", "PSY_INTEREST_STABILITY"],
+  computationalThinking: ["COG_COMPUTATIONAL"],
+  humanAiTrust: ["COG_TECH_LITERACY"],
+  learningMethod: ["PRAC_PROBLEM_SOLVING", "PRAC_COLLABORATION"],
+  learningAttitude: ["PRAC_INNOVATION"],
+  selfRegulatedLearning: ["PRAC_PROBLEM_SOLVING"],
+  aiLiteracy: ["COG_TECH_LITERACY"],
+};
+
 export const AGGREGATE_DIMENSION_MULTIPLIERS: Record<AggregateDimensionKey, number> = {
   knowledgeReserve: 1 / 2,
   learningEngagement: 1 / 2,
@@ -192,4 +236,38 @@ export function scoreLevel(
   if (ratio >= 0.8) return "高";
   if (ratio >= 0.6) return "中";
   return "低";
+}
+
+function seededRandom(seed: string): () => number {
+  let s = 0;
+  for (let i = 0; i < seed.length; i++) {
+    s = (s * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 0xffffffff;
+  };
+}
+
+export function generateMockBaseDimensionScores(
+  aggregateScores: Partial<AggregateDimensionScores>,
+  seed: string,
+): Map<string, number> {
+  const rand = seededRandom(seed);
+  const baseScores = new Map<string, number>();
+
+  for (const key of AGGREGATE_DIMENSION_KEYS) {
+    const aggregateScore = aggregateScores[key];
+    if (typeof aggregateScore !== "number" || aggregateScore <= 0) {
+      continue;
+    }
+    const baseCodes = AGGREGATE_TO_BASE_CODES[key];
+    for (const code of baseCodes) {
+      const noise = rand() * 2 - 1; // [-1, 1]
+      const score = Math.max(0, Math.min(10, aggregateScore * 2 + noise));
+      baseScores.set(code, Number(score.toFixed(2)));
+    }
+  }
+
+  return baseScores;
 }
