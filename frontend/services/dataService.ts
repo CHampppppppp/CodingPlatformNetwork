@@ -18,6 +18,7 @@ import {
   fetchResources as fetchResourcesFromApi,
   fetchResourceStudentRates,
   fetchClassroomAnalysis as fetchClassroomAnalysisFromApi,
+  type ClassroomAnalysisApiResponse,
 } from "./apiService";
 import { FALLBACK_SCENARIOS } from "../constants";
 import {
@@ -215,7 +216,7 @@ export const fetchClassroomAnalysis = async (
   classInfo: ClassInfo,
 ): Promise<ClassroomAnalysis | null> => {
   try {
-    const raw = await fetchClassroomAnalysisFromApi({
+    const raw: ClassroomAnalysisApiResponse | null = await fetchClassroomAnalysisFromApi({
       scenarioCode,
       school: classInfo.school,
       grade: classInfo.grade,
@@ -224,11 +225,16 @@ export const fetchClassroomAnalysis = async (
 
     if (!raw) return null;
 
+    const normalizedRate =
+      raw.knowledgeActivationRate != null
+        ? Number(raw.knowledgeActivationRate)
+        : null;
+
     const data: ClassroomAnalysis = {
       ...raw,
       knowledgeActivationRate:
-        raw.knowledgeActivationRate != null
-          ? Number(raw.knowledgeActivationRate)
+        normalizedRate != null && !Number.isNaN(normalizedRate)
+          ? normalizedRate
           : null,
     };
 

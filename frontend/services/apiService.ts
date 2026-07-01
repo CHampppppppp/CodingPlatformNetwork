@@ -5,6 +5,42 @@ import {
 } from "../types";
 import { API_BASE_URL } from "../constants";
 
+export interface ClassroomAnalysisApiResponse {
+  id: string;
+  sessionId: string;
+  knowledgeActivationRate: string | number | null;
+  activatedKnowledgeCount: number | null;
+  totalKnowledgeCount: number | null;
+  behavioralEngagementLevel: string | null;
+  teacherStudentInteractionCount: number | null;
+  peerCollaborationCount: number | null;
+  cognitiveEngagementLevel: string | null;
+  constructiveUtteranceCount: number | null;
+  hasBurnout: boolean | null;
+  hasFrustration: boolean | null;
+  conceptDevelopmentLevel: string | null;
+  feedbackQualityLevel: string | null;
+  academicExpectationLevel: string | null;
+  closedQuestionCount: number | null;
+  applicationQuestionCount: number | null;
+  openQuestionCount: number | null;
+  acceptFeedbackCount: number | null;
+  praiseFeedbackCount: number | null;
+  extendFeedbackCount: number | null;
+  correctFeedbackCount: number | null;
+  studentUtteranceCount: number | null;
+  teacherFluencyLevel: string | null;
+  toolVarietyCount: number | null;
+  selfAwarenessLevel: string | null;
+  selfManagementLevel: string | null;
+  collectiveManagementLevel: string | null;
+  ruleClarityLevel: string | null;
+  positiveReinforcementLevel: string | null;
+  negativeReductionLevel: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface StudentCognitiveTemplateApiResponse {
   student: {
     id: string;
@@ -704,7 +740,7 @@ export const fetchClassroomAnalysis = async (params: {
   school?: string;
   grade?: string;
   classId?: string;
-}): Promise<any | null> => {
+}): Promise<ClassroomAnalysisApiResponse | null> => {
   try {
     const queryParams = new URLSearchParams();
     if (params.scenarioCode) queryParams.append("scenario_code", params.scenarioCode);
