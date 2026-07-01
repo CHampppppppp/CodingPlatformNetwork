@@ -65,48 +65,24 @@ export const AGGREGATE_DIMENSION_CODE_TO_BASE_CODES: Record<
 };
 
 export const BASE_DIMENSION_CODES = [
-  "COG_READING",
-  "COG_LANGUAGE",
-  "COG_SCIENCE_KNOWLEDGE",
-  "COG_SCIENCE_INQUIRY",
-  "COG_COMPUTATIONAL",
-  "COG_TECH_LITERACY",
-  "PSY_ANXIETY",
-  "PSY_DEPRESSION",
-  "PSY_PRESSURE",
-  "PSY_LIFE_SATISFACTION",
-  "PSY_RESILIENCE",
-  "PSY_INTEREST_STABILITY",
-  "PRAC_INNOVATION",
-  "PRAC_PROBLEM_SOLVING",
-  "PRAC_COLLABORATION",
-  "PRAC_PRACTICE",
+  ...new Set(
+    AGGREGATE_DIMENSION_KEYS.flatMap(
+      (key) => AGGREGATE_DIMENSION_CODE_TO_BASE_CODES[key],
+    ),
+  ),
 ] as const;
+
+export type BaseDimensionCode = (typeof BASE_DIMENSION_CODES)[number];
 
 export const AGGREGATE_TO_BASE_CODES: Record<
   AggregateDimensionKey,
   readonly string[]
-> = {
-  knowledgeReserve: ["COG_READING", "COG_LANGUAGE", "COG_SCIENCE_KNOWLEDGE"],
-  learningEngagement: [
-    "COG_SCIENCE_INQUIRY",
-    "PRAC_PRACTICE",
-    "PRAC_COLLABORATION",
-  ],
-  cognitiveLoad: [
-    "PSY_ANXIETY",
-    "PSY_DEPRESSION",
-    "PSY_PRESSURE",
-    "PSY_LIFE_SATISFACTION",
-  ],
-  learningMotivation: ["PSY_RESILIENCE", "PSY_INTEREST_STABILITY"],
-  computationalThinking: ["COG_COMPUTATIONAL"],
-  humanAiTrust: ["COG_TECH_LITERACY"],
-  learningMethod: ["PRAC_PROBLEM_SOLVING", "PRAC_COLLABORATION"],
-  learningAttitude: ["PRAC_INNOVATION"],
-  selfRegulatedLearning: ["PRAC_PROBLEM_SOLVING"],
-  aiLiteracy: ["COG_TECH_LITERACY"],
-};
+> = Object.fromEntries(
+  AGGREGATE_DIMENSION_KEYS.map((key) => [
+    key,
+    AGGREGATE_DIMENSION_CODE_TO_BASE_CODES[key],
+  ]),
+) as unknown as Record<AggregateDimensionKey, readonly string[]>;
 
 export const AGGREGATE_DIMENSION_MULTIPLIERS: Record<AggregateDimensionKey, number> = {
   knowledgeReserve: 1 / 2,
