@@ -787,15 +787,12 @@ const App: React.FC = () => {
     setResourceRatings({});
   };
 
-  // 资格判断绑定到「选中的学生节点自身」的班级，而非全局下拉框的 classInfo.classId。
-  // 后端已将 studentProfile.classId 解析为班级显示名（含 "801"），且节点一旦选中即稳定，
-  // 不受 school/grade/class 三级级联异步重置与竞态影响，避免按钮间歇性消失。
+  // 所有场景的所有学生节点均展示「增量更新」按钮。
+  // 模拟/真实模式由顶部 DEMO_CHATBOT_INCREMENT 配置一键切换；
+  // 非 SHOW_CASE 场景在真实模式下因缺少 chatbot 数据会请求失败，属于预期行为。
   const isChatbotIncrementEligible = useMemo(() => {
-    if (scenarioCode !== "SHOW_CASE") return false;
-    if (!selectedNode || selectedNode.type !== NodeType.STUDENT) return false;
-    const studentClassId = selectedNode.studentProfile?.classId ?? "";
-    return studentClassId.includes("801");
-  }, [scenarioCode, selectedNode]);
+    return selectedNode?.type === NodeType.STUDENT;
+  }, [selectedNode]);
 
   const handleChatbotIncrement = async () => {
     if (!selectedNode || selectedNode.type !== NodeType.STUDENT) return;
