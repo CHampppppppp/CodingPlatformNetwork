@@ -1,0 +1,249 @@
+$ npx --prefix backend ts-node backend/scripts/recompute-aggregate-dimensions.ts --execute 2>&1
+[exit 1]
+模式: 执行写入， 场景数: 6
+
+
+===== 展示场景 (SHOW_CASE) =====
+华嘉轩(cmogzmxb8001cvel3otuv505r) profile=cmov1ca6h001aewl3h2bq1oj9
+  画像 totalScore: 4.23 → 22.47
+  knowledgeReserve: 新增 2.75(低) | learningEngagement: 新增 2.63(低) | cognitiveLoad: 新增 2.60(低) | learningMotivation: 新增 3.41(中) | computationalThinking: 新增 0.00(低) | humanAiTrust: 新增 2.85(低) | learningMethod: 新增 2.50(低) | learningAttitude: 新增 2.88(低) | selfRegulatedLearning: 新增 0.00(低) | aiLiteracy: 新增 2.85(低)
+单晓桐(cmogzmxhy001svel3m5o3mv1v) profile=cmogzmxib001tvel3t2od2uv9
+  画像 totalScore: 5.34 → 29.29
+  knowledgeReserve: 新增 2.47(低) | learningEngagement: 新增 2.38(低) | cognitiveLoad: 新增 2.89(低) | learningMotivation: 新增 3.78(中) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 3.57(中) | learningMethod: 新增 2.50(低) | learningAttitude: 新增 3.13(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 3.57(中)
+华嘉轩(cmogzmxb8001cvel3otuv505r) profile=cmogzmxbv001dvel3omltudwc
+  画像 totalScore: 4.17 → 21.63
+  knowledgeReserve: 新增 2.74(低) | learningEngagement: 新增 2.25(低) | cognitiveLoad: 新增 2.20(低) | learningMotivation: 新增 3.61(中) | computationalThinking: 新增 0.00(低) | humanAiTrust: 新增 2.85(低) | learningMethod: 新增 2.50(低) | learningAttitude: 新增 2.63(低) | selfRegulatedLearning: 新增 0.00(低) | aiLiteracy: 新增 2.85(低)
+单晓桐(cmogzmxhy001svel3m5o3mv1v) profile=cmov1ca7l001pewl3r9u255uw
+  画像 totalScore: 5.04 → 27.92
+  knowledgeReserve: 新增 2.18(低) | learningEngagement: 新增 2.00(低) | cognitiveLoad: 新增 2.72(低) | learningMotivation: 新增 3.88(中) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 3.57(中) | learningMethod: 新增 2.50(低) | learningAttitude: 新增 2.50(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 3.57(中)
+王艺瑾(cmogzmwvu000wvel3u3vik26o) profile=cmov1ca5d000vewl31vbedl9n
+  画像 totalScore: 5.49 → 25.46
+  knowledgeReserve: 新增 2.65(低) | learningEngagement: 新增 2.08(低) | cognitiveLoad: 新增 3.15(低) | learningMotivation: 新增 1.84(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.68(低) | learningMethod: 新增 1.88(低) | learningAttitude: 新增 3.50(中) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.68(低)
+王艺瑾(cmogzmwvu000wvel3u3vik26o) profile=cmogzmx2p000xvel3b3t3jlgs
+  画像 totalScore: 5.33 → 24.50
+  knowledgeReserve: 新增 2.67(低) | learningEngagement: 新增 2.00(低) | cognitiveLoad: 新增 2.51(低) | learningMotivation: 新增 2.08(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.68(低) | learningMethod: 新增 1.88(低) | learningAttitude: 新增 3.00(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.68(低)
+余皓程(cmogzmwfy0001vel32b6ekhpn) profile=cmov1c9dh0000ewl3phbpzrgd
+  画像 totalScore: 6.41 → 36.52
+  knowledgeReserve: 新增 2.67(低) | learningEngagement: 新增 3.25(低) | cognitiveLoad: 新增 2.13(低) | learningMotivation: 新增 4.17(中) | computationalThinking: 新增 4.50(高) | humanAiTrust: 新增 4.46(高) | learningMethod: 新增 3.50(中) | learningAttitude: 新增 2.88(低) | selfRegulatedLearning: 新增 4.50(高) | aiLiteracy: 新增 4.46(高)
+余皓程(cmogzmwfy0001vel32b6ekhpn) profile=cmogzmwhh0002vel3tcs2x54k
+  画像 totalScore: 6.35 → 36.33
+  knowledgeReserve: 新增 2.49(低) | learningEngagement: 新增 3.17(低) | cognitiveLoad: 新增 1.84(低) | learningMotivation: 新增 3.91(中) | computationalThinking: 新增 4.50(高) | humanAiTrust: 新增 4.46(高) | learningMethod: 新增 3.50(中) | learningAttitude: 新增 3.50(中) | selfRegulatedLearning: 新增 4.50(高) | aiLiteracy: 新增 4.46(高)
+杨贻灵(cmogzmxuj002ovel3vc413ol2) profile=cmov1ca8z002jewl3m4ab6pku
+  画像 totalScore: 5.38 → 29.73
+  knowledgeReserve: 新增 2.50(低) | learningEngagement: 新增 2.50(低) | cognitiveLoad: 新增 2.69(低) | learningMotivation: 新增 4.15(中) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 3.57(中) | learningMethod: 新增 2.50(低) | learningAttitude: 新增 3.25(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 3.57(中)
+潘玺睿(cmogzmxo10028vel32kwncusx) profile=cmogzmxog0029vel33042ot0c
+  画像 totalScore: 5.62 → 27.96
+  knowledgeReserve: 新增 2.75(低) | learningEngagement: 新增 2.50(低) | cognitiveLoad: 新增 2.91(低) | learningMotivation: 新增 2.31(低) | computationalThinking: 新增 3.00(低) | humanAiTrust: 新增 2.68(低) | learningMethod: 新增 3.38(低) | learningAttitude: 新增 2.75(低) | selfRegulatedLearning: 新增 3.00(低) | aiLiteracy: 新增 2.68(低)
+吕曼可(cmogzmy36003jvel3sjzzgkri) profile=cmogzmy3a003kvel3oqk42mzv
+  画像 totalScore: 5.03 → 23.97
+  knowledgeReserve: 新增 2.28(低) | learningEngagement: 新增 2.38(低) | cognitiveLoad: 新增 2.60(低) | learningMotivation: 新增 3.07(低) | computationalThinking: 新增 2.00(低) | humanAiTrust: 新增 2.32(低) | learningMethod: 新增 2.00(低) | learningAttitude: 新增 3.00(低) | selfRegulatedLearning: 新增 2.00(低) | aiLiteracy: 新增 2.32(低)
+吕曼可(cmogzmy36003jvel3sjzzgkri) profile=cmov1cac9003eewl3ye4qwvjm
+  画像 totalScore: 5.35 → 25.73
+  knowledgeReserve: 新增 2.80(低) | learningEngagement: 新增 2.25(低) | cognitiveLoad: 新增 2.73(低) | learningMotivation: 新增 3.68(中) | computationalThinking: 新增 2.00(低) | humanAiTrust: 新增 2.32(低) | learningMethod: 新增 2.00(低) | learningAttitude: 新增 3.63(中) | selfRegulatedLearning: 新增 2.00(低) | aiLiteracy: 新增 2.32(低)
+俞逸潇(cmogzmyg0003zvel3f3y5jn64) profile=cmov1cacr003tewl3biukwnd6
+  画像 totalScore: 5.18 → 25.54
+  knowledgeReserve: 新增 2.50(低) | learningEngagement: 新增 2.83(低) | cognitiveLoad: 新增 2.18(低) | learningMotivation: 新增 2.40(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.50(低) | learningMethod: 新增 3.13(低) | learningAttitude: 新增 2.50(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.50(低)
+俞逸潇(cmogzmyg0003zvel3f3y5jn64) profile=cmogzmyg70040vel30gewv8jv
+  画像 totalScore: 5.09 → 26.96
+  knowledgeReserve: 新增 2.18(低) | learningEngagement: 新增 2.75(低) | cognitiveLoad: 新增 2.98(低) | learningMotivation: 新增 2.92(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.50(低) | learningMethod: 新增 3.13(低) | learningAttitude: 新增 3.00(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.50(低)
+杨贻灵(cmogzmxuj002ovel3vc413ol2) profile=cmogzmxuu002pvel39rmksy9w
+  画像 totalScore: 5.48 → 28.29
+  knowledgeReserve: 新增 2.51(低) | learningEngagement: 新增 2.50(低) | cognitiveLoad: 新增 2.42(低) | learningMotivation: 新增 3.09(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 3.57(中) | learningMethod: 新增 2.50(低) | learningAttitude: 新增 3.13(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 3.57(中)
+潘玺睿(cmogzmxo10028vel32kwncusx) profile=cmov1ca8c0024ewl3c7nzh3rx
+  画像 totalScore: 6.13 → 30.26
+  knowledgeReserve: 新增 3.14(低) | learningEngagement: 新增 3.33(低) | cognitiveLoad: 新增 2.92(低) | learningMotivation: 新增 3.13(低) | computationalThinking: 新增 3.00(低) | humanAiTrust: 新增 2.68(低) | learningMethod: 新增 3.38(低) | learningAttitude: 新增 3.00(低) | selfRegulatedLearning: 新增 3.00(低) | aiLiteracy: 新增 2.68(低)
+黄之逸(cmogzmym9004fvel3joz74n16) profile=cmogzmyme004gvel3zv7ct5l8
+  画像 totalScore: 4.90 → 24.51
+  knowledgeReserve: 新增 2.22(低) | learningEngagement: 新增 2.38(低) | cognitiveLoad: 新增 2.10(低) | learningMotivation: 新增 2.81(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.50(低) | learningMethod: 新增 2.50(低) | learningAttitude: 新增 2.50(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.50(低)
+傅宇韬(cmogzmysd004vvel3crod6iw2) profile=cmogzmysl004wvel33ihdll4h
+  画像 totalScore: 6.41 → 30.85
+  knowledgeReserve: 新增 2.29(低) | learningEngagement: 新增 2.58(低) | cognitiveLoad: 新增 3.84(中) | learningMotivation: 新增 4.33(高) | computationalThinking: 新增 4.00(中) | humanAiTrust: 新增 2.15(低) | learningMethod: 新增 2.63(低) | learningAttitude: 新增 2.88(低) | selfRegulatedLearning: 新增 4.00(中) | aiLiteracy: 新增 2.15(低)
+黄之逸(cmogzmym9004fvel3joz74n16) profile=cmov1cad00048ewl3xtyu0tiz
+  画像 totalScore: 4.54 → 23.77
+  knowledgeReserve: 新增 1.72(低) | learningEngagement: 新增 1.88(低) | cognitiveLoad: 新增 2.15(低) | learningMotivation: 新增 3.02(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.50(低) | learningMethod: 新增 2.50(低) | learningAttitude: 新增 2.50(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.50(低)
+张勰(cmogzmyzh005bvel36rm078ru) profile=cmogzmyzm005cvel38gytfyw9
+  画像 totalScore: 6.80 → 37.31
+  knowledgeReserve: 新增 2.56(低) | learningEngagement: 新增 3.50(中) | cognitiveLoad: 新增 3.26(低) | learningMotivation: 新增 4.54(高) | computationalThinking: 新增 5.00(高) | humanAiTrust: 新增 2.85(低) | learningMethod: 新增 5.00(高) | learningAttitude: 新增 2.75(低) | selfRegulatedLearning: 新增 5.00(高) | aiLiteracy: 新增 2.85(低)
+张勰(cmogzmyzh005bvel36rm078ru) profile=cmov1caea0052ewl3tc5g51ja
+  画像 totalScore: 6.87 → 38.31
+  knowledgeReserve: 新增 2.58(低) | learningEngagement: 新增 3.75(中) | cognitiveLoad: 新增 3.03(低) | learningMotivation: 新增 4.87(高) | computationalThinking: 新增 5.00(高) | humanAiTrust: 新增 2.85(低) | learningMethod: 新增 5.00(高) | learningAttitude: 新增 3.38(低) | selfRegulatedLearning: 新增 5.00(高) | aiLiteracy: 新增 2.85(低)
+杨嘉淳(cmogzmz5g005rvel3uznzfube) profile=cmogzmz5n005svel3cl358rki
+  画像 totalScore: 5.52 → 26.70
+  knowledgeReserve: 新增 2.96(低) | learningEngagement: 新增 2.33(低) | cognitiveLoad: 新增 2.71(低) | learningMotivation: 新增 2.25(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.85(低) | learningMethod: 新增 2.50(低) | learningAttitude: 新增 3.25(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.85(低)
+杨嘉淳(cmogzmz5g005rvel3uznzfube) profile=cmov1caen005hewl357rmi56u
+  画像 totalScore: 5.34 → 26.14
+  knowledgeReserve: 新增 2.50(低) | learningEngagement: 新增 2.50(低) | cognitiveLoad: 新增 2.04(低) | learningMotivation: 新增 2.90(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.85(低) | learningMethod: 新增 2.50(低) | learningAttitude: 新增 3.00(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.85(低)
+傅宇韬(cmogzmysd004vvel3crod6iw2) profile=cmov1cadb004newl3ua6f9bxg
+  画像 totalScore: 6.78 → 30.48
+  knowledgeReserve: 新增 2.74(低) | learningEngagement: 新增 2.58(低) | cognitiveLoad: 新增 3.54(中) | learningMotivation: 新增 3.19(低) | computationalThinking: 新增 4.00(中) | humanAiTrust: 新增 2.15(低) | learningMethod: 新增 2.63(低) | learningAttitude: 新增 3.50(中) | selfRegulatedLearning: 新增 4.00(中) | aiLiteracy: 新增 2.15(低)
+郭集堃(cmogzmzkt006nvel3jvav32lx) profile=cmov1caf6006bewl32w5yszvf
+  画像 totalScore: 5.09 → 23.54
+  knowledgeReserve: 新增 2.28(低) | learningEngagement: 新增 2.58(低) | cognitiveLoad: 新增 2.83(低) | learningMotivation: 新增 2.21(低) | computationalThinking: 新增 1.75(低) | humanAiTrust: 新增 2.32(低) | learningMethod: 新增 2.75(低) | learningAttitude: 新增 2.75(低) | selfRegulatedLearning: 新增 1.75(低) | aiLiteracy: 新增 2.32(低)
+蒋凯怡(cmogzmzbk0067vel3nq5djadd) profile=cmogzmzen0068vel3ijgnrtcl
+  画像 totalScore: 5.47 → 26.04
+  knowledgeReserve: 新增 2.35(低) | learningEngagement: 新增 2.92(低) | cognitiveLoad: 新增 2.94(低) | learningMotivation: 新增 1.68(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.32(低) | learningMethod: 新增 3.13(低) | learningAttitude: 新增 3.38(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.32(低)
+郭集堃(cmogzmzkt006nvel3jvav32lx) profile=cmogzmzl8006ovel3llfwu86k
+  画像 totalScore: 5.27 → 24.29
+  knowledgeReserve: 新增 2.96(低) | learningEngagement: 新增 2.67(低) | cognitiveLoad: 新增 2.63(低) | learningMotivation: 新增 2.89(低) | computationalThinking: 新增 1.75(低) | humanAiTrust: 新增 2.32(低) | learningMethod: 新增 2.75(低) | learningAttitude: 新增 2.25(低) | selfRegulatedLearning: 新增 1.75(低) | aiLiteracy: 新增 2.32(低)
+来泽颖(cmogzmzss0073vel3phaox5ga) profile=cmogzmzsx0074vel37ppdoshu
+  画像 totalScore: 4.68 → 21.65
+  knowledgeReserve: 新增 2.25(低) | learningEngagement: 新增 2.58(低) | cognitiveLoad: 新增 2.28(低) | learningMotivation: 新增 1.65(低) | computationalThinking: 新增 1.25(低) | humanAiTrust: 新增 2.32(低) | learningMethod: 新增 2.50(低) | learningAttitude: 新增 3.25(低) | selfRegulatedLearning: 新增 1.25(低) | aiLiteracy: 新增 2.32(低)
+来泽颖(cmogzmzss0073vel3phaox5ga) profile=cmov1cafe006qewl3s3cjbnm9
+  画像 totalScore: 4.74 → 23.04
+  knowledgeReserve: 新增 2.50(低) | learningEngagement: 新增 2.50(低) | cognitiveLoad: 新增 2.61(低) | learningMotivation: 新增 3.04(低) | computationalThinking: 新增 1.25(低) | humanAiTrust: 新增 2.32(低) | learningMethod: 新增 2.50(低) | learningAttitude: 新增 2.75(低) | selfRegulatedLearning: 新增 1.25(低) | aiLiteracy: 新增 2.32(低)
+蒋凯怡(cmogzmzbk0067vel3nq5djadd) profile=cmov1caew005wewl3c7vvif4o
+  画像 totalScore: 5.50 → 27.66
+  knowledgeReserve: 新增 2.65(低) | learningEngagement: 新增 2.92(低) | cognitiveLoad: 新增 2.34(低) | learningMotivation: 新增 3.48(中) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.32(低) | learningMethod: 新增 3.13(低) | learningAttitude: 新增 3.50(中) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.32(低)
+廖米乐(cmogzn00h007jvel3b9j0tlvb) profile=cmogzn00m007kvel3hz04fmbh
+  画像 totalScore: 4.30 → 19.52
+  knowledgeReserve: 新增 2.51(低) | learningEngagement: 新增 1.83(低) | cognitiveLoad: 新增 2.61(低) | learningMotivation: 新增 1.64(低) | computationalThinking: 新增 1.25(低) | humanAiTrust: 新增 2.15(低) | learningMethod: 新增 1.25(低) | learningAttitude: 新增 2.88(低) | selfRegulatedLearning: 新增 1.25(低) | aiLiteracy: 新增 2.15(低)
+廖米乐(cmogzn00h007jvel3b9j0tlvb) profile=cmov1cafu0075ewl3gl0sisxz
+  画像 totalScore: 4.89 → 21.09
+  knowledgeReserve: 新增 3.75(中) | learningEngagement: 新增 1.92(低) | cognitiveLoad: 新增 2.58(低) | learningMotivation: 新增 1.54(低) | computationalThinking: 新增 1.25(低) | humanAiTrust: 新增 2.15(低) | learningMethod: 新增 1.25(低) | learningAttitude: 新增 3.25(低) | selfRegulatedLearning: 新增 1.25(低) | aiLiteracy: 新增 2.15(低)
+冯嘉蓉(cmogzn079007zvel3pwswnldh) profile=cmogzn07h0080vel3sgkolrid
+  画像 totalScore: 4.81 → 22.94
+  knowledgeReserve: 新增 3.20(低) | learningEngagement: 新增 1.83(低) | cognitiveLoad: 新增 2.59(低) | learningMotivation: 新增 3.38(低) | computationalThinking: 新增 1.75(低) | humanAiTrust: 新增 1.97(低) | learningMethod: 新增 1.50(低) | learningAttitude: 新增 3.00(低) | selfRegulatedLearning: 新增 1.75(低) | aiLiteracy: 新增 1.97(低)
+李沛凝(cmogzn0f9008fvel3fw8hk7o0) profile=cmogzn0fk008gvel3n9yirrgs
+  画像 totalScore: 4.43 → 21.41
+  knowledgeReserve: 新增 2.38(低) | learningEngagement: 新增 1.75(低) | cognitiveLoad: 新增 2.83(低) | learningMotivation: 新增 2.07(低) | computationalThinking: 新增 1.25(低) | humanAiTrust: 新增 2.50(低) | learningMethod: 新增 1.88(低) | learningAttitude: 新增 3.00(低) | selfRegulatedLearning: 新增 1.25(低) | aiLiteracy: 新增 2.50(低)
+来浩楠(cmogzn0mc008vvel3062qwltt) profile=cmov1cagv008eewl3vvmr900k
+  画像 totalScore: 3.85 → 21.19
+  knowledgeReserve: 新增 2.28(低) | learningEngagement: 新增 2.38(低) | cognitiveLoad: 新增 2.78(低) | learningMotivation: 新增 2.42(低) | computationalThinking: 新增 0.00(低) | humanAiTrust: 新增 3.04(低) | learningMethod: 新增 2.50(低) | learningAttitude: 新增 2.75(低) | selfRegulatedLearning: 新增 0.00(低) | aiLiteracy: 新增 3.04(低)
+冯嘉蓉(cmogzn079007zvel3pwswnldh) profile=cmov1cag7007kewl3g4x1dkzi
+  画像 totalScore: 4.66 → 21.43
+  knowledgeReserve: 新增 2.50(低) | learningEngagement: 新增 1.83(低) | cognitiveLoad: 新增 2.86(低) | learningMotivation: 新增 2.05(低) | computationalThinking: 新增 1.75(低) | humanAiTrust: 新增 1.97(低) | learningMethod: 新增 1.50(低) | learningAttitude: 新增 3.25(低) | selfRegulatedLearning: 新增 1.75(低) | aiLiteracy: 新增 1.97(低)
+来浩楠(cmogzn0mc008vvel3062qwltt) profile=cmogzn0mm008wvel3k96rdif1
+  画像 totalScore: 4.03 → 21.27
+  knowledgeReserve: 新增 2.61(低) | learningEngagement: 新增 2.25(低) | cognitiveLoad: 新增 2.04(低) | learningMotivation: 新增 2.79(低) | computationalThinking: 新增 0.00(低) | humanAiTrust: 新增 3.04(低) | learningMethod: 新增 2.50(低) | learningAttitude: 新增 3.00(低) | selfRegulatedLearning: 新增 0.00(低) | aiLiteracy: 新增 3.04(低)
+李沛凝(cmogzn0f9008fvel3fw8hk7o0) profile=cmov1cagl007zewl3cmxn81gz
+  画像 totalScore: 4.09 → 21.48
+  knowledgeReserve: 新增 2.03(低) | learningEngagement: 新增 1.67(低) | cognitiveLoad: 新增 2.64(低) | learningMotivation: 新增 3.26(低) | computationalThinking: 新增 1.25(低) | humanAiTrust: 新增 2.50(低) | learningMethod: 新增 1.88(低) | learningAttitude: 新增 2.50(低) | selfRegulatedLearning: 新增 1.25(低) | aiLiteracy: 新增 2.50(低)
+来峻逸(cmogzn0t1009bvel3v8ug55p8) profile=cmogzn0t7009cvel3cu6egldy
+  画像 totalScore: 6.60 → 33.32
+  knowledgeReserve: 新增 2.43(低) | learningEngagement: 新增 3.00(低) | cognitiveLoad: 新增 3.73(中) | learningMotivation: 新增 4.27(高) | computationalThinking: 新增 4.50(高) | humanAiTrust: 新增 2.32(低) | learningMethod: 新增 3.50(中) | learningAttitude: 新增 2.75(低) | selfRegulatedLearning: 新增 4.50(高) | aiLiteracy: 新增 2.32(低)
+来峻逸(cmogzn0t1009bvel3v8ug55p8) profile=cmov1cah9008tewl3sdq0qzd2
+  画像 totalScore: 7.29 → 33.55
+  knowledgeReserve: 新增 3.61(中) | learningEngagement: 新增 3.58(中) | cognitiveLoad: 新增 3.21(低) | learningMotivation: 新增 2.88(低) | computationalThinking: 新增 4.50(高) | humanAiTrust: 新增 2.32(低) | learningMethod: 新增 3.50(中) | learningAttitude: 新增 3.13(低) | selfRegulatedLearning: 新增 4.50(高) | aiLiteracy: 新增 2.32(低)
+胡浙煊(cmogzn0z8009rvel3uakjww43) profile=cmov1cahl0098ewl3i2y5ssef
+  画像 totalScore: 5.84 → 28.32
+  knowledgeReserve: 新增 3.61(中) | learningEngagement: 新增 3.33(低) | cognitiveLoad: 新增 2.59(低) | learningMotivation: 新增 2.53(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.50(低) | learningMethod: 新增 3.13(低) | learningAttitude: 新增 3.13(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.50(低)
+胡浙煊(cmogzn0z8009rvel3uakjww43) profile=cmogzn0zi009svel3iqg3zev6
+  画像 totalScore: 5.40 → 26.75
+  knowledgeReserve: 新增 2.68(低) | learningEngagement: 新增 3.08(低) | cognitiveLoad: 新增 2.98(低) | learningMotivation: 新增 2.00(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.50(低) | learningMethod: 新增 3.13(低) | learningAttitude: 新增 2.88(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.50(低)
+孙迪然(cmogzn15n00a7vel3gnv3ir45) profile=cmogzn15u00a8vel3qholwal1
+  画像 totalScore: 4.56 → 26.12
+  knowledgeReserve: 新增 2.51(低) | learningEngagement: 新增 2.13(低) | cognitiveLoad: 新增 2.94(低) | learningMotivation: 新增 3.29(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.50(低) | learningMethod: 新增 2.50(低) | learningAttitude: 新增 2.75(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.50(低)
+孙迪然(cmogzn15n00a7vel3gnv3ir45) profile=cmov1cahu009newl3x12heafx
+  画像 totalScore: 4.29 → 23.57
+  knowledgeReserve: 新增 2.03(低) | learningEngagement: 新增 1.88(低) | cognitiveLoad: 新增 2.24(低) | learningMotivation: 新增 2.42(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.50(低) | learningMethod: 新增 2.50(低) | learningAttitude: 新增 2.50(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.50(低)
+虞涵忆(cmogzn1c800anvel3006jwx9t) profile=cmogzn1ce00aovel3ihl3g73s
+  画像 totalScore: 4.47 → 21.80
+  knowledgeReserve: 新增 2.72(低) | learningEngagement: 新增 2.17(低) | cognitiveLoad: 新增 2.52(低) | learningMotivation: 新增 0.99(低) | computationalThinking: 新增 1.75(低) | humanAiTrust: 新增 2.32(低) | learningMethod: 新增 2.13(低) | learningAttitude: 新增 3.13(低) | selfRegulatedLearning: 新增 1.75(低) | aiLiteracy: 新增 2.32(低)
+虞涵忆(cmogzn1c800anvel3006jwx9t) profile=cmov1cai300a2ewl31wmw57ho
+  画像 totalScore: 4.21 → 20.90
+  knowledgeReserve: 新增 2.33(低) | learningEngagement: 新增 2.00(低) | cognitiveLoad: 新增 2.28(低) | learningMotivation: 新增 1.52(低) | computationalThinking: 新增 1.75(低) | humanAiTrust: 新增 2.32(低) | learningMethod: 新增 2.13(低) | learningAttitude: 新增 2.50(低) | selfRegulatedLearning: 新增 1.75(低) | aiLiteracy: 新增 2.32(低)
+华子睿(cmogzn1j900b3vel3hazflsph) profile=cmogzn1jg00b4vel3y2sh6xma
+  画像 totalScore: 5.12 → 24.16
+  knowledgeReserve: 新增 2.15(低) | learningEngagement: 新增 2.75(低) | cognitiveLoad: 新增 2.81(低) | learningMotivation: 新增 1.87(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 1.60(低) | learningMethod: 新增 3.13(低) | learningAttitude: 新增 3.25(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 1.60(低)
+华子睿(cmogzn1j900b3vel3hazflsph) profile=cmov1caic00ahewl3dr7xjtgs
+  画像 totalScore: 5.60 → 26.22
+  knowledgeReserve: 新增 3.04(低) | learningEngagement: 新增 2.92(低) | cognitiveLoad: 新增 1.88(低) | learningMotivation: 新增 3.42(中) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 1.60(低) | learningMethod: 新增 3.13(低) | learningAttitude: 新增 3.63(中) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 1.60(低)
+华紫瑞(cmogzn2c000cuvel3mv0lylav) profile=cmogzn2f000cvvel34kmsk0x6
+  画像 totalScore: 6.23 → 29.69
+  knowledgeReserve: 新增 2.03(低) | learningEngagement: 新增 2.83(低) | cognitiveLoad: 新增 2.95(低) | learningMotivation: 新增 4.33(高) | computationalThinking: 新增 3.50(中) | humanAiTrust: 新增 2.15(低) | learningMethod: 新增 3.00(低) | learningAttitude: 新增 3.25(低) | selfRegulatedLearning: 新增 3.50(中) | aiLiteracy: 新增 2.15(低)
+陈柯含(cmogzn1xu00cevel3hrjcbsv7) profile=cmov1caw800brewl3ut4po3zy
+  画像 totalScore: 5.70 → 27.86
+  knowledgeReserve: 新增 3.13(低) | learningEngagement: 新增 2.92(低) | cognitiveLoad: 新增 2.34(低) | learningMotivation: 新增 3.07(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.32(低) | learningMethod: 新增 3.13(低) | learningAttitude: 新增 3.63(中) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.32(低)
+华紫瑞(cmogzn2c000cuvel3mv0lylav) profile=cmov1cawq00c6ewl3oarhvdji
+  画像 totalScore: 5.80 → 26.86
+  knowledgeReserve: 新增 1.64(低) | learningEngagement: 新增 2.42(低) | cognitiveLoad: 新增 3.48(中) | learningMotivation: 新增 2.52(低) | computationalThinking: 新增 3.50(中) | humanAiTrust: 新增 2.15(低) | learningMethod: 新增 3.00(低) | learningAttitude: 新增 2.50(低) | selfRegulatedLearning: 新增 3.50(中) | aiLiteracy: 新增 2.15(低)
+吴佳慧(cmogzn1r700byvel3579y3ttv) profile=cmov1cauo00bcewl3kdpxnyxr
+  画像 totalScore: 5.14 → 25.16
+  knowledgeReserve: 新增 1.79(低) | learningEngagement: 新增 1.75(低) | cognitiveLoad: 新增 2.37(低) | learningMotivation: 新增 3.89(中) | computationalThinking: 新增 2.75(低) | humanAiTrust: 新增 2.68(低) | learningMethod: 新增 2.00(低) | learningAttitude: 新增 2.50(低) | selfRegulatedLearning: 新增 2.75(低) | aiLiteracy: 新增 2.68(低)
+吴佳慧(cmogzn1r700byvel3579y3ttv) profile=cmogzn1rd00bzvel310ykm8uh
+  画像 totalScore: 5.56 → 26.30
+  knowledgeReserve: 新增 2.53(低) | learningEngagement: 新增 2.17(低) | cognitiveLoad: 新增 2.35(低) | learningMotivation: 新增 3.51(中) | computationalThinking: 新增 2.75(低) | humanAiTrust: 新增 2.68(低) | learningMethod: 新增 2.00(低) | learningAttitude: 新增 2.88(低) | selfRegulatedLearning: 新增 2.75(低) | aiLiteracy: 新增 2.68(低)
+管哲磊(cmogzn2oh00davel3rw21rt0s) profile=cmov1cax300clewl37jxfmb5d
+  画像 totalScore: 4.75 → 25.25
+  knowledgeReserve: 新增 1.72(低) | learningEngagement: 新增 2.50(低) | cognitiveLoad: 新增 2.81(低) | learningMotivation: 新增 2.95(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.32(低) | learningMethod: 新增 3.13(低) | learningAttitude: 新增 2.50(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.32(低)
+陈柯含(cmogzn1xu00cevel3hrjcbsv7) profile=cmogzn1y100cfvel313quqj0p
+  画像 totalScore: 5.43 → 27.88
+  knowledgeReserve: 新增 2.76(低) | learningEngagement: 新增 2.67(低) | cognitiveLoad: 新增 2.97(低) | learningMotivation: 新增 3.58(中) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.32(低) | learningMethod: 新增 3.13(低) | learningAttitude: 新增 3.13(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.32(低)
+管哲磊(cmogzn2oh00davel3rw21rt0s) profile=cmogzn2qq00dbvel3dv3m196o
+  画像 totalScore: 5.34 → 27.02
+  knowledgeReserve: 新增 2.79(低) | learningEngagement: 新增 3.08(低) | cognitiveLoad: 新增 2.59(低) | learningMotivation: 新增 2.91(低) | computationalThinking: 新增 2.50(低) | humanAiTrust: 新增 2.32(低) | learningMethod: 新增 3.13(低) | learningAttitude: 新增 2.88(低) | selfRegulatedLearning: 新增 2.50(低) | aiLiteracy: 新增 2.32(低)
+吴嘉怡(cmov1ca2h000fewl3ah7vmtzp) profile=cmov1ca32000gewl3emdy1i4z
+  画像 totalScore: 3.86 → 18.65
+  knowledgeReserve: 新增 2.75(低) | learningEngagement: 新增 2.75(低) | cognitiveLoad: 新增 2.92(低) | learningMotivation: 新增 2.35(低) | computationalThinking: 新增 0.00(低) | humanAiTrust: 新增 2.50(低) | learningMethod: 新增 0.00(低) | learningAttitude: 新增 2.88(低) | selfRegulatedLearning: 新增 0.00(低) | aiLiteracy: 新增 2.50(低)
+吴炫月(cmov1cajr00awewl33qw83j0a) profile=cmov1calz00axewl3l3ls2cro
+  画像 totalScore: 4.43 → 20.73
+  knowledgeReserve: 新增 2.50(低) | learningEngagement: 新增 1.67(低) | cognitiveLoad: 新增 2.17(低) | learningMotivation: 新增 3.25(低) | computationalThinking: 新增 1.25(低) | humanAiTrust: 新增 2.32(低) | learningMethod: 新增 1.25(低) | learningAttitude: 新增 2.75(低) | selfRegulatedLearning: 新增 1.25(低) | aiLiteracy: 新增 2.32(低)
+周佳睿(cmov1caaz002yewl35a38j14k) profile=cmov1cabe002zewl3mcrqqqdr
+  画像 totalScore: 6.13 → 29.07
+  knowledgeReserve: 新增 2.43(低) | learningEngagement: 新增 2.83(低) | cognitiveLoad: 新增 2.21(低) | learningMotivation: 新增 2.86(低) | computationalThinking: 新增 3.75(中) | humanAiTrust: 新增 2.68(低) | learningMethod: 新增 3.13(低) | learningAttitude: 新增 2.75(低) | selfRegulatedLearning: 新增 3.75(中) | aiLiteracy: 新增 2.68(低)
+孙语彤(cmov1cb1400d0ewl3dxrafnuq) profile=cmov1cb1b00d1ewl307obyu2f
+  画像 totalScore: 4.19 → 21.64
+  knowledgeReserve: 新增 2.50(低) | learningEngagement: 新增 1.58(低) | cognitiveLoad: 新增 2.98(低) | learningMotivation: 新增 3.33(低) | computationalThinking: 新增 1.25(低) | humanAiTrust: 新增 2.50(低) | learningMethod: 新增 1.25(低) | learningAttitude: 新增 2.50(低) | selfRegulatedLearning: 新增 1.25(低) | aiLiteracy: 新增 2.50(低)
+
+  展示场景 更新完成:
+    处理画像总数: 60
+    新增维度得分: 600
+    更新维度得分: 0
+
+===== 课后线上教师授课答疑 (TEACHER_QA) =====
+郭博文(cmquqw74d004xvyjxyylch036) profile=cmr1jf8mj001wkpjx42rodeym
+  画像 totalScore: 53.70 → 23.91
+  knowledgeReserve: 新增 3.76(中) | learningEngagement: 新增 2.72(低) | cognitiveLoad: 新增 2.65(低) | learningMotivation: 新增 2.28(低) | computationalThinking: 新增 1.71(低) | humanAiTrust: 新增 2.31(低) | learningMethod: 新增 1.95(低) | learningAttitude: 新增 2.60(低) | selfRegulatedLearning: 新增 1.62(低) | aiLiteracy: 新增 2.31(低)
+高子轩(cmquqw72x004kvyjx51n2nsk2) profile=cmr1jf3tb001fkpjxi6oncxx2
+  画像 totalScore: 53.40 → 26.95
+  knowledgeReserve: 新增 3.32(低) | learningEngagement: 新增 1.50(低) | cognitiveLoad: 新增 2.21(低) | learningMotivation: 新增 4.20(高) | computationalThinking: 新增 4.58(高) | humanAiTrust: 新增 0.74(低) | learningMethod: 新增 2.82(低) | learningAttitude: 新增 3.46(中) | selfRegulatedLearning: 新增 3.38(低) | aiLiteracy: 新增 0.74(低)
+胡浩宇(cmquqw748004vvyjxkcyc5806) profile=cmr1jeven000hkpjxdtotdoti
+  画像 totalScore: 63.60 → 29.54
+  knowledgeReserve: 新增 4.17(中) | learningEngagement: 新增 3.72(中) | cognitiveLoad: 新增 1.06(低) | learningMotivation: 新增 1.43(低) | computationalThinking: 新增 0.81(低) | humanAiTrust: 新增 4.21(高) | learningMethod: 新增 2.93(低) | learningAttitude: 新增 4.17(中) | selfRegulatedLearning: 新增 2.83(低) | aiLiteracy: 新增 4.21(高)
+陈天佑(cmquqw73l004qvyjxi2rfbwq3) profile=cmr1jf00m000ykpjx4m4v2ywc
+  画像 totalScore: 52.80 → 24.74
+  knowledgeReserve: 新增 0.71(低) | learningEngagement: 新增 1.88(低) | cognitiveLoad: 新增 2.94(低) | learningMotivation: 新增 5.00(高) | computationalThinking: 新增 3.65(中) | humanAiTrust: 新增 1.50(低) | learningMethod: 新增 3.99(中) | learningAttitude: 新增 0.59(低) | selfRegulatedLearning: 新增 2.98(低) | aiLiteracy: 新增 1.50(低)
+罗佳怡(cmquqw6g3000hvyjxw49mjb9q) profile=cmquqwegn01osvyjxk445jrko
+  画像 totalScore: 38.00 → 0.00
+  knowledgeReserve: 4.25 → 0.00(低) | learningEngagement: 0.70 → 0.00(低) | cognitiveLoad: 4.00 → 0.00(低) | learningMotivation: 0.50 → 0.00(低) | computationalThinking: 0.70 → 0.00(低) | humanAiTrust: 3.20 → 0.00(低) | learningMethod: 0.95 → 0.00(低) | learningAttitude: 2.65 → 0.00(低) | selfRegulatedLearning: 4.85 → 0.00(低) | aiLiteracy: 1.00 → 0.00(低)
+何天佑(cmquqw6g2000gvyjxpzienf8q) profile=cmquqwegn01orvyjx01h5cp73
+  画像 totalScore: 51.70 → 0.00
+  knowledgeReserve: 2.30 → 0.00(低) | learningEngagement: 3.60 → 0.00(低) | cognitiveLoad: 4.55 → 0.00(低) | learningMotivation: 1.10 → 0.00(低) | computationalThinking: 4.40 → 0.00(低) | humanAiTrust: 1.05 → 0.00(低) | learningMethod: 1.10 → 0.00(低) | learningAttitude: 4.00 → 0.00(低) | selfRegulatedLearning: 3.65 → 0.00(低) | aiLiteracy: 2.00 → 0.00(低)
+吴梓豪(cmquqw6h8000jvyjxrrils10q) profile=cmquqweha01q7vyjxomjvr9c0
+  画像 totalScore: 48.00 → 0.00
+  knowledgeReserve: 4.45 → 0.00(低) | learningEngagement: 4.15 → 0.00(低) | cognitiveLoad: 2.75 → 0.00(低) | learningMotivation: 1.90 → 0.00(低) | computationalThinking: 3.60 → 0.00(低) | humanAiTrust: 1.55 → 0.00(低) | learningMethod: 0.55 → 0.00(低) | learningAttitude: 1.40 → 0.00(低) | selfRegulatedLearning: 2.50 → 0.00(低) | aiLiteracy: 1.15 → 0.00(低)
+罗若曦(cmquqw6ha000lvyjx0s00n7bh) profile=cmquqwehm01qjvyjxukjsvd8d
+  画像 totalScore: 58.80 → 0.00
+  knowledgeReserve: 0.50 → 0.00(低) | learningEngagement: 5.00 → 0.00(低) | cognitiveLoad: 3.55 → 0.00(低) | learningMotivation: 4.55 → 0.00(低) | computationalThinking: 4.00 → 0.00(低) | humanAiTrust: 0.35 → 0.00(低) | learningMethod: 4.70 → 0.00(低) | learningAttitude: 1.25 → 0.00(低) | selfRegulatedLearning: 4.60 → 0.00(低) | aiLiteracy: 4.70 → 0.00(低)
+刘天佑(cmquqw6hp000mvyjxp2ktstm8) profile=cmquqwehm01qkvyjx5dd89uqc
+  画像 totalScore: 52.50 → 0.00
+  knowledgeReserve: 3.65 → 0.00(低) | learningEngagement: 2.15 → 0.00(低) | cognitiveLoad: 3.55 → 0.00(低) | learningMotivation: 2.35 → 0.00(低) | computationalThinking: 2.70 → 0.00(低) | humanAiTrust: 2.00 → 0.00(低) | learningMethod: 4.10 → 0.00(低) | learningAttitude: 4.15 → 0.00(低) | selfRegulatedLearning: 1.25 → 0.00(低) | aiLiteracy: 2.25 → 0.00(低)
+高诗涵(cmquqw6h9000kvyjxczsi9ium) profile=cmquqwehm01qivyjxgm5uymff
+  画像 totalScore: 52.70 → 0.00
+  knowledgeReserve: 2.00 → 0.00(低) | learningEngagement: 2.55 → 0.00(低) | cognitiveLoad: 3.05 → 0.00(低) | learningMotivation: 2.95 → 0.00(低) | computationalThinking: 3.15 → 0.00(低) | humanAiTrust: 3.00 → 0.00(低) | learningMethod: 3.40 → 0.00(低) | learningAttitude: 1.15 → 0.00(低) | selfRegulatedLearning: 2.00 → 0.00(低) | aiLiteracy: 5.00 → 0.00(低)
+黄雨桐(cmquqw6h7000ivyjxvo7p8aei) profile=cmquqwegn01oqvyjxtqnbdfdm
+  画像 totalScore: 37.30 → 0.00
+  knowledgeReserve: 2.90 → 0.00(低) | learningEngagement: 0.85 → 0.00(低) | cognitiveLoad: 1.30 → 0.00(低) | learningMotivation: 2.05 → 0.00(低) | computationalThinking: 0.35 → 0.00(低) | humanAiTrust: 0.85 → 0.00(低) | learningMethod: 0.75 → 0.00(低) | learningAttitude: 3.15 → 0.00(低) | selfRegulatedLearning: 4.75 → 0.00(低) | aiLiteracy: 1.70 → 0.00(低)
+徐雅琪(cmquqw6i8000nvyjxj4d8gz24) profile=cmquqwehn01qlvyjxae10tq43
+  画像 totalScore: 58.40 → 0.00
+  knowledgeReserve: 2.55 → 0.00(低) | learningEngagement: 2.10 → 0.00(低) | cognitiveLoad: 1.00 → 0.00(低) | learningMotivation: 4.65 → 0.00(低) | computationalThinking: 4.15 → 0.00(低) | humanAiTrust: 4.65 → 0.00(低) | learningMethod: 2.00 → 0.00(低) | learningAttitude: 0.55 → 0.00(低) | selfRegulatedLearning: 3.50 → 0.00(低) | aiLiteracy: 5.00 → 0.00(低)
+黄梦瑶(cmquqw6id000ovyjx42tvguho) profile=cmquqwei801rqvyjx644trsdd
+  画像 totalScore: 52.00 → 0.00
+  knowledgeReserve: 0.60 → 0.00(低) | learningEngagement: 0.60 → 0.00(低) | cognitiveLoad: 0.30 → 0.00(低) | learningMotivation: 3.20 → 0.00(低) | computationalThinking: 4.15 → 0.00(低) | humanAiTrust: 3.45 → 0.00(低) | learningMethod: 0.95 → 0.00(低) | learningAttitude: 3.75 → 0.00(低) | selfRegulatedLearning: 4.90 → 0.00(低) | aiLiteracy: 4.10 → 0.00(低)
+孙景行(cmquqw6iq000svyjxxbetb40c) profile=cmquqweim01s4vyjxjdexmnc0
+  画像 totalScore: 52.50 → 0.00
+  knowledgeReserve: 1.40 → 0.00(低) | learningEngagement: 1.50 → 0.00(低) | cognitiveLoad: 1.75 → 0.00(低) | learningMotivation: 2.70 → 0.00(低) | computationalThinking: 3.40 → 0.00(低) | humanAiTrust: 0.55 → 0.00(低) | learningMethod: 2.85 → 0.00(低) | learningAttitude: 4.65 → 0.00(低) | selfRegulatedLearning: 4.60 → 0.00(低) | aiLiteracy: 2.85 → 0.00(低)
+林宇轩(cmquqw6j4000vvyjxcwv94uzb) profile=cmquqwejj01tbvyjxibw7004n
+  画像 totalScore: 43.50 → 0.00
+  knowledgeReserve: 1.30 → 0.00(低) | learningEngagement: 4.85 → 0.00(低) | cognitiveLoad: 0.45 → 0.00(低) | learningMotivation: 2.65 → 0.00(低) | computationalThinking: 2.00 → 0.00(低) | humanAiTrust: 1.95 → 0.00(低) | learningMethod: 3.90 → 0.00(低) | learningAttitude: 0.80 → 0.00(低) | selfRegulatedLearning: 2.85 → 0.00(低) | aiLiteracy: 1.00 → 0.00(低)
+郭俊杰(cmquqw6ie000qvyjx7fivrwl0) profile=cmquqweim01s2vyjxa9wjlaae
+  画像 totalScore: 44.80 → 0.00
+  knowledgeReserve: 2.95 → 0.00(低) | learningEngagement: 1.45 → 0.00(低) | cognitiveLoad: 3.00 → 0.00(低) | learningMotivation: 2.35 → 0.00(低) | computationalThinking: 3.00 → 0.00(低) | humanAiTrust: 3.80 → 0.00(低) | learningMethod: 2.10 → 0.00(低) | learningAttitude: 0.85 → 0.00(低) | selfRegulatedLearning: 2.85 → 0.00(低) | aiLiteracy: 2.90 → 0.00(低)
+刘思涵(cmquqw6j4000uvyjxtczaav2y) profile=cmquqwejj01tavyjxq21ink8j
+  画像 totalScore: 68.80 → 0.00
+  knowledgeReserve: 1.45 → 0.00(低) | learningEngagement: 1.90 → 0.00(低) | cognitiveLoad: 4.20 → 0.00(低) | learningMotivation: 3.55 → 0.00(低) | computationalThinking: 4.70 → 0.00(低) | humanAiTrust: 4.70 → 0.00(低) | learningMethod: 2.70 → 0.00(低) | learningAttitude: 3.95 → 0.00(低) | selfRegulatedLearning: 3.25 → 0.00(低) | aiLiteracy: 4.00 → 0.00(低)
+高睿哲(cmquqw6ig000rvyjxo3fuaqto) profile=cmquqweim01s3vyjxey3oecfu
+  画像 totalScore: 34.00 → 0.00
+  knowledgeReserve: 0.65 → 0.00(低) | learningEngagement: 1.05 → 0.00(低) | cognitiveLoad: 1.25 → 0.00(低) | learningMotivation: 3.50 
+
+[… truncated 195236 chars …]

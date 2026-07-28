@@ -1,11 +1,17 @@
 /**
- * 为 SHOW_CASE 场景下的所有学生认知画像，基于 16 个基础维度重新计算 10 维个人维度得分。
+ * 为指定场景（或全部场景）下的学生认知画像，基于 16 个基础维度计算 10 维聚合维度得分，
+ * 并持久化写入 student_cognitive_dimension_scores 表。
  *
  * 用法：
- *   npx ts-node scripts/recompute-showcase-dimensions.ts [--execute]
+ *   npx ts-node scripts/recompute-aggregate-dimensions.ts [--execute] [--scenario=CODE]
  *
- * 默认 dry-run（只打印对比，不写入），加 --execute 才会真正更新数据库。
+ * --scenario=CODE  只处理指定场景（如 --scenario=ONLINE_COURSE），默认处理所有场景
+ * --execute         执行写入，不加则为 dry-run
  */
+
+import * as dotenv from "dotenv";
+import * as path from "path";
+dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
 
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "../src/app.module";
@@ -14,17 +20,24 @@ import { Prisma } from "@prisma/client";
 import {
   AGGREGATE_DIMENSION_KEYS,
   AggregateDimensionKey,
+  BASE_DIMENSION_CODES,
   computeAggregateDimensionScores,
   scoreLevel,
 } from "../src/shared/utils/cognitive-dimensions";
 
 interface ParsedArgs {
   execute: boolean;
+  scenarioCode: string | null;
 }
 
 function parseArgs(): ParsedArgs {
   const args = process.argv.slice(2);
-  return { execute: args.includes("--execute") };
+  const scenarioCode =
+    args
+      .find((a) => a.startsWith("--scenario="))
+      ?.split("=")[1]
+      ?.trim() ?? null;
+  return { execute: args.includes("--execute"), scenarioCode };
 }
 
 function formatScore(value: number): string {
@@ -52,7 +65,7 @@ async function parallelLimit<T>(
 }
 
 async function main() {
-  const { execute } = parseArgs();
+  const { execute, scenarioCode } = parseArgs();
 
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ["error", "warn"],
@@ -60,29 +73,44 @@ async function main() {
   const prisma = app.get(PrismaService);
 
   try {
-    const scenario = await prisma.learningScenario.findUnique({
-      where: { code: "SHOW_CASE" },
-    });
-    if (!scenario) {
-      console.error("SHOW_CASE 场景不存在");
+    const scenarios = scenarioCode
+      ? [
+          await prisma.learningScenario.findUnique({
+            where: { code: scenarioCode },
+          }),
+        ].filter(Boolean)
+      : await prisma.learningScenario.findMany();
+
+    if (scenarios.length === 0) {
+      console.error(
+        scenarioCode
+          ? `场景 ${scenarioCode} 不存在`
+          : "数据库中没有场景",
+      );
       await app.close();
       return;
     }
-    console.log(`场景: ${scenario.nameZh} (${scenario.code})`);
-    console.log(
-      `模式: ${execute ? "执行写入" : "演练模式（不会写入，请加 --execute 执行）"}\n`,
-    );
+
+    const mode = execute ? "执行写入" : "演练模式（不会写入）";
+    console.log(`模式: ${mode}， 场景数: ${scenarios.length}\n`);
 
     const defs = await prisma.cognitiveDimensionDef.findMany();
     const defMap = new Map(defs.map((d) => [d.dimensionCode, d]));
 
-    const students = await prisma.graphNode.findMany({
-      where: { scenarioId: scenario.id, nodeType: "Student" },
-      select: { id: true, displayName: true },
-    });
-    const studentMap = new Map(students.map((s) => [s.id, s]));
+    let totalUpdatedProfiles = 0;
+    let totalCreatedScores = 0;
+    let totalUpdatedScores = 0;
 
-    const profiles = await prisma.studentCognitiveProfile.findMany({
+    for (const scenario of scenarios) {
+      console.log(`\n===== ${scenario.nameZh} (${scenario.code}) =====`);
+
+      const students = await prisma.graphNode.findMany({
+        where: { scenarioId: scenario.id, nodeType: "Student" },
+        select: { id: true, displayName: true },
+      });
+      const studentMap = new Map(students.map((s) => [s.id, s]));
+
+      const profiles = await prisma.studentCognitiveProfile.findMany({
       where: { studentNodeId: { in: students.map((s) => s.id) } },
       orderBy: { generatedAt: "desc" },
       include: { dimensionScores: true },
@@ -102,8 +130,19 @@ async function main() {
       if (!student) continue;
 
       const baseScoreMap = new Map<string, number>();
+      let hasBaseDimensions = false;
       for (const score of profile.dimensionScores) {
         baseScoreMap.set(score.dimensionCode, Number(score.scoreValue));
+        if ((BASE_DIMENSION_CODES as readonly string[]).includes(score.dimensionCode)) {
+          hasBaseDimensions = true;
+        }
+      }
+
+      if (!hasBaseDimensions) {
+        console.log(
+          `${student.displayName}(${profile.studentNodeId}) profile=${profile.id} SKIPPED (no base dimensions)`,
+        );
+        continue;
       }
 
       const computed = computeAggregateDimensionScores(baseScoreMap);
@@ -156,9 +195,9 @@ async function main() {
       });
     }
 
-    let updatedProfiles = 0;
-    let createdScores = 0;
-    let updatedScores = 0;
+      let updatedProfiles = 0;
+      let createdScores = 0;
+      let updatedScores = 0;
 
     await parallelLimit(
       tasks,
@@ -235,11 +274,26 @@ async function main() {
       CONCURRENCY,
     );
 
+      if (execute) {
+        console.log(`\n  ${scenario.nameZh} 更新完成:`);
+        console.log(`    处理画像总数: ${updatedProfiles}`);
+        console.log(`    新增维度得分: ${createdScores}`);
+        console.log(`    更新维度得分: ${updatedScores}`);
+      } else {
+        console.log(`\n  ${scenario.nameZh} 演练完成。`);
+      }
+
+      totalUpdatedProfiles += updatedProfiles;
+      totalCreatedScores += createdScores;
+      totalUpdatedScores += updatedScores;
+    }
+
     if (execute) {
-      console.log(`\n更新完成:`);
-      console.log(`  处理画像总数: ${updatedProfiles}`);
-      console.log(`  新增维度得分: ${createdScores}`);
-      console.log(`  更新维度得分: ${updatedScores}`);
+      console.log(`\n========== 全部完成 ==========`);
+      console.log(`  处理场景总数: ${scenarios.length}`);
+      console.log(`  处理画像总数: ${totalUpdatedProfiles}`);
+      console.log(`  新增维度得分: ${totalCreatedScores}`);
+      console.log(`  更新维度得分: ${totalUpdatedScores}`);
     } else {
       console.log(`\n这是演练模式，未写入数据库。如需执行，请加上 --execute。`);
     }
